@@ -18,6 +18,7 @@ rules:
   - ipam.cluster.x-k8s.io
   resources:
   - globalinclusterippools
+  - infobloxinstances
   verbs:
   - create
   - delete
@@ -30,12 +31,14 @@ rules:
   - ipam.cluster.x-k8s.io
   resources:
   - globalinclusterippools/finalizers
+  - infobloxinstances/finalizers
   verbs:
   - update
 - apiGroups:
   - ipam.cluster.x-k8s.io
   resources:
   - globalinclusterippools/status
+  - infobloxinstances/status
   verbs:
   - get
   - patch
@@ -44,6 +47,7 @@ rules:
   - ipam.cluster.x-k8s.io
   resources:
   - inclusterippools
+  - infobloxippools
   verbs:
   - create
   - delete
@@ -56,12 +60,14 @@ rules:
   - ipam.cluster.x-k8s.io
   resources:
   - inclusterippools/finalizers
+  - infobloxippools/finalizers
   verbs:
   - update
 - apiGroups:
   - ipam.cluster.x-k8s.io
   resources:
   - inclusterippools/status
+  - infobloxippools/status
   verbs:
   - get
   - patch

@@ -72,6 +72,10 @@ func main() {
 	flag.StringVar(&watchNamespace, "namespace", "",
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.")
 	flag.StringVar(&watchFilter, "watch-filter", "", "")
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
 	// klog.Background will automatically use the right logger.
@@ -122,6 +126,26 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GlobalInClusterIPPoolReconciler")
+		os.Exit(1)
+	}
+
+	
+	// if err := (&webhooks.InfobloxIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
+	// 	setupLog.Error(err, "unable to create webhook", "webhook", "InfobloxIPPool")
+	// 	os.Exit(1)
+	// }
+	if err = (&controllers.InfobloxInstanceReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "InfobloxInstance")
+		os.Exit(1)
+	}
+	if err = (&controllers.InfobloxIPPoolReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "InfobloxIPPool")
 		os.Exit(1)
 	}
 

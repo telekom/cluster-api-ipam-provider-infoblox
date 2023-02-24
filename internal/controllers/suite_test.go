@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -36,11 +37,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/komega"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	//+kubebuilder:scaffold:imports
 	v1alpha2 "sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/internal/index"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
+        "github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -52,6 +56,9 @@ var (
 	testEnv   *envtest.Environment
 	ctx       context.Context
 	cancelCtx func()
+
+	mockInfobloxClient        *ibmock.MockClient
+	mockNewInfobloxClientFunc func(infoblox.Config) (infoblox.Client, error)
 )
 
 func TestAPIs(t *testing.T) {
@@ -60,10 +67,14 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	klog.SetOutput(GinkgoWriter)
-	ctrl.SetLogger(klog.Background())
+	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancelCtx = context.WithCancel(ctrl.SetupSignalHandler())
+
+	mockInfobloxClient = ibmock.NewMockClient(gomock.NewController(GinkgoT()))
+	mockNewInfobloxClientFunc = func(infoblox.Config) (infoblox.Client, error) {
+		return mockInfobloxClient, nil
+	}
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -116,6 +127,14 @@ var _ = BeforeSuite(func() {
 		(&GlobalInClusterIPPoolReconciler{
 			Client: mgr.GetClient(),
 			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(ctx, mgr),
+	).To(Succeed())
+
+        Expect(
+		(&InfobloxInstanceReconciler{
+			Client:                mgr.GetClient(),
+			Scheme:                mgr.GetScheme(),
+			newInfobloxClientFunc: mockNewInfobloxClientFunc,
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())
 

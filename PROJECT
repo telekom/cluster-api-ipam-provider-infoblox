@@ -49,4 +49,21 @@ resources:
   webhooks:
     conversion: true
     webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  group: ipam
+  kind: InfobloxIPPool
+  path: sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: cluster.x-k8s.io
+  group: ipam
+  kind: InfobloxInstance
+  path: sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2
+  version: v1alpha1
 version: "3"
