@@ -40,6 +40,30 @@ You can reach the maintainers of this project at:
 - [Slack](https://slack.k8s.io/)
 - [Mailing List](https://groups.google.com/a/kubernetes.io/g/dev)
 
+# Cluster API IPAM Provider Infoblox
+
+This is an IPAM provider for Cluster API that integrates with Infoblox NIOS for IP address management and DNS.
+It allows to allocate addresses from subnets configured in Infoblox. Since it creates Host resources in Infoblox, it can also be used to configure DNS entries for hosts at the same time.
+
+**NOTE: This provider is still under heavy development and not ready for use.**
+
+## Usage
+
+This provider comes with a `InfobloxIPPool` resource to specify the pools from which addresses should be assigned.
+
+```yaml
+apiVersion: ipam.cluster.x-k8s.io/v1alpha1
+kind: InfobloxIPPool
+metadata:
+  name: infobloxippool-sample
+spec: #tbd
+```
+
+## Running Tests
+
+In order to run end-to-end tests, an Infoblox instance needs to be provided. Configuration is done using environment variables. See [.testenv.example](./.testenv.example) for an example.
+
+
 ## Licensing
 
 Copyright (c) 2022 Deutsche Telekom AG.
