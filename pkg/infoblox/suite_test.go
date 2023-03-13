@@ -44,7 +44,7 @@ var _ = BeforeSuite(func() {
 	hostCfg, authCfg, err := InfobloxConfigFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	testClient, err = NewClient(hostCfg, authCfg)
+	testClient, err = newClient(hostCfg, authCfg)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(testClient).NotTo(BeNil())
 

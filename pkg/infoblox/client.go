@@ -2,12 +2,13 @@ package infoblox
 
 import (
 	"errors"
+	"net/netip"
 	"strings"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 )
 
-//go:generate mockgen -destination=mock_test.go github.com/infobloxopen/infoblox-go-client/v2 Connector,IBObjectManager
+//go:generate mockgen -destination=ibmock/client.go -package=ibmock . Client
 
 const (
 	secretKeyUsername   = "username"
@@ -16,10 +17,22 @@ const (
 	secretKeyClientKey  = "clientKey"
 )
 
+// Client is a wrapper around the infoblox client that can allocate and release addresses indempotently.
+type Client interface {
+	// GetOrAllocateAddress allocates an address for a given hostname if none exists, and returns the new or existing address.
+	GetOrAllocateAddress(view string, subnet netip.Prefix, hostname string) (netip.Addr, error)
+	// ReleaseAddress releases an address for a given hostname.
+	ReleaseAddress(view string, subnet netip.Prefix, hostname string) error
+
+	CheckNetworkViewExists(view string) (bool, error)
+}
+
 type client struct {
 	connector *ibclient.Connector
 	objMgr    ibclient.IBObjectManager
 }
+
+var _ Client = &client{}
 
 // AuthConfig contains authentication parameters to use for authenticating against the API.
 type AuthConfig struct {
@@ -35,7 +48,12 @@ type HostConfig struct {
 	InsecureSkipTLSVerify bool
 }
 
-func NewClient(config HostConfig, auth AuthConfig) (*client, error) {
+// NewClient creates a new infoblox client.
+func NewClient(config HostConfig, auth AuthConfig) (Client, error) {
+	return newClient(config, auth)
+}
+
+func newClient(config HostConfig, auth AuthConfig) (*client, error) {
 	hc := ibclient.HostConfig{
 		Version: config.Version,
 	}
@@ -61,6 +79,7 @@ func NewClient(config HostConfig, auth AuthConfig) (*client, error) {
 	tc := ibclient.NewTransportConfig(tlsVerify, 1, 5)
 	con, err := ibclient.NewConnector(hc, ac, tc, rb, rq)
 	if err != nil {
+		// does not happen with the current infoblox-go-client
 		return nil, err
 	}
 	objMgr := ibclient.NewObjectManager(con, "cluster-api-ipam-provider-infoblox", "")
@@ -71,7 +90,7 @@ func NewClient(config HostConfig, auth AuthConfig) (*client, error) {
 	return &client{
 		connector: con,
 		objMgr:    objMgr,
-	}, err
+	}, nil
 }
 
 // AuthConfigFromSecretData creates a AuthConfig from the contents of a secret.
@@ -88,4 +107,22 @@ func AuthConfigFromSecretData(data map[string][]byte) (AuthConfig, error) {
 		return config, nil
 	}
 	return AuthConfig{}, errors.New("no usable pair of credentials found. provide either username/password or clientCert/clientKey")
+}
+
+func (c *client) CheckNetworkViewExists(view string) (bool, error) {
+	_, err := c.objMgr.GetNetworkView(view)
+	if isNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func isNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.HasSuffix(err.Error(), "not found")
 }
