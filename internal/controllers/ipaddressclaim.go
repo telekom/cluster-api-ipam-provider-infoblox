@@ -23,22 +23,15 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
-	clusterutil "sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
-	"sigs.k8s.io/cluster-api/util/patch"
-	"sigs.k8s.io/cluster-api/util/predicates"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -63,7 +56,7 @@ const (
 
 type genericInClusterPool interface {
 	client.Object
-	PoolSpec() *v1alpha1.InClusterIPPoolSpec
+	PoolSpec() *v1alpha2.InClusterIPPoolSpec
 }
 
 type InClusterProviderIntegration struct {
@@ -102,7 +95,7 @@ func (i *InClusterProviderIntegration) SetupWithManager(ctx context.Context, b *
 		// IPAddressClaim.
 		Watches(
 			&source.Kind{Type: &clusterv1.Cluster{}},
-			handler.EnqueueRequestsFromMapFunc(r.clusterToIPClaims),
+			handler.EnqueueRequestsFromMapFunc(i.clusterToIPClaims),
 			builder.WithPredicates(predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
 					oldCluster := e.ObjectOld.(*clusterv1.Cluster)
@@ -215,16 +208,17 @@ func (i *InClusterProviderIntegration) ClaimHandlerFor(_ client.Client, claim *i
 // FetchPool fetches the (Global)InClusterIPPool.
 func (h *IPAddressClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
+
 	if h.claim.Spec.PoolRef.Kind == inClusterIPPoolKind {
-		icippool := &v1alpha1.InClusterIPPool{}
-		if err := h.Client.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, icippool); err != nil && !apierrors.IsNotFound(err) {
-			return nil, errors.Wrap(err, "failed to fetch pool")
+		icippool := &v1alpha2.InClusterIPPool{}
+		if err := h.Client.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, icippool); err != nil {
+			return nil, err
 		}
 		h.pool = icippool
 	} else if h.claim.Spec.PoolRef.Kind == globalInClusterIPPoolKind {
-		gicippool := &v1alpha1.GlobalInClusterIPPool{}
-		if err := h.Client.Get(ctx, types.NamespacedName{Name: h.claim.Spec.PoolRef.Name}, gicippool); err != nil && !apierrors.IsNotFound(err) {
-			return nil, errors.Wrap(err, "failed to fetch pool")
+		gicippool := &v1alpha2.GlobalInClusterIPPool{}
+		if err := h.Client.Get(ctx, types.NamespacedName{Name: h.claim.Spec.PoolRef.Name}, gicippool); err != nil {
+			return nil, err
 		}
 		h.pool = gicippool
 	}
@@ -246,7 +240,7 @@ func (h *IPAddressClaimHandler) EnsureAddress(ctx context.Context, address *ipam
 	}
 
 	allocated := slices.ContainsFunc(addressesInUse, func(a ipamv1.IPAddress) bool {
-		return a.Name == address.Name
+		return a.Name == address.Name && a.Namespace == address.Namespace
 	})
 
 	if !allocated {
@@ -256,7 +250,7 @@ func (h *IPAddressClaimHandler) EnsureAddress(ctx context.Context, address *ipam
 			return nil, fmt.Errorf("failed to convert IPAddressList to IPSet: %w", err)
 		}
 
-		poolIPSet, err := poolutil.IPPoolSpecToIPSet(poolSpec)
+		poolIPSet, err := poolutil.PoolSpecToIPSet(poolSpec)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert pool to range: %w", err)
 		}

@@ -38,7 +38,7 @@ import (
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/internal/controllers"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/internal/index"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/internal/webhooks"
-	"github.com/telekom/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
+	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
 )
 
 var (

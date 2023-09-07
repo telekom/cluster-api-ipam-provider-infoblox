@@ -8,7 +8,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
 	clusterutil "sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/annotations"
@@ -17,7 +19,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -79,11 +80,21 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		return ctrl.Result{}, err
 	}
 
-	cluster, err := clusterutil.GetClusterFromMetadata(ctx, r.Client, claim.ObjectMeta)
-	if err == nil {
-		if annotations.IsPaused(cluster, claim) {
-			log.Info("IPAddressClaim linked to a cluster that is paused")
-			return reconcile.Result{}, nil
+	if _, ok := claim.GetLabels()[clusterv1.ClusterNameLabel]; ok {
+		cluster, err := clusterutil.GetClusterFromMetadata(ctx, r.Client, claim.ObjectMeta)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				log.Info("IPAddressClaim linked to a cluster that is not found, unable to determine cluster's paused state, skipping reconciliation")
+				return ctrl.Result{}, nil
+			}
+
+			log.Error(err, "error fetching cluster linked to IPAddressClaim")
+			return ctrl.Result{}, err
+		}
+
+		if annotations.IsPaused(cluster, cluster) {
+			log.Info("IPAddressClaim linked to a cluster that is paused, skipping reconciliation")
+			return ctrl.Result{}, nil
 		}
 	}
 
@@ -92,6 +103,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
 	defer func() {
 		if err := patchHelper.Patch(ctx, claim); err != nil {
 			reterr = kerrors.NewAggregate([]error{reterr, err})
@@ -104,12 +116,25 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 	// Create the provider handler and fetch the pool.
 	handler := r.Provider.ClaimHandlerFor(r.Client, claim)
 	if res, err := handler.FetchPool(ctx); err != nil || res != nil {
-		return unwrapResult(res), err
+		if apierrors.IsNotFound(err) {
+			err := errors.New("pool not found")
+			log.Error(err, "the referenced pool could not be found")
+			if !claim.ObjectMeta.DeletionTimestamp.IsZero() {
+				return r.reconcileDelete(ctx, claim)
+			}
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, errors.Wrap(err, "failed to fetch pool")
 	}
 
-	if annotations.HasPaused(handler.GetPool()) {
-		log.Info("IPAddressClaim references Pool which is paused, skipping reconciliation.", "IPAddressClaim", claim.GetName(), "Pool", handler.GetPool().GetName())
+	pool := handler.GetPool()
+	if pool != nil && annotations.HasPaused(pool) {
+		log.Info("IPAddressClaim references Pool which is paused, skipping reconciliation.", "IPAddressClaim", claim.GetName(), "Pool", pool.GetName())
 		return ctrl.Result{}, nil
+	}
+
+	if !claim.ObjectMeta.DeletionTimestamp.IsZero() {
+		return r.reconcileDelete(ctx, claim)
 	}
 
 	address := ipamv1.IPAddress{}
@@ -122,7 +147,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		if res, err := handler.ReleaseAddress(); err != nil || res != nil {
 			return unwrapResult(res), err
 		}
-		return r.reconcileDelete(ctx, claim, &address)
+		return r.reconcileDelete(ctx, claim)
 	}
 
 	// We always ensure there is a valid address object passed to the handler.
@@ -163,7 +188,16 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 	return ctrl.Result{}, nil
 }
 
-func (r *ClaimReconciler) reconcileDelete(ctx context.Context, claim *ipamv1.IPAddressClaim, address *ipamv1.IPAddress) (ctrl.Result, error) {
+func (r *ClaimReconciler) reconcileDelete(ctx context.Context, claim *ipamv1.IPAddressClaim) (ctrl.Result, error) {
+	address := &ipamv1.IPAddress{}
+	namespacedName := types.NamespacedName{
+		Namespace: claim.Namespace,
+		Name:      claim.Name,
+	}
+	if err := r.Client.Get(ctx, namespacedName, address); err != nil && !apierrors.IsNotFound(err) {
+		return ctrl.Result{}, errors.Wrap(err, "failed to fetch address")
+	}
+
 	if address.Name != "" {
 		var err error
 		if controllerutil.RemoveFinalizer(address, ProtectAddressFinalizer) {

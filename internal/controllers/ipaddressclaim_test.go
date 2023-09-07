@@ -18,7 +18,7 @@ package controllers
 
 import (
 	"context"
-z	"time"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -32,6 +32,7 @@ z	"time"
 	. "sigs.k8s.io/controller-runtime/pkg/envtest/komega"
 
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
+	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
 )
 
 var IgnoreUIDsOnIPAddress = IgnorePaths{

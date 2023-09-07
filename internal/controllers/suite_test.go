@@ -40,7 +40,7 @@ import (
 	//+kubebuilder:scaffold:imports
 	v1alpha2 "sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/internal/index"
-	"github.com/telekom/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
+	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -101,7 +101,7 @@ var _ = BeforeSuite(func() {
 		(&ipamutil.ClaimReconciler{
 			Client:   mgr.GetClient(),
 			Scheme:   mgr.GetScheme(),
-			Provider: &InClusterProviderIntegration{},
+			Provider: &InClusterProviderIntegration{Client: mgr.GetClient()},
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())
 
