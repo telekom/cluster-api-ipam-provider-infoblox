@@ -1,0 +1,31 @@
+# permissions for end users to edit infobloxinstances.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: infobloxinstance-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: cluster-api-ipam-provider-infoblox
+    app.kubernetes.io/part-of: cluster-api-ipam-provider-infoblox
+    app.kubernetes.io/managed-by: kustomize
+  name: infobloxinstance-editor-role
+rules:
+- apiGroups:
+  - ipam.cluster.x-k8s.io
+  resources:
+  - infobloxinstances
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ipam.cluster.x-k8s.io
+  resources:
+  - infobloxinstances/status
+  verbs:
+  - get

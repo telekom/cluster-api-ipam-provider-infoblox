@@ -12,7 +12,7 @@ import (
 // - Hostname must be a FQDN. We enable DNS for the host record, so Infoblox will return an error if the hostname is not a FQDN.
 
 // getOrNewHostRecord returns the host record with the given hostname in the given view, or creates a new host record if no host record with the given hostname exists.
-func (c *client) getOrNewHostRecord(view, hostname string) (*ibclient.HostRecord, error) {
+func (c *client) getOrNewHostRecord(view, hostname, zone string) (*ibclient.HostRecord, error) {
 	hostRecord, err := c.objMgr.GetHostRecord(view, toDNSView(view), hostname, "", "")
 	if err != nil {
 		if _, ok := err.(*ibclient.NotFoundError); !ok {
@@ -23,11 +23,14 @@ func (c *client) getOrNewHostRecord(view, hostname string) (*ibclient.HostRecord
 	if hostRecord == nil {
 		hostRecord = ibclient.NewEmptyHostRecord()
 		hostRecord.Name = hostname
-		hostRecord.View = toDNSView(view)
 		hostRecord.NetworkView = view
 		hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{}
 		hostRecord.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{}
-		hostRecord.EnableDns = true
+		if zone != "" {
+			hostRecord.EnableDns = true
+			hostRecord.View = toDNSView(view)
+			hostRecord.Zone = zone
+		}
 	}
 	return hostRecord, nil
 }
@@ -80,8 +83,8 @@ func getHostRecordAddrInSubnet(hr *ibclient.HostRecord, subnet netip.Prefix) (ne
 }
 
 // getOrAllocateAddress returns the IP address of the given hostname in the given subnet. If the hostname does not have an IP address in the subnet, it will allocate one.
-func (c *client) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname string) (netip.Addr, error) {
-	hr, err := c.getOrNewHostRecord(view, hostname)
+func (c *client) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string) (netip.Addr, error) {
+	hr, err := c.getOrNewHostRecord(view, hostname, zone)
 	if err != nil {
 		return netip.Addr{}, fmt.Errorf("failed to get or create Infoblox host record: %w", err)
 	}

@@ -41,10 +41,10 @@ var _ = BeforeSuite(func() {
 	testView = getInfobloxTestEnvVar("network_view", "default")
 	testNetwork := netip.MustParsePrefix(getInfobloxTestEnvVar("v4network", ""))
 
-	hostCfg, authCfg, err := InfobloxConfigFromEnv()
+	config, err := InfobloxConfigFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	testClient, err = newClient(hostCfg, authCfg)
+	testClient, err = newClient(config)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(testClient).NotTo(BeNil())
 

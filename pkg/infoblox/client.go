@@ -20,11 +20,13 @@ const (
 // Client is a wrapper around the infoblox client that can allocate and release addresses indempotently.
 type Client interface {
 	// GetOrAllocateAddress allocates an address for a given hostname if none exists, and returns the new or existing address.
-	GetOrAllocateAddress(view string, subnet netip.Prefix, hostname string) (netip.Addr, error)
+	GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string) (netip.Addr, error)
 	// ReleaseAddress releases an address for a given hostname.
 	ReleaseAddress(view string, subnet netip.Prefix, hostname string) error
 
 	CheckNetworkViewExists(view string) (bool, error)
+
+	CheckNetworkExists(view string, subnet netip.Prefix) (bool, error)
 }
 
 type client struct {
@@ -48,12 +50,17 @@ type HostConfig struct {
 	InsecureSkipTLSVerify bool
 }
 
-// NewClient creates a new infoblox client.
-func NewClient(config HostConfig, auth AuthConfig) (Client, error) {
-	return newClient(config, auth)
+type Config struct {
+	HostConfig
+	AuthConfig
 }
 
-func newClient(config HostConfig, auth AuthConfig) (*client, error) {
+// NewClient creates a new infoblox client.
+func NewClient(config Config) (Client, error) {
+	return newClient(config)
+}
+
+func newClient(config Config) (*client, error) {
 	hc := ibclient.HostConfig{
 		Version: config.Version,
 	}
@@ -65,10 +72,10 @@ func newClient(config HostConfig, auth AuthConfig) (*client, error) {
 		hc.Port = "443"
 	}
 	ac := ibclient.AuthConfig{
-		Username:   auth.Username,
-		Password:   auth.Password,
-		ClientCert: auth.ClientCert,
-		ClientKey:  auth.ClientKey,
+		Username:   config.Username,
+		Password:   config.Password,
+		ClientCert: config.ClientCert,
+		ClientKey:  config.ClientKey,
 	}
 	tlsVerify := "true"
 	if config.InsecureSkipTLSVerify {
@@ -83,10 +90,10 @@ func newClient(config HostConfig, auth AuthConfig) (*client, error) {
 		return nil, err
 	}
 	objMgr := ibclient.NewObjectManager(con, "cluster-api-ipam-provider-infoblox", "")
-	_, err = objMgr.GetGridInfo()
-	if err != nil {
-		return nil, err
-	}
+	// _, err = objMgr.GetGridInfo()
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return &client{
 		connector: con,
 		objMgr:    objMgr,
@@ -111,10 +118,21 @@ func AuthConfigFromSecretData(data map[string][]byte) (AuthConfig, error) {
 
 func (c *client) CheckNetworkViewExists(view string) (bool, error) {
 	_, err := c.objMgr.GetNetworkView(view)
-	if isNotFound(err) {
-		return false, nil
-	}
 	if err != nil {
+		if isNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (c *client) CheckNetworkExists(view string, subnet netip.Prefix) (bool, error) {
+	_, err := c.objMgr.GetNetwork(view, subnet.String(), subnet.Addr().Is6(), ibclient.EA{})
+	if err != nil {
+		if isNotFound(err) {
+			return false, nil
+		}
 		return false, err
 	}
 	return true, nil
