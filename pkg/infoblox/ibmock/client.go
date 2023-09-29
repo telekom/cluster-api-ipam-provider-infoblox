@@ -34,6 +34,21 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
+// CheckNetworkExists mocks base method.
+func (m *MockClient) CheckNetworkExists(arg0 string, arg1 netip.Prefix) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckNetworkExists", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckNetworkExists indicates an expected call of CheckNetworkExists.
+func (mr *MockClientMockRecorder) CheckNetworkExists(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckNetworkExists", reflect.TypeOf((*MockClient)(nil).CheckNetworkExists), arg0, arg1)
+}
+
 // CheckNetworkViewExists mocks base method.
 func (m *MockClient) CheckNetworkViewExists(arg0 string) (bool, error) {
 	m.ctrl.T.Helper()
@@ -50,18 +65,18 @@ func (mr *MockClientMockRecorder) CheckNetworkViewExists(arg0 interface{}) *gomo
 }
 
 // GetOrAllocateAddress mocks base method.
-func (m *MockClient) GetOrAllocateAddress(arg0 string, arg1 netip.Prefix, arg2 string) (netip.Addr, error) {
+func (m *MockClient) GetOrAllocateAddress(arg0 string, arg1 netip.Prefix, arg2, arg3 string) (netip.Addr, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOrAllocateAddress", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetOrAllocateAddress", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(netip.Addr)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetOrAllocateAddress indicates an expected call of GetOrAllocateAddress.
-func (mr *MockClientMockRecorder) GetOrAllocateAddress(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetOrAllocateAddress(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrAllocateAddress", reflect.TypeOf((*MockClient)(nil).GetOrAllocateAddress), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrAllocateAddress", reflect.TypeOf((*MockClient)(nil).GetOrAllocateAddress), arg0, arg1, arg2, arg3)
 }
 
 // ReleaseAddress mocks base method.

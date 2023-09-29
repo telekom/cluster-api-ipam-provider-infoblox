@@ -32,13 +32,14 @@ import (
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha1"
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/internal/controllers"
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/internal/index"
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/internal/webhooks"
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha2"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/ipamutil"
 )
 
 var (
@@ -106,38 +107,18 @@ func main() {
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		WatchFilterValue: watchFilter,
-		Provider: &controllers.InClusterProviderIntegration{
-			Client:           mgr.GetClient(),
-			WatchFilterValue: watchFilter,
+		Provider: &controllers.InfobloxProviderIntegration{
+			NewInfobloxClientFunc: infoblox.NewClient,
 		},
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IPAddressClaim")
 		os.Exit(1)
 	}
-	if err = (&controllers.InClusterIPPoolReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(ctx, mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "InClusterIPPoolReconciler")
-		os.Exit(1)
-	}
-	if err = (&controllers.GlobalInClusterIPPoolReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(ctx, mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "GlobalInClusterIPPoolReconciler")
-		os.Exit(1)
-	}
 
-	
-	// if err := (&webhooks.InfobloxIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
-	// 	setupLog.Error(err, "unable to create webhook", "webhook", "InfobloxIPPool")
-	// 	os.Exit(1)
-	// }
 	if err = (&controllers.InfobloxInstanceReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InfobloxInstance")
 		os.Exit(1)
 	}
@@ -149,10 +130,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&webhooks.InClusterIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "InClusterIPPool")
-		os.Exit(1)
-	}
+	// if err := (&webhooks.InfobloxIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
+	// 	setupLog.Error(err, "unable to create webhook", "webhook", "InfobloxIPPool")
+	// 	os.Exit(1)
+	// }
+
+	// if err := (&webhooks.InClusterIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
+	// 	setupLog.Error(err, "unable to create webhook", "webhook", "InClusterIPPool")
+	// 	os.Exit(1)
+	// }
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

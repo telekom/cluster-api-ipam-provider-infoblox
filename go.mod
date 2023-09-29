@@ -8,7 +8,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.8
 	github.com/pkg/errors v0.9.1
-	github.com/telekom/cluster-api-ipam-provider-in-cluster v0.0.0-00010101000000-000000000000
+	go4.org/netipx v0.0.0-20230303233057-f1b76eb4bb35
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
@@ -24,6 +24,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.2 // indirect
+	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
@@ -80,6 +81,6 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.12.1-0.20220706151251-15154aaa6767
+// replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.12.1-0.20220706151251-15154aaa6767
 
 replace github.com/telekom/cluster-api-ipam-provider-in-cluster => ../cluster-api-ipam-provider-in-cluster

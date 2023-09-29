@@ -29,7 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
@@ -41,10 +40,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	//+kubebuilder:scaffold:imports
-	v1alpha2 "sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/internal/index"
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
-        "github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
+
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/ipamutil"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -92,7 +93,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	Expect(v1alpha2.AddToScheme(scheme.Scheme)).To(Succeed())
+	Expect(v1alpha1.AddToScheme(scheme.Scheme)).To(Succeed())
+	// Expect(v1alpha2.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(clusterv1.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(ipamv1.AddToScheme(scheme.Scheme)).To(Succeed())
 
@@ -110,27 +112,29 @@ var _ = BeforeSuite(func() {
 
 	Expect(
 		(&ipamutil.ClaimReconciler{
-			Client:   mgr.GetClient(),
-			Scheme:   mgr.GetScheme(),
-			Provider: &InClusterProviderIntegration{Client: mgr.GetClient()},
-		}).SetupWithManager(ctx, mgr),
-	).To(Succeed())
-
-	Expect(
-		(&InClusterIPPoolReconciler{
 			Client: mgr.GetClient(),
 			Scheme: mgr.GetScheme(),
+			Provider: &InfobloxProviderIntegration{
+				NewInfobloxClientFunc: mockNewInfobloxClientFunc,
+			},
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())
+
+	// Expect(
+	// 	(&InClusterIPPoolReconciler{
+	// 		Client: mgr.GetClient(),
+	// 		Scheme: mgr.GetScheme(),
+	// 	}).SetupWithManager(ctx, mgr),
+	// ).To(Succeed())
+
+	// Expect(
+	// 	(&GlobalInClusterIPPoolReconciler{
+	// 		Client: mgr.GetClient(),
+	// 		Scheme: mgr.GetScheme(),
+	// 	}).SetupWithManager(ctx, mgr),
+	// ).To(Succeed())
 
 	Expect(
-		(&GlobalInClusterIPPoolReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-		}).SetupWithManager(ctx, mgr),
-	).To(Succeed())
-
-        Expect(
 		(&InfobloxInstanceReconciler{
 			Client:                mgr.GetClient(),
 			Scheme:                mgr.GetScheme(),

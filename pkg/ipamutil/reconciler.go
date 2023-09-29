@@ -140,6 +140,8 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 	address := ipamv1.IPAddress{}
 	if err := r.Client.Get(ctx, req.NamespacedName, &address); err != nil && !apierrors.IsNotFound(err) {
 		return ctrl.Result{}, errors.Wrap(err, "failed to fetch address")
+	} else if err != nil && apierrors.IsNotFound(err) {
+		return ctrl.Result{}, errors.Wrap(err, "not found LOL")
 	}
 
 	// If the claim is marked for deletion, release the address.
@@ -153,7 +155,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 	// We always ensure there is a valid address object passed to the handler.
 	// The handler will complete it with the ip address.
 	if address.Name == "" {
-		address = newIPAddress(claim, handler.GetPool())
+		address = NewIPAddress(claim, handler.GetPool())
 	}
 
 	if res, err := handler.EnsureAddress(ctx, &address); err != nil || res != nil {

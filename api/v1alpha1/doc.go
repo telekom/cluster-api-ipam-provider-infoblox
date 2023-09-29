@@ -17,5 +17,5 @@ limitations under the License.
 // Package v1alpha1 contains API Schema definitions for the infrastructure v1alpha1 API group
 // +kubebuilder:object:generate=true
 // +groupName=ipam.cluster.x-k8s.io
-// +k8s:conversion-gen=sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2
+// +k8s:conversion-gen=github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha2
 package v1alpha1

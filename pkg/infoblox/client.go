@@ -57,10 +57,6 @@ type Config struct {
 
 // NewClient creates a new infoblox client.
 func NewClient(config Config) (Client, error) {
-	return newClient(config)
-}
-
-func newClient(config Config) (*client, error) {
 	hc := ibclient.HostConfig{
 		Version: config.Version,
 	}

@@ -68,7 +68,7 @@ version::ldflags() {
         local key=${1}
         local val=${2}
         ldflags+=(
-            "-X 'sigs.k8s.io/cluster-api-ipam-provider-in-cluster/version.${key}=${val}'"
+            "-X 'github.com/telekom/cluster-api-ipam-provider-infoblox/version.${key}=${val}'"
         )
     }
 

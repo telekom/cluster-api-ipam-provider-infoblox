@@ -32,10 +32,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha2"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 )
 
-// InfobloxIPPoolReconciler reconciles a InfobloxIPPool object
+// InfobloxIPPoolReconciler reconciles a InfobloxIPPool objec
 type InfobloxIPPoolReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -52,7 +53,7 @@ type InfobloxIPPoolReconciler struct {
 func (r *InfobloxIPPoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		For(&v1alpha1.InfobloxIPPool{}).
+		For(&v1alpha2.InfobloxIPPool{}).
 		Complete(r)
 }
 
@@ -60,7 +61,7 @@ func (r *InfobloxIPPoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
 	_ = log.FromContext(ctx)
 
-	pool := &v1alpha1.InfobloxIPPool{}
+	pool := &v1alpha2.InfobloxIPPool{}
 	if err := r.Client.Get(ctx, req.NamespacedName, pool); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -81,13 +82,13 @@ func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return r.reconcile(ctx, pool)
 }
 
-func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1.InfobloxIPPool) (ctrl.Result, error) {
+func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha2.InfobloxIPPool) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	ibclient, err := getInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, pool.Namespace, r.newInfobloxClientFunc)
 	if err != nil {
 		conditions.MarkFalse(pool,
-			v1alpha1.ReadyCondition,
+			v1beta1.ReadyCondition,
 			v1alpha1.InfobloxClientCreationFailedReason,
 			v1beta1.ConditionSeverityError, "client creation failed for instance %s", pool.Spec.InstanceRef.Name)
 		return ctrl.Result{}, err
@@ -104,22 +105,22 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		return ctrl.Result{}, nil
 	}
 
-	for _, subnet := range pool.Spec.Subnets {
-		subnet, err := netip.ParsePrefix(subnet)
-		if err != nil {
-			// We won't set a condition here since this should be caught by validation
-			return ctrl.Result{}, fmt.Errorf("failed to parse subnet: %w", err)
-		}
-		if ok, err := ibclient.CheckNetworkExists(pool.Spec.NetworkView, subnet); err != nil || !ok {
-			logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
-			conditions.MarkFalse(pool,
-				v1beta1.ReadyCondition,
-				v1alpha1.InfobloxNetworkNotFoundReason,
-				v1beta1.ConditionSeverityError,
-				"could not find network: %s", err)
-			return ctrl.Result{}, nil
-		}
+	// for _, subnet := range pool.Spec.Subnets {
+	subnet, err := netip.ParsePrefix(pool.Spec.Subnet)
+	if err != nil {
+		// We won't set a condition here since this should be caught by validation
+		return ctrl.Result{}, fmt.Errorf("failed to parse subnet: %w", err)
 	}
+	if ok, err := ibclient.CheckNetworkExists(pool.Spec.NetworkView, subnet); err != nil || !ok {
+		logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
+		conditions.MarkFalse(pool,
+			v1beta1.ReadyCondition,
+			v1alpha1.InfobloxNetworkNotFoundReason,
+			v1beta1.ConditionSeverityError,
+			"could not find network: %s", err)
+		return ctrl.Result{}, nil
+	}
+	// }
 
 	return ctrl.Result{}, nil
 }

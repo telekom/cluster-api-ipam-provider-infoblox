@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
 Copyright 2023 The Kubernetes Authors.
 
@@ -15,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-=======
->>>>>>> d3b4d34 (add infoblox client that can allocate and release addresses)
 // Package index implements several indexes for the controller-runtime Managers cache.
 package index
 
@@ -33,17 +30,13 @@ import (
 const (
 	// IPAddressPoolRefCombinedField is an index for the poolRef of an IPAddress.
 	IPAddressPoolRefCombinedField = "index.poolRef"
-<<<<<<< HEAD
 
 	// IPAddressClaimPoolRefCombinedField is an index for the poolRef of an IPAddressClaim.
 	IPAddressClaimPoolRefCombinedField = "index.poolRef"
-=======
->>>>>>> d3b4d34 (add infoblox client that can allocate and release addresses)
 )
 
 // SetupIndexes adds indexes to the cache of a Manager.
 func SetupIndexes(ctx context.Context, mgr manager.Manager) error {
-<<<<<<< HEAD
 	err := mgr.GetCache().IndexField(ctx, &ipamv1.IPAddress{},
 		IPAddressPoolRefCombinedField,
 		IPAddressByCombinedPoolRef,
@@ -60,24 +53,10 @@ func SetupIndexes(ctx context.Context, mgr manager.Manager) error {
 
 // IPAddressByCombinedPoolRef fulfills the IndexerFunc for IPAddress poolRefs.
 func IPAddressByCombinedPoolRef(o client.Object) []string {
-=======
-	if err := mgr.GetCache().IndexField(ctx, &ipamv1.IPAddress{},
-		IPAddressPoolRefCombinedField,
-		ipAddressByCombinedPoolRef,
-	); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ipAddressByCombinedPoolRef(o client.Object) []string {
->>>>>>> d3b4d34 (add infoblox client that can allocate and release addresses)
 	ip, ok := o.(*ipamv1.IPAddress)
 	if !ok {
 		panic(fmt.Sprintf("Expected an IPAddress but got a %T", o))
 	}
-<<<<<<< HEAD
 	return []string{IPPoolRefValue(ip.Spec.PoolRef)}
 }
 
@@ -91,12 +70,5 @@ func ipAddressClaimByCombinedPoolRef(o client.Object) []string {
 
 // IPPoolRefValue turns a corev1.TypedLocalObjectReference to an indexable value.
 func IPPoolRefValue(ref corev1.TypedLocalObjectReference) string {
-=======
-	return []string{IPAddressPoolRefValue(ip.Spec.PoolRef)}
-}
-
-// IPAddressPoolRefValue turns a corev1.TypedLocalObjectReference to an indexable value.
-func IPAddressPoolRefValue(ref corev1.TypedLocalObjectReference) string {
->>>>>>> d3b4d34 (add infoblox client that can allocate and release addresses)
 	return fmt.Sprintf("%s%s", ref.Kind, ref.Name)
 }

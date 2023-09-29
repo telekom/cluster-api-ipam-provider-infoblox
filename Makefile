@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Image URL to use all building/pushing image targets
-IMG ?= ghcr.io/telekom/cluster-api-ipam-provider-in-cluster
+IMG ?= 192.168.114.2:5000/cluster-api-ipam-provider-in-cluster
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26
 
@@ -27,7 +27,7 @@ endif
 HACK_BIN=$(shell pwd)/hack/bin
 
 # Set --output-base for conversion-gen if we are not within GOPATH
-ifneq ($(abspath $(ROOT_DIR)),$(shell go env GOPATH)/src/sigs.k8s.io/cluster-api-ipam-provider-in-cluster)
+ifneq ($(abspath $(ROOT_DIR)),$(shell go env GOPATH)/src/github.com/telekom/cluster-api-ipam-provider-infoblox)
 	OUTPUT_BASE := --output-base=$(ROOT_DIR)
 endif
 
@@ -67,6 +67,9 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen conversion-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 	$(CONVERSION_GEN) --input-dirs=./api/v1alpha1 \
+		--output-file-base=zz_generated.conversion $(OUTPUT_BASE) \
+		--go-header-file=./hack/boilerplate.go.txt
+	$(CONVERSION_GEN) --input-dirs=./api/v1alpha2 \
 		--output-file-base=zz_generated.conversion $(OUTPUT_BASE) \
 		--go-header-file=./hack/boilerplate.go.txt
 
