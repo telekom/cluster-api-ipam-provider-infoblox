@@ -80,6 +80,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		return ctrl.Result{}, err
 	}
 
+	log.Info("Reconciling claim 2")
 	if _, ok := claim.GetLabels()[clusterv1.ClusterNameLabel]; ok {
 		cluster, err := clusterutil.GetClusterFromMetadata(ctx, r.Client, claim.ObjectMeta)
 		if err != nil {
@@ -98,12 +99,14 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		}
 	}
 
+	log.Info("Reconciling claim 3")
 	// Create a patch helper for the claim.
 	patchHelper, err := patch.NewHelper(claim, r.Client)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
+	log.Info("Reconciling claim 4")
 	defer func() {
 		if err := patchHelper.Patch(ctx, claim); err != nil {
 			reterr = kerrors.NewAggregate([]error{reterr, err})
@@ -113,6 +116,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 	// Ensure the claim has a finalizer.
 	controllerutil.AddFinalizer(claim, ReleaseAddressFinalizer)
 
+	log.Info("Reconciling claim 5")
 	// Create the provider handler and fetch the pool.
 	handler := r.Provider.ClaimHandlerFor(r.Client, claim)
 	if res, err := handler.FetchPool(ctx); err != nil || res != nil {
@@ -127,6 +131,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		return ctrl.Result{}, errors.Wrap(err, "failed to fetch pool")
 	}
 
+	log.Info("Reconciling claim 6")
 	pool := handler.GetPool()
 	if pool != nil && annotations.HasPaused(pool) {
 		log.Info("IPAddressClaim references Pool which is paused, skipping reconciliation.", "IPAddressClaim", claim.GetName(), "Pool", pool.GetName())
@@ -137,20 +142,30 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		return r.reconcileDelete(ctx, claim)
 	}
 
+	log.Info("Reconciling claim 7")
 	address := ipamv1.IPAddress{}
 	if err := r.Client.Get(ctx, req.NamespacedName, &address); err != nil && !apierrors.IsNotFound(err) {
 		return ctrl.Result{}, errors.Wrap(err, "failed to fetch address")
-	} else if err != nil && apierrors.IsNotFound(err) {
-		return ctrl.Result{}, errors.Wrap(err, "not found LOL")
 	}
+	// } else if err != nil && apierrors.IsNotFound(err) {
+	// 	return ctrl.Result{}, errors.Wrap(err, "not found LOL")
+	// }
+
+	log.Info("Reconciling claim 8")
 
 	// If the claim is marked for deletion, release the address.
 	if !claim.ObjectMeta.DeletionTimestamp.IsZero() {
+		fmt.Println("DeletionTimestamp.IsZero")
 		if res, err := handler.ReleaseAddress(); err != nil || res != nil {
+			fmt.Printf("ReleaseAddress: %s\n", err.Error())
 			return unwrapResult(res), err
 		}
 		return r.reconcileDelete(ctx, claim)
 	}
+
+	log.Info("Reconciling claim 9")
+
+	log.Info("claim", "name", claim.Name)
 
 	// We always ensure there is a valid address object passed to the handler.
 	// The handler will complete it with the ip address.
@@ -158,23 +173,36 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		address = NewIPAddress(claim, handler.GetPool())
 	}
 
+	log.Info("Reconciling claim 10")
 	if res, err := handler.EnsureAddress(ctx, &address); err != nil || res != nil {
+		if err != nil {
+			log.Error(err, "EnsureAddress")
+		}
 		return unwrapResult(res), err
 	}
 
+	log.Info("Reconciling claim 11")
 	// Patch or create the address, ensuring necessary owner references are set.
 	operationResult, err := controllerutil.CreateOrPatch(ctx, r.Client, &address, func() error {
 		if err := ensureIPAddressOwnerReferences(r.Scheme, &address, claim, handler.GetPool()); err != nil {
+			log.Error(err, "EnsureAddress")
 			return errors.Wrap(err, "failed to ensure owner references on address")
 		}
 
+		log.Info("patch function before finalizer add")
+
 		_ = controllerutil.AddFinalizer(&address, ProtectAddressFinalizer)
+
+		log.Info("patch function after finalizer add")
 
 		return nil
 	})
 	if err != nil {
+		log.Error(err, "failed to create or patch address")
 		return ctrl.Result{}, errors.Wrap(err, "failed to create or patch address")
 	}
+
+	log.Info("Reconciling claim 12")
 
 	log.Info(fmt.Sprintf("IPAddress %s/%s (%s) has been %s", address.Namespace, address.Name, address.Spec.Address, operationResult),
 		"IPAddressClaim", fmt.Sprintf("%s/%s", claim.Namespace, claim.Name))
@@ -185,6 +213,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		log.Info("Address is marked for deletion, but deletion is prevented until the claim is deleted as well.", "address", address.Name)
 	}
 
+	log.Info("Reconciling claim 13")
 	claim.Status.AddressRef = corev1.LocalObjectReference{Name: address.Name}
 
 	return ctrl.Result{}, nil

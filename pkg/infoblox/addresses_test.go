@@ -8,6 +8,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const dnsEnabled = false
+
 var _ = Describe("IP Address Management", func() {
 	var hostname string
 
@@ -15,34 +17,35 @@ var _ = Describe("IP Address Management", func() {
 		hostname = "testmachine-1." + domain
 	})
 
-	// When("no host record exists", func() {
-	// 	AfterEach(func() {
-	// 		hr, err := testClient.objMgr.GetHostRecord(testView, toDNSView(testView), hostname, "", "")
-	// 		if err != nil {
-	// 			if _, ok := err.(*ibclient.NotFoundError); ok {
-	// 				return
-	// 			}
-	// 		}
-	// 		Expect(err).NotTo(HaveOccurred())
-	// 		Expect(hr).NotTo(BeNil())
-	// 		_, err = testClient.objMgr.DeleteHostRecord(hr.Ref)
-	// 		Expect(err).NotTo(HaveOccurred())
-	// 	})
-	// 	Context("IPv4", func() {
-	// 		It("creates a new host record and allocates an IP", func() {
-	// 			addr, err := testClient.GetOrAllocateAddress(testView, v4subnet1, hostname, "")
-	// 			Expect(err).NotTo(HaveOccurred())
-	// 			Expect(v4subnet1.Contains(addr)).To(BeTrue())
-	// 		})
-	// 	})
-	// 	Context("IPv6", func() {
-	// 		It("creates a new host record and allocates an IP", func() {
-	// 			addr, err := testClient.GetOrAllocateAddress(testView, v6subnet1, hostname, "")
-	// 			Expect(err).NotTo(HaveOccurred())
-	// 			Expect(v6subnet1.Contains(addr)).To(BeTrue())
-	// 		})
-	// 	})
-	// })
+	When("no host record exists", func() {
+		AfterEach(func() {
+			hr, err := testClient.objMgr.GetHostRecord("", "", hostname, "", "")
+			if err != nil {
+				_, ok := err.(*ibclient.NotFoundError)
+				if ok {
+					return
+				}
+			}
+			Expect(err).NotTo(HaveOccurred())
+			Expect(hr).NotTo(BeNil())
+			_, err = testClient.objMgr.DeleteHostRecord(hr.Ref)
+			Expect(err).NotTo(HaveOccurred())
+		})
+		Context("IPv4", func() {
+			It("creates a new host record and allocates an IP", func() {
+				addr, err := testClient.GetOrAllocateAddress(testView, v4subnet1, hostname, "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(v4subnet1.Contains(addr)).To(BeTrue())
+			})
+		})
+		Context("IPv6", func() {
+			It("creates a new host record and allocates an IP", func() {
+				addr, err := testClient.GetOrAllocateAddress(testView, v6subnet1, hostname, "")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(v6subnet1.Contains(addr)).To(BeTrue())
+			})
+		})
+	})
 
 	When("a host record with one address exists", func() {
 		var hostRecord *ibclient.HostRecord
@@ -65,7 +68,7 @@ var _ = Describe("IP Address Management", func() {
 		Context("IPv4 record", func() {
 			BeforeEach(func() {
 				var err error
-				hostRecord, err = testClient.objMgr.CreateHostRecord(true, false, hostname, testView, toDNSView(testView), v4subnet1.String(), "", "", "", "", "", false, 0, "", ibclient.EA{}, nil)
+				hostRecord, err = testClient.objMgr.CreateHostRecord(dnsEnabled, false, hostname, testView, toDNSView(testView), v4subnet1.String(), "", "", "", "", "", false, 0, "", ibclient.EA{}, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(hostRecord).NotTo(BeNil())
 			})
@@ -73,12 +76,11 @@ var _ = Describe("IP Address Management", func() {
 			It("returns the existing IP if the subnet is the same", func() {
 				addr, err := testClient.GetOrAllocateAddress(testView, v4subnet1, hostname, "")
 				Expect(err).NotTo(HaveOccurred())
-				hostRecord, err = testClient.objMgr.GetHostRecordByRef(hostRecord.Ref)
-				Expect(err).ToNot(HaveOccurred())
 				Expect(addr.String()).To(Equal(hostRecord.Ipv4Addrs[0].Ipv4Addr))
 			})
 
 			It("allocates another IP if the subnet is different", func() {
+				Expect(testView).To(Equal(defaultView))
 				addr, err := testClient.GetOrAllocateAddress(testView, v4subnet2, hostname, "")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(v4subnet2.Contains(addr)).To(BeTrue())
@@ -105,7 +107,7 @@ var _ = Describe("IP Address Management", func() {
 		Context("IPv6 record", func() {
 			BeforeEach(func() {
 				var err error
-				hostRecord, err = testClient.objMgr.CreateHostRecord(true, false, hostname, testView, toDNSView(testView), "", v6subnet1.String(), "", "", "", "", false, 0, "", ibclient.EA{}, nil)
+				hostRecord, err = testClient.objMgr.CreateHostRecord(dnsEnabled, false, hostname, testView, toDNSView(testView), "", v6subnet1.String(), "", "", "", "", false, 0, "", ibclient.EA{}, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(hostRecord).NotTo(BeNil())
 			})
@@ -155,7 +157,7 @@ var _ = Describe("IP Address Management", func() {
 				hostRecord.Name = hostname
 				hostRecord.NetworkView = testView
 				hostRecord.View = toDNSView(testView)
-				hostRecord.EnableDns = true
+				hostRecord.EnableDns = dnsEnabled
 				hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{
 					*ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(v4subnet1, testView), "", false, ""),
 					*ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(v4subnet2, testView), "", false, ""),
@@ -186,7 +188,7 @@ var _ = Describe("IP Address Management", func() {
 				hostRecord.Name = hostname
 				hostRecord.NetworkView = testView
 				hostRecord.View = toDNSView(testView)
-				hostRecord.EnableDns = true
+				hostRecord.EnableDns = dnsEnabled
 				hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{}
 				hostRecord.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{
 					*ibclient.NewHostRecordIpv6Addr(nextAvailableIBFunc(v6subnet1, testView), "", false, ""),
@@ -217,7 +219,7 @@ var _ = Describe("IP Address Management", func() {
 				hostRecord.Name = hostname
 				hostRecord.NetworkView = testView
 				hostRecord.View = toDNSView(testView)
-				hostRecord.EnableDns = true
+				hostRecord.EnableDns = dnsEnabled
 				hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{
 					*ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(v4subnet1, testView), "", false, ""),
 				}

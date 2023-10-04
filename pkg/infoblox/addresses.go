@@ -10,10 +10,14 @@ import (
 
 // Known limitations:
 // - Hostname must be a FQDN. We enable DNS for the host record, so Infoblox will return an error if the hostname is not a FQDN.
+// - When DNS is enabled for a host record, Infoblox returns an error: "IBDataConflictError: IB.Data.Conflict:The action is not allowed. A parent was not found".
+//   DNS was disabled in tests as a workaround.
+// - For some reason Infoblox does not assign network view to the host record. Workarounds were provided in the code with tag: [Issue]
 
 // getOrNewHostRecord returns the host record with the given hostname in the given view, or creates a new host record if no host record with the given hostname exists.
 func (c *client) getOrNewHostRecord(view, hostname, zone string) (*ibclient.HostRecord, error) {
-	hostRecord, err := c.objMgr.GetHostRecord(view, toDNSView(view), hostname, "", "")
+	// [Issue] For some reason Infoblox does not assign view to the host record. Empty netview and dnsview is a workaround to find host.
+	hostRecord, err := c.objMgr.GetHostRecord("", "", hostname, "", "")
 	if err != nil {
 		if _, ok := err.(*ibclient.NotFoundError); !ok {
 			return nil, err
@@ -26,12 +30,14 @@ func (c *client) getOrNewHostRecord(view, hostname, zone string) (*ibclient.Host
 		hostRecord.NetworkView = view
 		hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{}
 		hostRecord.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{}
+		hostRecord.EnableDns = false
 		if zone != "" {
 			hostRecord.EnableDns = true
 			hostRecord.View = toDNSView(view)
 			hostRecord.Zone = zone
 		}
 	}
+
 	return hostRecord, nil
 }
 
@@ -41,16 +47,15 @@ func (c *client) createOrUpdateHostRecord(hr *ibclient.HostRecord) error {
 	var err error
 	if hr.Ref == "" {
 		ref, err = c.connector.CreateObject(hr)
-		if err != nil {
-			return err
-		}
 	} else {
 		prepareHostRecordForUpdate(hr)
 		ref, err = c.connector.UpdateObject(hr, hr.Ref)
-		if err != nil {
-			return err
-		}
 	}
+
+	if err != nil {
+		return err
+	}
+
 	return c.connector.GetObject(hr, ref, ibclient.NewQueryParams(false, nil), hr)
 }
 
@@ -100,6 +105,11 @@ func (c *client) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname
 		ipr := ibclient.NewHostRecordIpv6Addr(nextAvailableIBFunc(subnet, view), "", false, "")
 		hr.Ipv6Addrs = append(hr.Ipv6Addrs, *ipr)
 	}
+
+	// [Issue] this is to reassign netview and view as Infoblox is dropping them for me. Without that updating host record by reference will not work
+	hr.NetworkView = view
+	hr.View = toDNSView(view)
+
 	if err := c.createOrUpdateHostRecord(hr); err != nil {
 		return netip.Addr{}, fmt.Errorf("failed to create or update Infoblox host record: %w", err)
 	}
@@ -117,8 +127,9 @@ func nextAvailableIBFunc(subnet netip.Prefix, view string) string {
 
 // ReleaseAddress releases the IP address of the given hostname in the given subnet.
 func (c *client) ReleaseAddress(view string, subnet netip.Prefix, hostname string) error {
-	hr, err := c.objMgr.GetHostRecord(view, toDNSView(view), hostname, "", "")
+	hr, err := c.objMgr.GetHostRecord("", "", hostname, "", "")
 	if err != nil {
+		fmt.Printf("error GetHostRecord: %s\n", err.Error())
 		return err
 	}
 
@@ -151,19 +162,33 @@ func (c *client) ReleaseAddress(view string, subnet netip.Prefix, hostname strin
 
 	if !removed {
 		// The address is not in the host record, so we don't need to do anything.
+		fmt.Printf("not removed")
 		return nil
 	}
 
+	// [Issue] this is to reassign netview and view as Infoblox is dropping them for me. Without that updating host record by reference will not work
+	hr.NetworkView = view
+	hr.View = toDNSView(view)
+
 	if len(hr.Ipv4Addrs) == 0 && len(hr.Ipv6Addrs) == 0 {
 		_, err := c.connector.DeleteObject(hr.Ref)
+		if err != nil {
+			fmt.Printf("error DeleteObject: %s\n", err.Error())
+		}
 		return err
 	}
 	prepareHostRecordForUpdate(hr)
 	_, err = c.connector.UpdateObject(hr, hr.Ref)
+	if err != nil {
+		fmt.Printf("error UpdateObject: %s\n", err.Error())
+	}
 	return err
 }
 
 func toDNSView(view string) string {
+	if view == "" {
+		return ""
+	}
 	if view == "default" {
 		return view
 	}
