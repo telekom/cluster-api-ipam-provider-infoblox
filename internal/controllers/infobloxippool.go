@@ -32,7 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha2"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 )
 
@@ -53,7 +52,7 @@ type InfobloxIPPoolReconciler struct {
 func (r *InfobloxIPPoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		For(&v1alpha2.InfobloxIPPool{}).
+		For(&v1alpha1.InfobloxIPPool{}).
 		Complete(r)
 }
 
@@ -61,7 +60,7 @@ func (r *InfobloxIPPoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
 	_ = log.FromContext(ctx)
 
-	pool := &v1alpha2.InfobloxIPPool{}
+	pool := &v1alpha1.InfobloxIPPool{}
 	if err := r.Client.Get(ctx, req.NamespacedName, pool); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -82,7 +81,7 @@ func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return r.reconcile(ctx, pool)
 }
 
-func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha2.InfobloxIPPool) (ctrl.Result, error) {
+func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1.InfobloxIPPool) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	ibclient, err := getInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, pool.Namespace, r.newInfobloxClientFunc)

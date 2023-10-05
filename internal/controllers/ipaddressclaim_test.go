@@ -21,11 +21,12 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,6 +34,7 @@ import (
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/ipamutil"
 )
 
 var IgnoreUIDsOnIPAddress = IgnorePaths{
@@ -48,6 +50,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 	var (
 		namespace string
 		// namespace2 string
+		// instance *v1alpha1.InfobloxInstance
 	)
 	BeforeEach(func() {
 		namespace = createNamespace()
@@ -71,6 +74,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						DNSZone:     "",
 					},
 				}
+
 				Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
 				Eventually(Get(&pool)).Should(Succeed())
 			})
@@ -81,98 +85,97 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			})
 
 			It("should ignore the claim", func() {
-				claim := newClaim("unknown-pool-test", namespace, "UnknownIPPool", poolName)
+				claim := newClaim("unknown-pool-test", namespace, "unknownKind", poolName)
 				Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
-
-				tmp := ipamv1.IPAddressClaim{}
-				err := k8sClient.Get(ctx, types.NamespacedName{Name: "unknown-pool-test", Namespace: namespace}, &tmp)
-				Expect(err).NotTo(HaveOccurred())
 
 				addresses := ipamv1.IPAddressList{}
 				Consistently(ObjectList(&addresses)).
-					WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+					WithTimeout(time.Second).WithPolling(100 * time.Millisecond).Should(
 					HaveField("Items", HaveLen(0)))
 			})
 		})
 
-		// When("the referenced namespaced pool exists", func() {
-		// 	const poolName = "test-pool"
+		When("the referenced namespaced pool exists", func() {
+			const poolName = "test-pool"
+			const instanceName = "test-instance"
+			const claimName = "test-claim"
 
-		// 	BeforeEach(func() {
-		// 		pool := v1alpha1.InfobloxIPPool{
-		// 			ObjectMeta: metav1.ObjectMeta{
-		// 				Name:      poolName,
-		// 				Namespace: namespace,
-		// 			},
-		// 			Spec: v1alpha1.InfobloxIPPoolSpec{
-		// 				InstanceRef: corev1.LocalObjectReference{},
-		// 				Subnet:      "10.0.0.0/24",
-		// 				NetworkView: "default",
-		// 				DNSZone:     "",
-		// 			},
-		// 		}
-		// 		Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
-		// 		Eventually(Get(&pool)).Should(Succeed())
-		// 	})
+			var expectedIPAddress ipamv1.IPAddress
 
-		// 	AfterEach(func() {
-		// 		deleteClaim(poolName, namespace)
-		// 		deleteNamespacedPool(poolName, namespace)
-		// 	})
+			BeforeEach(func() {
+				getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
+				pool := v1alpha1.InfobloxIPPool{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      poolName,
+						Namespace: namespace,
+					},
+					Spec: v1alpha1.InfobloxIPPoolSpec{
+						InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+						Subnet:      "10.0.0.0/24",
+						NetworkView: "default",
+						DNSZone:     "",
+					},
+				}
+				Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
+			})
 
-		// 	It("should allocate an Address from the Pool", func() {
-		// 		claim := newClaim(poolName, namespace, "InfobloxIPPool", poolName)
-		// 		expectedIPAddress := ipamv1.IPAddress{
-		// 			ObjectMeta: metav1.ObjectMeta{
-		// 				Name:       poolName,
-		// 				Namespace:  namespace,
-		// 				Finalizers: []string{ipamutil.ProtectAddressFinalizer},
-		// 				OwnerReferences: []metav1.OwnerReference{
-		// 					{
-		// 						APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
-		// 						BlockOwnerDeletion: pointer.Bool(true),
-		// 						Controller:         pointer.Bool(true),
-		// 						Kind:               "IPAddressClaim",
-		// 						Name:               poolName,
-		// 					},
-		// 					{
-		// 						APIVersion:         "ipam.cluster.x-k8s.io/v1alpha2",
-		// 						BlockOwnerDeletion: pointer.Bool(true),
-		// 						Controller:         pointer.Bool(false),
-		// 						Kind:               "InfobloxIPPool",
-		// 						Name:               poolName,
-		// 					},
-		// 				},
-		// 			},
-		// 			Spec: ipamv1.IPAddressSpec{
-		// 				ClaimRef: corev1.LocalObjectReference{
-		// 					Name: poolName,
-		// 				},
-		// 				PoolRef: corev1.TypedLocalObjectReference{
-		// 					APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
-		// 					Kind:     "InfobloxIPPool",
-		// 					Name:     poolName,
-		// 				},
-		// 				Address: "10.0.0.1",
-		// 				Prefix:  24,
-		// 				Gateway: "10.0.0.2",
-		// 			},
-		// 		}
+			AfterEach(func() {
+				deleteNamespacedPool(poolName, namespace)
+				deleteClaim(claimName, namespace)
+				getInfobloxClientForInstanceFunc = getInfobloxClientForInstance
+			})
 
-		// 		Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+			It("should allocate an Address from the Pool", func() {
+				claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
+				expectedIPAddress = ipamv1.IPAddress{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:       claimName,
+						Namespace:  namespace,
+						Finalizers: []string{ipamutil.ProtectAddressFinalizer},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
+								BlockOwnerDeletion: pointer.Bool(true),
+								Controller:         pointer.Bool(true),
+								Kind:               "IPAddressClaim",
+								Name:               claimName,
+							},
+							{
+								APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
+								BlockOwnerDeletion: pointer.Bool(true),
+								Controller:         pointer.Bool(false),
+								Kind:               "InfobloxIPPool",
+								Name:               poolName,
+							},
+						},
+					},
+					Spec: ipamv1.IPAddressSpec{
+						ClaimRef: corev1.LocalObjectReference{
+							Name: claimName,
+						},
+						PoolRef: corev1.TypedLocalObjectReference{
+							APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
+							Kind:     "InfobloxIPPool",
+							Name:     poolName,
+						},
+						Address: "10.0.0.1",
+						Prefix:  24,
+						Gateway: "",
+					},
+				}
 
-		// 		// Eventually(Get(&pool)).Should(Succeed())
+				Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
 
-		// 		// getInfobloxClientForInstanceFunc = getInfobloxClientForInstanceFake
+				addr, err := netip.ParseAddr("10.0.0.1")
+				Expect(err).NotTo(HaveOccurred())
+				mockInfobloxClient.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 
-		// 		Eventually(findAddress(poolName, namespace)).
-		// 			WithTimeout(time.Second).WithPolling(100 * time.Millisecond).Should(
-		// 			EqualObject(&expectedIPAddress, IgnoreAutogeneratedMetadata, IgnoreUIDsOnIPAddress),
-		// 		)
-
-		// 		// getInfobloxClientForInstanceFunc = getInfobloxClientForInstance
-		// 	})
-		// })
+				Eventually(findAddress(claimName, namespace)).
+					WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+					EqualObject(&expectedIPAddress, IgnoreAutogeneratedMetadata, IgnoreUIDsOnIPAddress),
+				)
+			})
+		})
 
 		// When("the referenced namespaced pool does not exists", func() {
 		// 	const wrongPoolName = "wrong-test-pool"
@@ -1700,6 +1703,7 @@ func deleteCluster(name, namespace string) {
 // }
 
 func deleteNamespacedPool(name, namespace string) {
+	defer GinkgoRecover()
 	pool := v1alpha1.InfobloxIPPool{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -1711,6 +1715,7 @@ func deleteNamespacedPool(name, namespace string) {
 }
 
 func deleteClaim(name, namespace string) {
+	defer GinkgoRecover()
 	claim := ipamv1.IPAddressClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -1732,25 +1737,6 @@ func findAddress(name, namespace string) func() (client.Object, error) {
 	return Object(&address)
 }
 
-type fakeInfobloxClient struct{}
-
-func (*fakeInfobloxClient) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string) (netip.Addr, error) {
-	return netip.Addr{}, nil
-}
-
-// ReleaseAddress releases an address for a given hostname.
-func (*fakeInfobloxClient) ReleaseAddress(view string, subnet netip.Prefix, hostname string) error {
-	return nil
-}
-
-func (*fakeInfobloxClient) CheckNetworkViewExists(view string) (bool, error) {
-	return true, nil
-}
-
-func (*fakeInfobloxClient) CheckNetworkExists(view string, subnet netip.Prefix) (bool, error) {
-	return true, nil
-}
-
-func getInfobloxClientForInstanceFake(ctx context.Context, client client.Reader, name, namespace string, newClientFn func(infoblox.Config) (infoblox.Client, error)) (infoblox.Client, error) {
-	return &fakeInfobloxClient{}, nil
+func mockGetInfobloxClientForInstance(_ context.Context, _ client.Reader, _, _ string, _ func(infoblox.Config) (infoblox.Client, error)) (infoblox.Client, error) {
+	return mockInfobloxClient, nil
 }

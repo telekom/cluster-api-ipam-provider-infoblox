@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"net/netip"
+	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -106,20 +108,29 @@ func (r *InfobloxProviderIntegration) ClaimHandlerFor(cl client.Client, claim *i
 func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
 	h.pool = &v1alpha1.InfobloxIPPool{}
+	log.Info("InfobloxClaimHandler FetchPool 1")
 	if err := h.Client.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, h.pool); err != nil && !apierrors.IsNotFound(err) {
+		log.Info("InfobloxClaimHandler FetchPool  - failed to fetch")
 		return nil, errors.Wrap(err, "failed to fetch pool")
 	}
+	log.Info("InfobloxClaimHandler FetchPool 2")
 	if h.pool == nil {
+		log.Info("pool not found")
 		err := errors.New("pool not found")
 		log.Error(err, "the referenced pool could not be found")
 		return nil, nil
 	}
 
+	log.Info("InfobloxClaimHandler FetchPool 3")
+
 	// todo: ensure pool is ready
 
 	var err error
+
+	log.Info("Instance info", "name", h.pool.Spec.InstanceRef.Name, "namespace", h.pool.Namespace)
 	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.pool.Namespace, h.newInfobloxClientFunc)
 	if err != nil {
+		log.Error(err, "failed to get infoblox client")
 		return nil, fmt.Errorf("failed to get infoblox client: %w", err)
 	}
 
@@ -132,6 +143,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		// We won't set a condition here since this should be caught by validation
 		return nil, fmt.Errorf("failed to parse subnet: %w", err)
 	}
+
 	ipaddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, "", h.pool.Spec.DNSZone)
 	if err != nil {
 		conditions.MarkFalse(h.claim,
@@ -144,7 +156,11 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 
 	address.Spec.Address = ipaddr.String()
 
-	return &ctrl.Result{}, nil
+	if address.Spec.Prefix, err = strconv.Atoi(strings.Split(h.pool.Spec.Subnet, "/")[1]); err != nil {
+		return nil, fmt.Errorf("could not parse address: %w", err)
+	}
+
+	return nil, nil
 }
 
 func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {

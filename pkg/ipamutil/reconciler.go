@@ -121,7 +121,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 	handler := r.Provider.ClaimHandlerFor(r.Client, claim)
 	if res, err := handler.FetchPool(ctx); err != nil || res != nil {
 		if apierrors.IsNotFound(err) {
-			err := errors.New("pool not found")
+			// err := errors.New("pool not found")
 			log.Error(err, "the referenced pool could not be found")
 			if !claim.ObjectMeta.DeletionTimestamp.IsZero() {
 				return r.reconcileDelete(ctx, claim)
@@ -178,6 +178,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		if err != nil {
 			log.Error(err, "EnsureAddress")
 		}
+		log.Info("EnsureAddress - no error, result not nil")
 		return unwrapResult(res), err
 	}
 

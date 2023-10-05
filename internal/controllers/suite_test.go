@@ -60,10 +60,12 @@ var (
 
 	mockInfobloxClient        *ibmock.MockClient
 	mockNewInfobloxClientFunc func(infoblox.Config) (infoblox.Client, error)
+	mockCtrl                  *gomock.Controller
 )
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
+	mockCtrl = gomock.NewController(t)
 	RunSpecs(t, "Controller Suite")
 }
 
@@ -72,7 +74,7 @@ var _ = BeforeSuite(func() {
 
 	ctx, cancelCtx = context.WithCancel(ctrl.SetupSignalHandler())
 
-	mockInfobloxClient = ibmock.NewMockClient(gomock.NewController(GinkgoT()))
+	mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
 	mockNewInfobloxClientFunc = func(infoblox.Config) (infoblox.Client, error) {
 		return mockInfobloxClient, nil
 	}
@@ -111,6 +113,14 @@ var _ = BeforeSuite(func() {
 	Expect(index.SetupIndexes(ctx, mgr)).To(Succeed())
 
 	Expect(
+		(&InfobloxInstanceReconciler{
+			Client:                mgr.GetClient(),
+			Scheme:                mgr.GetScheme(),
+			newInfobloxClientFunc: mockNewInfobloxClientFunc,
+		}).SetupWithManager(ctx, mgr),
+	).To(Succeed())
+
+	Expect(
 		(&ipamutil.ClaimReconciler{
 			Client: mgr.GetClient(),
 			Scheme: mgr.GetScheme(),
@@ -133,14 +143,6 @@ var _ = BeforeSuite(func() {
 	// 		Scheme: mgr.GetScheme(),
 	// 	}).SetupWithManager(ctx, mgr),
 	// ).To(Succeed())
-
-	Expect(
-		(&InfobloxInstanceReconciler{
-			Client:                mgr.GetClient(),
-			Scheme:                mgr.GetScheme(),
-			newInfobloxClientFunc: mockNewInfobloxClientFunc,
-		}).SetupWithManager(ctx, mgr),
-	).To(Succeed())
 
 	go func() {
 		defer GinkgoRecover()
