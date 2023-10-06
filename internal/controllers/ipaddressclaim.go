@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
@@ -128,6 +129,7 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, err
 	var err error
 
 	log.Info("Instance info", "name", h.pool.Spec.InstanceRef.Name, "namespace", h.pool.Namespace)
+	log.Info("pool annotations", "annotations", h.pool.Annotations)
 	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.pool.Namespace, h.newInfobloxClientFunc)
 	if err != nil {
 		log.Error(err, "failed to get infoblox client")
@@ -138,14 +140,21 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, err
 }
 
 func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv1.IPAddress) (*ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	logger.Info("EnsureAddress - ParsePrefix")
 	subnet, err := netip.ParsePrefix(h.pool.Spec.Subnet)
+
 	if err != nil {
 		// We won't set a condition here since this should be caught by validation
+		logger.Info("EnsureAddress - failed to parse subnet")
 		return nil, fmt.Errorf("failed to parse subnet: %w", err)
 	}
 
+	logger.Info("EnsureAddress - GetOrAllocateAddress")
 	ipaddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, "", h.pool.Spec.DNSZone)
 	if err != nil {
+		logger.Error(err, "EnsureAddress - GetOrAllocateAddress - error")
 		conditions.MarkFalse(h.claim,
 			v1beta1.ReadyCondition,
 			v1alpha1.InfobloxAddressAllocationFailedReason,
@@ -154,12 +163,15 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		return nil, fmt.Errorf("could not allocate address: %w", err)
 	}
 
+	logger.Info("EnsureAddress - set spec")
 	address.Spec.Address = ipaddr.String()
 
 	if address.Spec.Prefix, err = strconv.Atoi(strings.Split(h.pool.Spec.Subnet, "/")[1]); err != nil {
+		logger.Error(err, "EnsureAddress - error - could not aprse address")
 		return nil, fmt.Errorf("could not parse address: %w", err)
 	}
 
+	logger.Info("EnsureAddress - end")
 	return nil, nil
 }
 
@@ -178,5 +190,8 @@ func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
 }
 
 func (h *InfobloxClaimHandler) GetPool() client.Object {
+	logger := log.FromContext(context.TODO())
+	logger.Info("GetPool", "value", h.pool.Annotations)
+
 	return h.pool
 }

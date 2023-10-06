@@ -19,6 +19,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -80,6 +81,11 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 		return ctrl.Result{}, err
 	}
 
+	log.Info("CLAIM", "value", claim)
+	log.Info("CLAIM creation timestamp", "value", claim.CreationTimestamp)
+	log.Info("CLAIM deletion timestamp", "value", claim.DeletionTimestamp)
+	log.Info("CLAIM annotations", "value", claim.Annotations)
+
 	log.Info("Reconciling claim 2")
 	if _, ok := claim.GetLabels()[clusterv1.ClusterNameLabel]; ok {
 		cluster, err := clusterutil.GetClusterFromMetadata(ctx, r.Client, claim.ObjectMeta)
@@ -139,6 +145,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 	}
 
 	if !claim.ObjectMeta.DeletionTimestamp.IsZero() {
+		log.Info("!claim.ObjectMeta.DeletionTimestamp.IsZero")
 		return r.reconcileDelete(ctx, claim)
 	}
 
@@ -221,31 +228,42 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ct
 }
 
 func (r *ClaimReconciler) reconcileDelete(ctx context.Context, claim *ipamv1.IPAddressClaim) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	logger.Info("reconcileDelete 1")
 	address := &ipamv1.IPAddress{}
 	namespacedName := types.NamespacedName{
 		Namespace: claim.Namespace,
 		Name:      claim.Name,
 	}
+	logger.Info("reconcileDelete 2")
 	if err := r.Client.Get(ctx, namespacedName, address); err != nil && !apierrors.IsNotFound(err) {
+		logger.Error(err, "reconcileDelete Get")
 		return ctrl.Result{}, errors.Wrap(err, "failed to fetch address")
 	}
 
 	if address.Name != "" {
+		logger.Info("reconcileDelete - Address name is empty")
 		var err error
 		if controllerutil.RemoveFinalizer(address, ProtectAddressFinalizer) {
+			logger.Info("reconcileDelete - RemoveFinalizer is true")
 			if err = r.Client.Update(ctx, address); err != nil && !apierrors.IsNotFound(err) {
+				logger.Error(err, "reconcileDelete - update error")
 				return ctrl.Result{}, errors.Wrap(err, "failed to remove address finalizer")
 			}
 		}
 
 		if err == nil {
+			logger.Info("reconcileDelete - error is nil, will delete")
 			if err := r.Client.Delete(ctx, address); err != nil && !apierrors.IsNotFound(err) {
+				logger.Error(err, "reconcileDelete - delete error")
 				return ctrl.Result{}, err
 			}
 		}
 	}
 
+	logger.Info("reconcileDelete - Will remove finalizer")
 	controllerutil.RemoveFinalizer(claim, ReleaseAddressFinalizer)
+	logger.Info("reconcileDelete - removed finalizer")
 	return ctrl.Result{}, nil
 }
 

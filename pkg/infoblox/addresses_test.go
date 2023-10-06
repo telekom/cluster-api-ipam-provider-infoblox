@@ -1,6 +1,7 @@
 package infoblox
 
 import (
+	"log"
 	"net/netip"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
@@ -61,6 +62,10 @@ var _ = Describe("IP Address Management", func() {
 				_, err := testClient.objMgr.GetHostRecordByRef(hostRecord.Ref)
 				Expect(err).To(HaveOccurred())
 				_, ok := err.(*ibclient.NotFoundError)
+				if !ok {
+					logger := log.Default()
+					logger.Printf("Not not found error: %s\n", err.Error())
+				}
 				Expect(ok).To(BeTrue())
 			}
 		})

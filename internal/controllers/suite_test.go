@@ -59,6 +59,7 @@ var (
 	cancelCtx func()
 
 	mockInfobloxClient        *ibmock.MockClient
+	localInfobloxClientMock   *ibmock.MockClient
 	mockNewInfobloxClientFunc func(infoblox.Config) (infoblox.Client, error)
 	mockCtrl                  *gomock.Controller
 )
@@ -102,8 +103,10 @@ var _ = BeforeSuite(func() {
 
 	//+kubebuilder:scaffold:scheme
 
+	syncDur := 100 * time.Millisecond
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme.Scheme,
+		Scheme:     scheme.Scheme,
+		SyncPeriod: &syncDur,
 	})
 	Expect(err).ToNot(HaveOccurred())
 
