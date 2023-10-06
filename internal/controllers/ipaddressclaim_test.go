@@ -888,6 +888,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		When("the pool is paused", func() {
 			When("a claim is created", func() {
 				const poolName = "paused-pool"
+				const claimName = "paused-pool-test"
 				var pool v1alpha1.InfobloxIPPool
 
 				BeforeEach(func() {
@@ -913,8 +914,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				})
 
 				AfterEach(func() {
-					// deleteClaim("paused-pool-test", namespace)
-					// deleteNamespacedPool(poolName, namespace)
+					deleteClaim(claimName, namespace)
+					deleteNamespacedPool(poolName, namespace)
 					getInfobloxClientForInstanceFunc = getInfobloxClientForInstance
 				})
 
@@ -928,7 +929,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(annotations.HasPaused(tmpPool)).To(BeTrue())
 
-					claim := newClaim("paused-pool-test", namespace, "InfobloxIPPool", poolName)
+					claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
 					Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
 
 					addresses := ipamv1.IPAddressList{}
