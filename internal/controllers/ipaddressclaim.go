@@ -124,7 +124,7 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, err
 
 	log.Info("InfobloxClaimHandler FetchPool 3")
 
-	// todo: ensure pool is ready
+	// TODO: ensure pool is ready
 
 	var err error
 

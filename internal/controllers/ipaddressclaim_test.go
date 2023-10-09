@@ -950,246 +950,270 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				})
 			})
 
-			// 	When("a claim is deleted", func() {
-			// 		const poolName = "paused-delete-claim-pool"
-			// 		var pool v1alpha2.InClusterIPPool
+			When("a claim is deleted", func() {
+				const poolName = "paused-delete-claim-pool"
+				var pool v1alpha1.InfobloxIPPool
 
-			// 		BeforeEach(func() {
-			// 			pool = v1alpha2.InClusterIPPool{
-			// 				ObjectMeta: metav1.ObjectMeta{
-			// 					Name:      poolName,
-			// 					Namespace: namespace,
-			// 				},
-			// 				Spec: v1alpha2.InClusterIPPoolSpec{
-			// 					Addresses: []string{"10.0.20.51"},
-			// 					Prefix:    24,
-			// 					Gateway:   "10.0.20.1",
-			// 				},
-			// 			}
-			// 			Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
-			// 			Eventually(Get(&pool)).Should(Succeed())
-			// 		})
+				BeforeEach(func() {
+					localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+					getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
+					pool = v1alpha1.InfobloxIPPool{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      poolName,
+							Namespace: namespace,
+						},
+						Spec: v1alpha1.InfobloxIPPoolSpec{
+							InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+							Subnet:      "10.0.0.0/24",
+							NetworkView: "default",
+							DNSZone:     "",
+						},
+					}
+					Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
+					Eventually(Get(&pool)).Should(Succeed())
+				})
 
-			// 		AfterEach(func() {
-			// 			deleteNamespacedPool(poolName, namespace)
-			// 		})
+				AfterEach(func() {
+					deleteNamespacedPool(poolName, namespace)
+					getInfobloxClientForInstanceFunc = getInfobloxClientForInstance
+				})
 
-			// 		It("should prevent deletion of claims", func() {
-			// 			claim := newClaim("paused-pool-delete-claim-test", namespace, "InClusterIPPool", poolName)
-			// 			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+				It("should prevent deletion of claims", func() {
+					addr, err := netip.ParseAddr("10.0.0.1")
+					Expect(err).NotTo(HaveOccurred())
+					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 
-			// 			claims := ipamv1.IPAddressClaimList{}
-			// 			Eventually(ObjectList(&claims)).
-			// 				WithTimeout(10 * time.Second).WithPolling(100 * time.Millisecond).Should(
-			// 				HaveField("Items", HaveLen(1)))
+					claim := newClaim("paused-pool-delete-claim-test", namespace, "InfobloxIPPool", poolName)
+					Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
 
-			// 			patchHelper, err := patch.NewHelper(&pool, k8sClient)
-			// 			Expect(err).NotTo(HaveOccurred())
-			// 			pool.Annotations = map[string]string{
-			// 				clusterv1.PausedAnnotation: "",
-			// 			}
-			// 			err = patchHelper.Patch(ctx, &pool)
-			// 			Expect(err).NotTo(HaveOccurred())
+					claims := ipamv1.IPAddressClaimList{}
+					Eventually(ObjectList(&claims)).
+						WithTimeout(10 * time.Second).WithPolling(100 * time.Millisecond).Should(
+						HaveField("Items", HaveLen(1)))
 
-			// 			time.Sleep(1 * time.Second)
+					patchHelper, err := patch.NewHelper(&pool, k8sClient)
+					Expect(err).NotTo(HaveOccurred())
+					pool.Annotations = map[string]string{
+						clusterv1.PausedAnnotation: "",
+					}
+					err = patchHelper.Patch(ctx, &pool)
+					Expect(err).NotTo(HaveOccurred())
 
-			// 			Expect(k8sClient.Delete(context.Background(), &claim)).To(Succeed())
-			// 			Consistently(ObjectList(&claims)).
-			// 				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
-			// 				HaveField("Items", HaveLen(1)))
+					time.Sleep(1 * time.Second)
 
-			// 			patchHelper, err = patch.NewHelper(&pool, k8sClient)
-			// 			Expect(err).NotTo(HaveOccurred())
-			// 			delete(pool.Annotations, clusterv1.PausedAnnotation)
-			// 			err = patchHelper.Patch(ctx, &pool)
-			// 			Expect(err).NotTo(HaveOccurred())
+					Expect(k8sClient.Delete(context.Background(), &claim)).To(Succeed())
+					Consistently(ObjectList(&claims)).
+						WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+						HaveField("Items", HaveLen(1)))
 
-			// 			Eventually(ObjectList(&claims)).
-			// 				WithTimeout(10 * time.Second).WithPolling(100 * time.Millisecond).Should(
-			// 				HaveField("Items", HaveLen(0)))
-			// 		})
-			// 	})
+					patchHelper, err = patch.NewHelper(&pool, k8sClient)
+					Expect(err).NotTo(HaveOccurred())
+					delete(pool.Annotations, clusterv1.PausedAnnotation)
+					err = patchHelper.Patch(ctx, &pool)
+					Expect(err).NotTo(HaveOccurred())
+
+					Eventually(ObjectList(&claims)).
+						WithTimeout(10 * time.Second).WithPolling(100 * time.Millisecond).Should(
+						HaveField("Items", HaveLen(0)))
+				})
+			})
 		})
 	})
 
-	// Context("When an existing IPAddress with no ownerReferences is missing finalizers and owner references", func() {
-	// 	const poolName = "test-pool"
+	Context("When an existing IPAddress with no ownerReferences is missing finalizers and owner references", func() {
+		const poolName = "test-pool"
 
-	// 	BeforeEach(func() {
-	// 		pool := v1alpha2.InClusterIPPool{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Name:      poolName,
-	// 				Namespace: namespace,
-	// 			},
-	// 			Spec: v1alpha2.InClusterIPPoolSpec{
-	// 				Addresses: []string{"10.0.0.1-10.0.0.254"},
-	// 				Prefix:    24,
-	// 				Gateway:   "10.0.0.2",
-	// 			},
-	// 		}
-	// 		Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
-	// 		Eventually(Get(&pool)).Should(Succeed())
-	// 	})
+		BeforeEach(func() {
+			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
+			pool := v1alpha1.InfobloxIPPool{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      poolName,
+					Namespace: namespace,
+				},
+				Spec: v1alpha1.InfobloxIPPoolSpec{
+					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+					Subnet:      "10.0.0.0/24",
+					NetworkView: "default",
+					DNSZone:     "",
+				},
+			}
+			Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
+			Eventually(Get(&pool)).Should(Succeed())
+		})
 
-	// 	AfterEach(func() {
-	// 		deleteClaim("test", namespace)
-	// 		deleteNamespacedPool(poolName, namespace)
-	// 	})
+		AfterEach(func() {
+			deleteClaim("test", namespace)
+			deleteNamespacedPool(poolName, namespace)
+			getInfobloxClientForInstanceFunc = getInfobloxClientForInstance
+		})
 
-	// 	It("should add the owner references and finalizer", func() {
-	// 		addressSpec := ipamv1.IPAddressSpec{
-	// 			ClaimRef: corev1.LocalObjectReference{
-	// 				Name: "test",
-	// 			},
-	// 			PoolRef: corev1.TypedLocalObjectReference{
-	// 				APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
-	// 				Kind:     "InClusterIPPool",
-	// 				Name:     poolName,
-	// 			},
-	// 			Address: "10.0.0.1",
-	// 			Prefix:  24,
-	// 			Gateway: "10.0.0.2",
-	// 		}
+		It("should add the owner references and finalizer", func() {
+			addr, err := netip.ParseAddr("10.0.0.1")
+			Expect(err).NotTo(HaveOccurred())
+			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 
-	// 		address := ipamv1.IPAddress{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Name:      "test",
-	// 				Namespace: namespace,
-	// 			},
-	// 			Spec: addressSpec,
-	// 		}
+			addressSpec := ipamv1.IPAddressSpec{
+				ClaimRef: corev1.LocalObjectReference{
+					Name: "test",
+				},
+				PoolRef: corev1.TypedLocalObjectReference{
+					APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
+					Kind:     "InfobloxIPPool",
+					Name:     poolName,
+				},
+				Address: "10.0.0.1",
+				Prefix:  24,
+				Gateway: "10.0.0.2",
+			}
 
-	// 		Expect(k8sClient.Create(context.Background(), &address)).To(Succeed())
+			address := ipamv1.IPAddress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: namespace,
+				},
+				Spec: addressSpec,
+			}
 
-	// 		claim := newClaim("test", namespace, "InClusterIPPool", poolName)
-	// 		Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+			Expect(k8sClient.Create(context.Background(), &address)).To(Succeed())
 
-	// 		expectedIPAddress := ipamv1.IPAddress{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Name:       "test",
-	// 				Namespace:  namespace,
-	// 				Finalizers: []string{ipamutil.ProtectAddressFinalizer},
-	// 				OwnerReferences: []metav1.OwnerReference{
-	// 					{
-	// 						APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
-	// 						BlockOwnerDeletion: pointer.Bool(true),
-	// 						Controller:         pointer.Bool(true),
-	// 						Kind:               "IPAddressClaim",
-	// 						Name:               "test",
-	// 					},
-	// 					{
-	// 						APIVersion:         "ipam.cluster.x-k8s.io/v1alpha2",
-	// 						BlockOwnerDeletion: pointer.Bool(true),
-	// 						Controller:         pointer.Bool(false),
-	// 						Kind:               "InClusterIPPool",
-	// 						Name:               poolName,
-	// 					},
-	// 				},
-	// 			},
-	// 			Spec: addressSpec,
-	// 		}
+			claim := newClaim("test", namespace, "InfobloxIPPool", poolName)
+			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
 
-	// 		Eventually(findAddress("test", namespace)).
-	// 			WithTimeout(time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 			EqualObject(&expectedIPAddress, IgnoreAutogeneratedMetadata, IgnoreUIDsOnIPAddress))
-	// 	})
-	// })
+			expectedIPAddress := ipamv1.IPAddress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test",
+					Namespace:  namespace,
+					Finalizers: []string{ipamutil.ProtectAddressFinalizer},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
+							BlockOwnerDeletion: pointer.Bool(true),
+							Controller:         pointer.Bool(true),
+							Kind:               "IPAddressClaim",
+							Name:               "test",
+						},
+						{
+							APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
+							BlockOwnerDeletion: pointer.Bool(true),
+							Controller:         pointer.Bool(false),
+							Kind:               "InfobloxIPPool",
+							Name:               poolName,
+						},
+					},
+				},
+				Spec: addressSpec,
+			}
 
-	// Context("When an existing IPAddress with an unrelated ownerRef is missing finalizers and IPAM owner references", func() {
-	// 	const poolName = "test-pool"
+			Eventually(findAddress("test", namespace)).
+				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+				EqualObject(&expectedIPAddress, IgnoreAutogeneratedMetadata, IgnoreUIDsOnIPAddress))
+		})
+	})
 
-	// 	BeforeEach(func() {
-	// 		pool := v1alpha2.InClusterIPPool{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Name:      poolName,
-	// 				Namespace: namespace,
-	// 			},
-	// 			Spec: v1alpha2.InClusterIPPoolSpec{
-	// 				Addresses: []string{"10.0.0.1-10.0.0.254"},
-	// 				Prefix:    24,
-	// 				Gateway:   "10.0.0.2",
-	// 			},
-	// 		}
-	// 		Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
-	// 		Eventually(Get(&pool)).Should(Succeed())
-	// 	})
+	Context("When an existing IPAddress with an unrelated ownerRef is missing finalizers and IPAM owner references", func() {
+		const poolName = "test-pool"
 
-	// 	AfterEach(func() {
-	// 		deleteClaim("test", namespace)
-	// 		deleteNamespacedPool(poolName, namespace)
-	// 	})
+		BeforeEach(func() {
+			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
+			pool := v1alpha1.InfobloxIPPool{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      poolName,
+					Namespace: namespace,
+				},
+				Spec: v1alpha1.InfobloxIPPoolSpec{
+					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+					Subnet:      "10.0.0.0/24",
+					NetworkView: "default",
+					DNSZone:     "",
+				},
+			}
+			Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
+			Eventually(Get(&pool)).Should(Succeed())
+		})
 
-	// 	It("should add the owner references and finalizer", func() {
-	// 		addressSpec := ipamv1.IPAddressSpec{
-	// 			ClaimRef: corev1.LocalObjectReference{
-	// 				Name: "test",
-	// 			},
-	// 			PoolRef: corev1.TypedLocalObjectReference{
-	// 				APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
-	// 				Kind:     "InClusterIPPool",
-	// 				Name:     poolName,
-	// 			},
-	// 			Address: "10.0.0.1",
-	// 			Prefix:  24,
-	// 			Gateway: "10.0.0.2",
-	// 		}
-	// 		address := ipamv1.IPAddress{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Name:      "test",
-	// 				Namespace: namespace,
-	// 				OwnerReferences: []metav1.OwnerReference{
-	// 					{
-	// 						APIVersion: "alpha-dummy",
-	// 						Kind:       "dummy-kind",
-	// 						Name:       "dummy-name",
-	// 						UID:        "abc-dummy-123",
-	// 					},
-	// 				},
-	// 			},
-	// 			Spec: addressSpec,
-	// 		}
+		AfterEach(func() {
+			deleteClaim("test", namespace)
+			deleteNamespacedPool(poolName, namespace)
+			getInfobloxClientForInstanceFunc = getInfobloxClientForInstance
+		})
 
-	// 		Expect(k8sClient.Create(context.Background(), &address)).To(Succeed())
+		It("should add the owner references and finalizer", func() {
+			addr, err := netip.ParseAddr("10.0.0.1")
+			Expect(err).NotTo(HaveOccurred())
+			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 
-	// 		claim := newClaim("test", namespace, "InClusterIPPool", poolName)
-	// 		Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+			addressSpec := ipamv1.IPAddressSpec{
+				ClaimRef: corev1.LocalObjectReference{
+					Name: "test",
+				},
+				PoolRef: corev1.TypedLocalObjectReference{
+					APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
+					Kind:     "InfobloxIPPool",
+					Name:     poolName,
+				},
+				Address: "10.0.0.1",
+				Prefix:  24,
+				Gateway: "10.0.0.2",
+			}
+			address := ipamv1.IPAddress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: namespace,
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "alpha-dummy",
+							Kind:       "dummy-kind",
+							Name:       "dummy-name",
+							UID:        "abc-dummy-123",
+						},
+					},
+				},
+				Spec: addressSpec,
+			}
 
-	// 		expectedIPAddress := ipamv1.IPAddress{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Name:       "test",
-	// 				Namespace:  namespace,
-	// 				Finalizers: []string{ipamutil.ProtectAddressFinalizer},
-	// 				OwnerReferences: []metav1.OwnerReference{
-	// 					{
-	// 						APIVersion: "alpha-dummy",
-	// 						Kind:       "dummy-kind",
-	// 						Name:       "dummy-name",
-	// 						UID:        "abc-dummy-123",
-	// 					},
-	// 					{
-	// 						APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
-	// 						BlockOwnerDeletion: pointer.Bool(true),
-	// 						Controller:         pointer.Bool(true),
-	// 						Kind:               "IPAddressClaim",
-	// 						Name:               "test",
-	// 					},
-	// 					{
-	// 						APIVersion:         "ipam.cluster.x-k8s.io/v1alpha2",
-	// 						BlockOwnerDeletion: pointer.Bool(true),
-	// 						Controller:         pointer.Bool(false),
-	// 						Kind:               "InClusterIPPool",
-	// 						Name:               poolName,
-	// 					},
-	// 				},
-	// 			},
-	// 			Spec: addressSpec,
-	// 		}
+			Expect(k8sClient.Create(context.Background(), &address)).To(Succeed())
 
-	// 		Eventually(findAddress("test", namespace)).
-	// 			WithTimeout(time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 			EqualObject(&expectedIPAddress, IgnoreAutogeneratedMetadata, IgnoreUIDsOnIPAddress))
-	// 	})
-	// })
+			claim := newClaim("test", namespace, "InfobloxIPPool", poolName)
+			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+
+			expectedIPAddress := ipamv1.IPAddress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test",
+					Namespace:  namespace,
+					Finalizers: []string{ipamutil.ProtectAddressFinalizer},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "alpha-dummy",
+							Kind:       "dummy-kind",
+							Name:       "dummy-name",
+							UID:        "abc-dummy-123",
+						},
+						{
+							APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
+							BlockOwnerDeletion: pointer.Bool(true),
+							Controller:         pointer.Bool(true),
+							Kind:               "IPAddressClaim",
+							Name:               "test",
+						},
+						{
+							APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
+							BlockOwnerDeletion: pointer.Bool(true),
+							Controller:         pointer.Bool(false),
+							Kind:               "InfobloxIPPool",
+							Name:               poolName,
+						},
+					},
+				},
+				Spec: addressSpec,
+			}
+
+			Eventually(findAddress("test", namespace)).
+				WithTimeout(time.Second).WithPolling(100 * time.Millisecond).Should(
+				EqualObject(&expectedIPAddress, IgnoreAutogeneratedMetadata, IgnoreUIDsOnIPAddress))
+		})
+	})
 
 	// Context("When a GlobalInClusterIPPool has two claims with the same name in two different namespaces", func() {
 	// 	const poolName = "test-pool"
@@ -1320,15 +1344,16 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 	// 	)
 
 	// 	BeforeEach(func() {
-	// 		pool := v1alpha2.InClusterIPPool{
+	// 		pool := v1alpha1.InfobloxIPPool{
 	// 			ObjectMeta: metav1.ObjectMeta{
 	// 				Name:      poolName,
 	// 				Namespace: namespace,
 	// 			},
-	// 			Spec: v1alpha2.InClusterIPPoolSpec{
-	// 				Addresses: []string{"10.0.0.1-10.0.0.254"},
-	// 				Prefix:    24,
-	// 				Gateway:   "10.0.0.2",
+	// 			Spec: v1alpha1.InfobloxIPPoolSpec{
+	// 				InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+	// 				Subnet:      "10.0.0.0/24",
+	// 				NetworkView: "default",
+	// 				DNSZone:     "",
 	// 			},
 	// 		}
 	// 		Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
@@ -1354,7 +1379,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 	// 				Spec: ipamv1.IPAddressClaimSpec{
 	// 					PoolRef: corev1.TypedLocalObjectReference{
 	// 						APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
-	// 						Kind:     "InClusterIPPool",
+	// 						Kind:     "InfobloxIPPool",
 	// 						Name:     poolName,
 	// 					},
 	// 				},
@@ -1380,322 +1405,322 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 	// 				HaveField("Items", HaveLen(0)))
 	// 		})
 
-	// 		It("does not allocate an ipaddress upon creating a cluster when the cluster has spec.Paused", func() {
-	// 			claim := ipamv1.IPAddressClaim{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Name:      "test",
-	// 					Namespace: namespace,
-	// 					Labels: map[string]string{
-	// 						clusterv1.ClusterNameLabel: clusterName,
-	// 					},
-	// 				},
-	// 				Spec: ipamv1.IPAddressClaimSpec{
-	// 					PoolRef: corev1.TypedLocalObjectReference{
-	// 						APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
-	// 						Kind:     "InClusterIPPool",
-	// 						Name:     poolName,
-	// 					},
-	// 				},
-	// 			}
-	// 			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
-	// 			Eventually(Get(&claim)).Should(Succeed())
+	// It("does not allocate an ipaddress upon creating a cluster when the cluster has spec.Paused", func() {
+	// 	claim := ipamv1.IPAddressClaim{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name:      "test",
+	// 			Namespace: namespace,
+	// 			Labels: map[string]string{
+	// 				clusterv1.ClusterNameLabel: clusterName,
+	// 			},
+	// 		},
+	// 		Spec: ipamv1.IPAddressClaimSpec{
+	// 			PoolRef: corev1.TypedLocalObjectReference{
+	// 				APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
+	// 				Kind:     "InClusterIPPool",
+	// 				Name:     poolName,
+	// 			},
+	// 		},
+	// 	}
+	// 	Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+	// 	Eventually(Get(&claim)).Should(Succeed())
 
-	// 			cluster = clusterv1.Cluster{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Name:      clusterName,
-	// 					Namespace: namespace,
-	// 				},
-	// 				Spec: clusterv1.ClusterSpec{
-	// 					Paused: true,
-	// 				},
-	// 			}
+	// 	cluster = clusterv1.Cluster{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name:      clusterName,
+	// 			Namespace: namespace,
+	// 		},
+	// 		Spec: clusterv1.ClusterSpec{
+	// 			Paused: true,
+	// 		},
+	// 	}
 
-	// 			Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
-	// 			Eventually(Get(&cluster)).Should(Succeed())
+	// 	Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
+	// 	Eventually(Get(&cluster)).Should(Succeed())
 
-	// 			addresses := ipamv1.IPAddressList{}
-	// 			Consistently(ObjectList(&addresses)).
-	// 				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 				HaveField("Items", HaveLen(0)))
-	// 		})
-
-	// 		It("does not allocate an ipaddress upon updating a cluster when the cluster has spec.paused", func() {
-	// 			cluster = clusterv1.Cluster{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Name:      clusterName,
-	// 					Namespace: namespace,
-	// 				},
-	// 				Spec: clusterv1.ClusterSpec{
-	// 					Paused: true,
-	// 				},
-	// 			}
-
-	// 			Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
-	// 			Eventually(Get(&cluster)).Should(Succeed())
-
-	// 			claim := ipamv1.IPAddressClaim{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Name:      "test",
-	// 					Namespace: namespace,
-	// 					Labels: map[string]string{
-	// 						clusterv1.ClusterNameLabel: clusterName,
-	// 					},
-	// 				},
-	// 				Spec: ipamv1.IPAddressClaimSpec{
-	// 					PoolRef: corev1.TypedLocalObjectReference{
-	// 						APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
-	// 						Kind:     "InClusterIPPool",
-	// 						Name:     poolName,
-	// 					},
-	// 				},
-	// 			}
-	// 			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
-	// 			Eventually(Get(&claim)).Should(Succeed())
-
-	// 			// update the cluster
-	// 			cluster.Annotations = map[string]string{"superficial": "change"}
-	// 			Expect(k8sClient.Update(context.Background(), &cluster)).To(Succeed())
-
-	// 			addresses := ipamv1.IPAddressList{}
-	// 			Consistently(ObjectList(&addresses)).
-	// 				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 				HaveField("Items", HaveLen(0)))
-	// 		})
-
-	// 		It("does not allocate an ipaddress upon updating a cluster when the cluster has paused annotation", func() {
-	// 			cluster = clusterv1.Cluster{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Name:      clusterName,
-	// 					Namespace: namespace,
-	// 					Annotations: map[string]string{
-	// 						clusterv1.PausedAnnotation: "",
-	// 					},
-	// 				},
-	// 			}
-
-	// 			Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
-	// 			Eventually(Get(&cluster)).Should(Succeed())
-
-	// 			claim := ipamv1.IPAddressClaim{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Name:      "test",
-	// 					Namespace: namespace,
-	// 					Labels: map[string]string{
-	// 						clusterv1.ClusterNameLabel: clusterName,
-	// 					},
-	// 				},
-	// 				Spec: ipamv1.IPAddressClaimSpec{
-	// 					PoolRef: corev1.TypedLocalObjectReference{
-	// 						APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
-	// 						Kind:     "InClusterIPPool",
-	// 						Name:     poolName,
-	// 					},
-	// 				},
-	// 			}
-	// 			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
-	// 			Eventually(Get(&claim)).Should(Succeed())
-
-	// 			// update the cluster
-	// 			cluster.Annotations["superficial"] = "change"
-	// 			Expect(k8sClient.Update(context.Background(), &cluster)).To(Succeed())
-
-	// 			addresses := ipamv1.IPAddressList{}
-	// 			Consistently(ObjectList(&addresses)).
-	// 				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 				HaveField("Items", HaveLen(0)))
-	// 		})
-
-	// 		It("allocates an ipaddress upon updating a cluster when removing spec.paused", func() {
-	// 			cluster = clusterv1.Cluster{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Name:      clusterName,
-	// 					Namespace: namespace,
-	// 				},
-	// 				Spec: clusterv1.ClusterSpec{
-	// 					Paused: true,
-	// 				},
-	// 			}
-
-	// 			Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
-	// 			Eventually(Get(&cluster)).Should(Succeed())
-
-	// 			claim := newClaim("test", namespace, "InClusterIPPool", poolName)
-	// 			claim.ObjectMeta.Labels = map[string]string{
-	// 				clusterv1.ClusterNameLabel: cluster.GetName(),
-	// 			}
-	// 			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
-
-	// 			addresses := ipamv1.IPAddressList{}
-	// 			Consistently(ObjectList(&addresses)).
-	// 				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 				HaveField("Items", HaveLen(0)))
-
-	// 			// update the cluster
-	// 			cluster.Spec.Paused = false
-	// 			Expect(k8sClient.Update(context.Background(), &cluster)).To(Succeed())
-
-	// 			Eventually(ObjectList(&addresses)).
-	// 				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 				HaveField("Items", HaveLen(1)))
-	// 		})
-
-	// 		It("allocates an ipaddress upon updating a cluster when removing the paused annotation", func() {
-	// 			cluster = clusterv1.Cluster{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Name:      clusterName,
-	// 					Namespace: namespace,
-	// 					Annotations: map[string]string{
-	// 						clusterv1.PausedAnnotation: "",
-	// 					},
-	// 				},
-	// 			}
-
-	// 			Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
-	// 			Eventually(Get(&cluster)).Should(Succeed())
-
-	// 			claim := ipamv1.IPAddressClaim{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Name:      "test",
-	// 					Namespace: namespace,
-	// 					Labels: map[string]string{
-	// 						clusterv1.ClusterNameLabel: clusterName,
-	// 					},
-	// 				},
-	// 				Spec: ipamv1.IPAddressClaimSpec{
-	// 					PoolRef: corev1.TypedLocalObjectReference{
-	// 						APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
-	// 						Kind:     "InClusterIPPool",
-	// 						Name:     poolName,
-	// 					},
-	// 				},
-	// 			}
-	// 			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
-	// 			Eventually(Get(&claim)).Should(Succeed())
-
-	// 			addresses := ipamv1.IPAddressList{}
-	// 			Consistently(ObjectList(&addresses)).
-	// 				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 				HaveField("Items", HaveLen(0)))
-
-	// 			// update the cluster
-	// 			delete(cluster.Annotations, clusterv1.PausedAnnotation)
-	// 			Expect(k8sClient.Update(context.Background(), &cluster)).To(Succeed())
-
-	// 			Eventually(ObjectList(&addresses)).
-	// 				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 				HaveField("Items", HaveLen(1)))
-	// 		})
-	// 	})
-
-	// 	Context("When the cluster cannot be retrieved", func() {
-	// 		AfterEach(func() {
-	// 			deleteClaim("test", namespace)
-	// 			deleteNamespacedPool(poolName, namespace)
-	// 		})
-	// 		It("does not allocate an ipaddress for the claim", func() {
-	// 			claim := newClaim("test", namespace, "InClusterIPPool", poolName)
-	// 			claim.ObjectMeta.Labels = map[string]string{
-	// 				clusterv1.ClusterNameLabel: "an-unfindable-cluster",
-	// 			}
-	// 			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
-	// 			Eventually(Get(&claim)).Should(Succeed())
-
-	// 			addresses := ipamv1.IPAddressList{}
-	// 			Consistently(ObjectList(&addresses)).
-	// 				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 				HaveField("Items", HaveLen(0)))
-	// 		})
-	// 	})
+	// 	addresses := ipamv1.IPAddressList{}
+	// 	Consistently(ObjectList(&addresses)).
+	// 		WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+	// 		HaveField("Items", HaveLen(0)))
 	// })
 
-	// Context("When the ipaddressclaim is paused", func() {
-	// 	const (
-	// 		poolName = "test-pool"
-	// 	)
+	// It("does not allocate an ipaddress upon updating a cluster when the cluster has spec.paused", func() {
+	// 	cluster = clusterv1.Cluster{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name:      clusterName,
+	// 			Namespace: namespace,
+	// 		},
+	// 		Spec: clusterv1.ClusterSpec{
+	// 			Paused: true,
+	// 		},
+	// 	}
 
-	// 	BeforeEach(func() {
-	// 		pool := v1alpha2.InClusterIPPool{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Name:      poolName,
-	// 				Namespace: namespace,
+	// 	Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
+	// 	Eventually(Get(&cluster)).Should(Succeed())
+
+	// 	claim := ipamv1.IPAddressClaim{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name:      "test",
+	// 			Namespace: namespace,
+	// 			Labels: map[string]string{
+	// 				clusterv1.ClusterNameLabel: clusterName,
 	// 			},
-	// 			Spec: v1alpha2.InClusterIPPoolSpec{
-	// 				Addresses: []string{"10.0.0.1-10.0.0.254"},
-	// 				Prefix:    24,
-	// 				Gateway:   "10.0.0.2",
+	// 		},
+	// 		Spec: ipamv1.IPAddressClaimSpec{
+	// 			PoolRef: corev1.TypedLocalObjectReference{
+	// 				APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
+	// 				Kind:     "InClusterIPPool",
+	// 				Name:     poolName,
 	// 			},
-	// 		}
-	// 		Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
-	// 		Eventually(Get(&pool)).Should(Succeed())
-	// 	})
+	// 		},
+	// 	}
+	// 	Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+	// 	Eventually(Get(&claim)).Should(Succeed())
 
-	// 	AfterEach(func() {
-	// 		deleteClaim("test", namespace)
-	// 		deleteNamespacedPool(poolName, namespace)
-	// 	})
+	// 	// update the cluster
+	// 	cluster.Annotations = map[string]string{"superficial": "change"}
+	// 	Expect(k8sClient.Update(context.Background(), &cluster)).To(Succeed())
 
-	// 	It("does not allocate an ipaddress for the claim until the ip address claim is unpaused", func() {
-	// 		claim := newClaim("test", namespace, "InClusterIPPool", poolName)
-	// 		claim.ObjectMeta.Annotations = map[string]string{
-	// 			clusterv1.PausedAnnotation: "",
-	// 		}
-	// 		Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
-	// 		Eventually(Get(&claim)).Should(Succeed())
+	// 	addresses := ipamv1.IPAddressList{}
+	// 	Consistently(ObjectList(&addresses)).
+	// 		WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+	// 		HaveField("Items", HaveLen(0)))
+	// })
 
-	// 		addresses := ipamv1.IPAddressList{}
-	// 		Consistently(ObjectList(&addresses)).
-	// 			WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 			HaveField("Items", HaveLen(0)))
-
-	// 		// Unpause the IPAddressClaim
-	// 		patchHelper, err := patch.NewHelper(&claim, k8sClient)
-	// 		Expect(err).NotTo(HaveOccurred())
-	// 		delete(claim.Annotations, clusterv1.PausedAnnotation)
-	// 		Expect(patchHelper.Patch(context.Background(), &claim)).To(Succeed())
-
-	// 		expectedIPAddress := ipamv1.IPAddress{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Name:       "test",
-	// 				Namespace:  namespace,
-	// 				Finalizers: []string{ipamutil.ProtectAddressFinalizer},
-	// 				OwnerReferences: []metav1.OwnerReference{
-	// 					{
-	// 						APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
-	// 						BlockOwnerDeletion: pointer.Bool(true),
-	// 						Controller:         pointer.Bool(true),
-	// 						Kind:               "IPAddressClaim",
-	// 						Name:               "test",
-	// 					},
-	// 					{
-	// 						APIVersion:         "ipam.cluster.x-k8s.io/v1alpha2",
-	// 						BlockOwnerDeletion: pointer.Bool(true),
-	// 						Controller:         pointer.Bool(false),
-	// 						Kind:               "InClusterIPPool",
-	// 						Name:               poolName,
-	// 					},
-	// 				},
+	// It("does not allocate an ipaddress upon updating a cluster when the cluster has paused annotation", func() {
+	// 	cluster = clusterv1.Cluster{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name:      clusterName,
+	// 			Namespace: namespace,
+	// 			Annotations: map[string]string{
+	// 				clusterv1.PausedAnnotation: "",
 	// 			},
-	// 			Spec: ipamv1.IPAddressSpec{
-	// 				ClaimRef: corev1.LocalObjectReference{
-	// 					Name: "test",
-	// 				},
-	// 				PoolRef: corev1.TypedLocalObjectReference{
-	// 					APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
-	// 					Kind:     "InClusterIPPool",
-	// 					Name:     poolName,
-	// 				},
-	// 				Address: "10.0.0.1",
-	// 				Prefix:  24,
-	// 				Gateway: "10.0.0.2",
-	// 			},
-	// 		}
+	// 		},
+	// 	}
 
-	// 		Eventually(findAddress("test", namespace)).
-	// 			WithTimeout(time.Second).WithPolling(100 * time.Millisecond).Should(
-	// 			EqualObject(&expectedIPAddress, IgnoreAutogeneratedMetadata, IgnoreUIDsOnIPAddress))
-	// 	})
+	// 	Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
+	// 	Eventually(Get(&cluster)).Should(Succeed())
+
+	// 	claim := ipamv1.IPAddressClaim{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name:      "test",
+	// 			Namespace: namespace,
+	// 			Labels: map[string]string{
+	// 				clusterv1.ClusterNameLabel: clusterName,
+	// 			},
+	// 		},
+	// 		Spec: ipamv1.IPAddressClaimSpec{
+	// 			PoolRef: corev1.TypedLocalObjectReference{
+	// 				APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
+	// 				Kind:     "InClusterIPPool",
+	// 				Name:     poolName,
+	// 			},
+	// 		},
+	// 	}
+	// 	Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+	// 	Eventually(Get(&claim)).Should(Succeed())
+
+	// 	// update the cluster
+	// 	cluster.Annotations["superficial"] = "change"
+	// 	Expect(k8sClient.Update(context.Background(), &cluster)).To(Succeed())
+
+	// 	addresses := ipamv1.IPAddressList{}
+	// 	Consistently(ObjectList(&addresses)).
+	// 		WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+	// 		HaveField("Items", HaveLen(0)))
+	// })
+
+	// It("allocates an ipaddress upon updating a cluster when removing spec.paused", func() {
+	// 	cluster = clusterv1.Cluster{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name:      clusterName,
+	// 			Namespace: namespace,
+	// 		},
+	// 		Spec: clusterv1.ClusterSpec{
+	// 			Paused: true,
+	// 		},
+	// 	}
+
+	// 	Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
+	// 	Eventually(Get(&cluster)).Should(Succeed())
+
+	// 	claim := newClaim("test", namespace, "InClusterIPPool", poolName)
+	// 	claim.ObjectMeta.Labels = map[string]string{
+	// 		clusterv1.ClusterNameLabel: cluster.GetName(),
+	// 	}
+	// 	Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+
+	// 	addresses := ipamv1.IPAddressList{}
+	// 	Consistently(ObjectList(&addresses)).
+	// 		WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+	// 		HaveField("Items", HaveLen(0)))
+
+	// 	// update the cluster
+	// 	cluster.Spec.Paused = false
+	// 	Expect(k8sClient.Update(context.Background(), &cluster)).To(Succeed())
+
+	// 	Eventually(ObjectList(&addresses)).
+	// 		WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+	// 		HaveField("Items", HaveLen(1)))
+	// })
+
+	// It("allocates an ipaddress upon updating a cluster when removing the paused annotation", func() {
+	// 	cluster = clusterv1.Cluster{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name:      clusterName,
+	// 			Namespace: namespace,
+	// 			Annotations: map[string]string{
+	// 				clusterv1.PausedAnnotation: "",
+	// 			},
+	// 		},
+	// 	}
+
+	// 	Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
+	// 	Eventually(Get(&cluster)).Should(Succeed())
+
+	// 	claim := ipamv1.IPAddressClaim{
+	// 		ObjectMeta: metav1.ObjectMeta{
+	// 			Name:      "test",
+	// 			Namespace: namespace,
+	// 			Labels: map[string]string{
+	// 				clusterv1.ClusterNameLabel: clusterName,
+	// 			},
+	// 		},
+	// 		Spec: ipamv1.IPAddressClaimSpec{
+	// 			PoolRef: corev1.TypedLocalObjectReference{
+	// 				APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
+	// 				Kind:     "InClusterIPPool",
+	// 				Name:     poolName,
+	// 			},
+	// 		},
+	// 	}
+	// 	Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+	// 	Eventually(Get(&claim)).Should(Succeed())
+
+	// 	addresses := ipamv1.IPAddressList{}
+	// 	Consistently(ObjectList(&addresses)).
+	// 		WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+	// 		HaveField("Items", HaveLen(0)))
+
+	// 	// update the cluster
+	// 	delete(cluster.Annotations, clusterv1.PausedAnnotation)
+	// 	Expect(k8sClient.Update(context.Background(), &cluster)).To(Succeed())
+
+	// 	Eventually(ObjectList(&addresses)).
+	// 		WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+	// 		HaveField("Items", HaveLen(1)))
 	// })
 })
+
+// Context("When the cluster cannot be retrieved", func() {
+// 	AfterEach(func() {
+// 		deleteClaim("test", namespace)
+// 		deleteNamespacedPool(poolName, namespace)
+// 	})
+// 	It("does not allocate an ipaddress for the claim", func() {
+// 		claim := newClaim("test", namespace, "InClusterIPPool", poolName)
+// 		claim.ObjectMeta.Labels = map[string]string{
+// 			clusterv1.ClusterNameLabel: "an-unfindable-cluster",
+// 		}
+// 		Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+// 		Eventually(Get(&claim)).Should(Succeed())
+
+// 		addresses := ipamv1.IPAddressList{}
+// 		Consistently(ObjectList(&addresses)).
+// 			WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+// 			HaveField("Items", HaveLen(0)))
+// 	})
+// })
+// })
+
+// Context("When the ipaddressclaim is paused", func() {
+// 	const (
+// 		poolName = "test-pool"
+// 	)
+
+// 	BeforeEach(func() {
+// 		pool := v1alpha2.InClusterIPPool{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:      poolName,
+// 				Namespace: namespace,
+// 			},
+// 			Spec: v1alpha2.InClusterIPPoolSpec{
+// 				Addresses: []string{"10.0.0.1-10.0.0.254"},
+// 				Prefix:    24,
+// 				Gateway:   "10.0.0.2",
+// 			},
+// 		}
+// 		Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
+// 		Eventually(Get(&pool)).Should(Succeed())
+// 	})
+
+// 	AfterEach(func() {
+// 		deleteClaim("test", namespace)
+// 		deleteNamespacedPool(poolName, namespace)
+// 	})
+
+// 	It("does not allocate an ipaddress for the claim until the ip address claim is unpaused", func() {
+// 		claim := newClaim("test", namespace, "InClusterIPPool", poolName)
+// 		claim.ObjectMeta.Annotations = map[string]string{
+// 			clusterv1.PausedAnnotation: "",
+// 		}
+// 		Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+// 		Eventually(Get(&claim)).Should(Succeed())
+
+// 		addresses := ipamv1.IPAddressList{}
+// 		Consistently(ObjectList(&addresses)).
+// 			WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+// 			HaveField("Items", HaveLen(0)))
+
+// 		// Unpause the IPAddressClaim
+// 		patchHelper, err := patch.NewHelper(&claim, k8sClient)
+// 		Expect(err).NotTo(HaveOccurred())
+// 		delete(claim.Annotations, clusterv1.PausedAnnotation)
+// 		Expect(patchHelper.Patch(context.Background(), &claim)).To(Succeed())
+
+// 		expectedIPAddress := ipamv1.IPAddress{
+// 			ObjectMeta: metav1.ObjectMeta{
+// 				Name:       "test",
+// 				Namespace:  namespace,
+// 				Finalizers: []string{ipamutil.ProtectAddressFinalizer},
+// 				OwnerReferences: []metav1.OwnerReference{
+// 					{
+// 						APIVersion:         "ipam.cluster.x-k8s.io/v1alpha1",
+// 						BlockOwnerDeletion: pointer.Bool(true),
+// 						Controller:         pointer.Bool(true),
+// 						Kind:               "IPAddressClaim",
+// 						Name:               "test",
+// 					},
+// 					{
+// 						APIVersion:         "ipam.cluster.x-k8s.io/v1alpha2",
+// 						BlockOwnerDeletion: pointer.Bool(true),
+// 						Controller:         pointer.Bool(false),
+// 						Kind:               "InClusterIPPool",
+// 						Name:               poolName,
+// 					},
+// 				},
+// 			},
+// 			Spec: ipamv1.IPAddressSpec{
+// 				ClaimRef: corev1.LocalObjectReference{
+// 					Name: "test",
+// 				},
+// 				PoolRef: corev1.TypedLocalObjectReference{
+// 					APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
+// 					Kind:     "InClusterIPPool",
+// 					Name:     poolName,
+// 				},
+// 				Address: "10.0.0.1",
+// 				Prefix:  24,
+// 				Gateway: "10.0.0.2",
+// 			},
+// 		}
+
+// 		Eventually(findAddress("test", namespace)).
+// 			WithTimeout(time.Second).WithPolling(100 * time.Millisecond).Should(
+// 			EqualObject(&expectedIPAddress, IgnoreAutogeneratedMetadata, IgnoreUIDsOnIPAddress))
+// 	})
+// })
+// })
 
 func createNamespace() string {
 	namespaceObj := corev1.Namespace{
@@ -1714,7 +1739,7 @@ func deleteCluster(name, namespace string) {
 			Namespace: namespace,
 		},
 	}
-	ExpectWithOffset(1, k8sClient.Delete(context.Background(), &cluster)).To(Succeed())
+	k8sClient.Delete(context.Background(), &cluster)
 	EventuallyWithOffset(1, Get(&cluster)).Should(Not(Succeed()))
 }
 
