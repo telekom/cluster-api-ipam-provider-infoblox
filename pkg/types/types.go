@@ -17,9 +17,14 @@ limitations under the License.
 // Package types contains shared types that lack a better home.
 package types
 
+import (
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
 // GenericInClusterPool is a common interface for InClusterIPPool and GlobalInClusterIPPool.
-// type GenericInClusterPool interface {
-// 	client.Object
-// 	PoolSpec() *v1alpha2.InClusterIPPoolSpec
-// 	PoolStatus() *v1alpha2.InClusterIPPoolStatus
-// }
+type GenericInfobloxPool interface {
+	client.Object
+	PoolSpec() *v1alpha1.InfobloxIPPoolSpec
+	PoolStatus() *v1alpha1.InfobloxIPPoolSpec
+}

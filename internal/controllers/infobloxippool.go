@@ -35,6 +35,11 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 )
 
+const (
+	// ProtectPoolFinalizer is used to prevent deletion of a Pool object while its addresses have not been deleted.
+	ProtectPoolFinalizer = "ipam.cluster.x-k8s.io/ProtectPool"
+)
+
 // InfobloxIPPoolReconciler reconciles a InfobloxIPPool objec
 type InfobloxIPPoolReconciler struct {
 	client.Client
