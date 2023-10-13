@@ -5,16 +5,16 @@ go 1.20
 require (
 	github.com/golang/mock v1.4.4
 	github.com/infobloxopen/infoblox-go-client/v2 v2.2.0
-	github.com/onsi/ginkgo/v2 v2.11.0
-	github.com/onsi/gomega v1.27.8
+	github.com/onsi/ginkgo/v2 v2.13.0
+	github.com/onsi/gomega v1.28.0
 	github.com/pkg/errors v0.9.1
-	github.com/telekom/cluster-api-ipam-provider-in-cluster v0.0.0-00010101000000-000000000000
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
 	k8s.io/klog/v2 v2.90.1
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
 	sigs.k8s.io/cluster-api v1.4.1
+	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v0.0.0-00010101000000-000000000000
 	sigs.k8s.io/controller-runtime v0.14.5
 )
 
@@ -53,19 +53,18 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
-	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
-	golang.org/x/term v0.8.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/term v0.13.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.9.3 // indirect
+	golang.org/x/tools v0.12.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
@@ -80,6 +79,6 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.12.1-0.20220706151251-15154aaa6767
+replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.14.5
 
-replace github.com/telekom/cluster-api-ipam-provider-in-cluster => ../cluster-api-ipam-provider-in-cluster
+replace sigs.k8s.io/cluster-api-ipam-provider-in-cluster => ../cluster-api-ipam-provider-in-cluster

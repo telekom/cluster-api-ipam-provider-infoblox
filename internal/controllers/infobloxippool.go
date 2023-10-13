@@ -35,7 +35,12 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 )
 
-// InfobloxIPPoolReconciler reconciles a InfobloxIPPool object
+const (
+	// ProtectPoolFinalizer is used to prevent deletion of a Pool object while its addresses have not been deleted.
+	ProtectPoolFinalizer = "ipam.cluster.x-k8s.io/ProtectPool"
+)
+
+// InfobloxIPPoolReconciler reconciles a InfobloxIPPool objec
 type InfobloxIPPoolReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -87,7 +92,7 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	ibclient, err := getInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, pool.Namespace, r.newInfobloxClientFunc)
 	if err != nil {
 		conditions.MarkFalse(pool,
-			v1alpha1.ReadyCondition,
+			v1beta1.ReadyCondition,
 			v1alpha1.InfobloxClientCreationFailedReason,
 			v1beta1.ConditionSeverityError, "client creation failed for instance %s", pool.Spec.InstanceRef.Name)
 		return ctrl.Result{}, err
@@ -104,22 +109,22 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		return ctrl.Result{}, nil
 	}
 
-	for _, subnet := range pool.Spec.Subnets {
-		subnet, err := netip.ParsePrefix(subnet)
-		if err != nil {
-			// We won't set a condition here since this should be caught by validation
-			return ctrl.Result{}, fmt.Errorf("failed to parse subnet: %w", err)
-		}
-		if ok, err := ibclient.CheckNetworkExists(pool.Spec.NetworkView, subnet); err != nil || !ok {
-			logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
-			conditions.MarkFalse(pool,
-				v1beta1.ReadyCondition,
-				v1alpha1.InfobloxNetworkNotFoundReason,
-				v1beta1.ConditionSeverityError,
-				"could not find network: %s", err)
-			return ctrl.Result{}, nil
-		}
+	// for _, subnet := range pool.Spec.Subnets {
+	subnet, err := netip.ParsePrefix(pool.Spec.Subnet)
+	if err != nil {
+		// We won't set a condition here since this should be caught by validation
+		return ctrl.Result{}, fmt.Errorf("failed to parse subnet: %w", err)
 	}
+	if ok, err := ibclient.CheckNetworkExists(pool.Spec.NetworkView, subnet); err != nil || !ok {
+		logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
+		conditions.MarkFalse(pool,
+			v1beta1.ReadyCondition,
+			v1alpha1.InfobloxNetworkNotFoundReason,
+			v1beta1.ConditionSeverityError,
+			"could not find network: %s", err)
+		return ctrl.Result{}, nil
+	}
+	// }
 
 	return ctrl.Result{}, nil
 }

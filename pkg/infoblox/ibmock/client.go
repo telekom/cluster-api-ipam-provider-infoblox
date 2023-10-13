@@ -5,10 +5,12 @@
 package ibmock
 
 import (
+	"context"
 	netip "net/netip"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // MockClient is a mock of Client interface.
@@ -34,6 +36,21 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
+// CheckNetworkExists mocks base method.
+func (m *MockClient) CheckNetworkExists(arg0 string, arg1 netip.Prefix) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckNetworkExists", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckNetworkExists indicates an expected call of CheckNetworkExists.
+func (mr *MockClientMockRecorder) CheckNetworkExists(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckNetworkExists", reflect.TypeOf((*MockClient)(nil).CheckNetworkExists), arg0, arg1)
+}
+
 // CheckNetworkViewExists mocks base method.
 func (m *MockClient) CheckNetworkViewExists(arg0 string) (bool, error) {
 	m.ctrl.T.Helper()
@@ -50,18 +67,27 @@ func (mr *MockClientMockRecorder) CheckNetworkViewExists(arg0 interface{}) *gomo
 }
 
 // GetOrAllocateAddress mocks base method.
-func (m *MockClient) GetOrAllocateAddress(arg0 string, arg1 netip.Prefix, arg2 string) (netip.Addr, error) {
+func (m *MockClient) GetOrAllocateAddress(arg0 string, arg1 netip.Prefix, arg2, arg3 string) (netip.Addr, error) {
+	logger := log.FromContext(context.TODO())
+	logger.Info("MockClient - GetOrAllocateAddress 1")
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOrAllocateAddress", arg0, arg1, arg2)
+	logger.Info("MockClient - GetOrAllocateAddress 2")
+	ret := m.ctrl.Call(m, "GetOrAllocateAddress", arg0, arg1, arg2, arg3)
+	logger.Info("MockClient - GetOrAllocateAddress 3")
 	ret0, _ := ret[0].(netip.Addr)
+	logger.Info("MockClient - GetOrAllocateAddress 4")
 	ret1, _ := ret[1].(error)
+	logger.Info("MockClient - GetOrAllocateAddress 5")
 	return ret0, ret1
 }
 
 // GetOrAllocateAddress indicates an expected call of GetOrAllocateAddress.
-func (mr *MockClientMockRecorder) GetOrAllocateAddress(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) GetOrAllocateAddress(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	logger := log.FromContext(context.TODO())
+	logger.Info("MockClientMockRecorder - GetOrAllocateAddress 1")
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrAllocateAddress", reflect.TypeOf((*MockClient)(nil).GetOrAllocateAddress), arg0, arg1, arg2)
+	logger.Info("MockClientMockRecorder - GetOrAllocateAddress 2")
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrAllocateAddress", reflect.TypeOf((*MockClient)(nil).GetOrAllocateAddress), arg0, arg1, arg2, arg3)
 }
 
 // ReleaseAddress mocks base method.

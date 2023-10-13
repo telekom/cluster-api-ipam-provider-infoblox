@@ -1,3 +1,19 @@
+/*
+Copyright 2023 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package controllers
 
 import (
@@ -9,8 +25,11 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/pointer"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -21,10 +40,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	//+kubebuilder:scaffold:imports
-	v1alpha1 "github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
+	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -38,11 +59,14 @@ var (
 	cancelCtx func()
 
 	mockInfobloxClient        *ibmock.MockClient
+	localInfobloxClientMock   *ibmock.MockClient
 	mockNewInfobloxClientFunc func(infoblox.Config) (infoblox.Client, error)
+	mockCtrl                  *gomock.Controller
 )
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
+	mockCtrl = gomock.NewController(t)
 	RunSpecs(t, "Controller Suite")
 }
 
@@ -51,7 +75,7 @@ var _ = BeforeSuite(func() {
 
 	ctx, cancelCtx = context.WithCancel(ctrl.SetupSignalHandler())
 
-	mockInfobloxClient = ibmock.NewMockClient(gomock.NewController(GinkgoT()))
+	mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
 	mockNewInfobloxClientFunc = func(infoblox.Config) (infoblox.Client, error) {
 		return mockInfobloxClient, nil
 	}
@@ -73,13 +97,16 @@ var _ = BeforeSuite(func() {
 	Expect(cfg).NotTo(BeNil())
 
 	Expect(v1alpha1.AddToScheme(scheme.Scheme)).To(Succeed())
+	// Expect(v1alpha2.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(clusterv1.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(ipamv1.AddToScheme(scheme.Scheme)).To(Succeed())
 
 	//+kubebuilder:scaffold:scheme
 
+	syncDur := 100 * time.Millisecond
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme.Scheme,
+		Scheme:     scheme.Scheme,
+		SyncPeriod: &syncDur,
 	})
 	Expect(err).ToNot(HaveOccurred())
 
@@ -97,11 +124,28 @@ var _ = BeforeSuite(func() {
 	).To(Succeed())
 
 	Expect(
-		(&IPAddressClaimReconciler{
+		(&ipamutil.ClaimReconciler{
 			Client: mgr.GetClient(),
 			Scheme: mgr.GetScheme(),
+			Provider: &InfobloxProviderIntegration{
+				NewInfobloxClientFunc: mockNewInfobloxClientFunc,
+			},
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())
+
+	// Expect(
+	// 	(&InClusterIPPoolReconciler{
+	// 		Client: mgr.GetClient(),
+	// 		Scheme: mgr.GetScheme(),
+	// 	}).SetupWithManager(ctx, mgr),
+	// ).To(Succeed())
+
+	// Expect(
+	// 	(&GlobalInClusterIPPoolReconciler{
+	// 		Client: mgr.GetClient(),
+	// 		Scheme: mgr.GetScheme(),
+	// 	}).SetupWithManager(ctx, mgr),
+	// ).To(Succeed())
 
 	go func() {
 		defer GinkgoRecover()
@@ -117,3 +161,19 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+func newClaim(name, namespace, poolKind, poolName string) ipamv1.IPAddressClaim {
+	return ipamv1.IPAddressClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: ipamv1.IPAddressClaimSpec{
+			PoolRef: corev1.TypedLocalObjectReference{
+				APIGroup: pointer.String("ipam.cluster.x-k8s.io"),
+				Kind:     poolKind,
+				Name:     poolName,
+			},
+		},
+	}
+}

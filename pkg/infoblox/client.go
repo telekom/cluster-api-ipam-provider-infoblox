@@ -2,6 +2,7 @@ package infoblox
 
 import (
 	"errors"
+	"fmt"
 	"net/netip"
 	"strings"
 
@@ -57,10 +58,6 @@ type Config struct {
 
 // NewClient creates a new infoblox client.
 func NewClient(config Config) (Client, error) {
-	return newClient(config)
-}
-
-func newClient(config Config) (*client, error) {
 	hc := ibclient.HostConfig{
 		Version: config.Version,
 	}
@@ -129,12 +126,15 @@ func (c *client) CheckNetworkViewExists(view string) (bool, error) {
 
 func (c *client) CheckNetworkExists(view string, subnet netip.Prefix) (bool, error) {
 	_, err := c.objMgr.GetNetwork(view, subnet.String(), subnet.Addr().Is6(), ibclient.EA{})
+	fmt.Println("CheckNetworkExists - getnetwork")
 	if err != nil {
+		fmt.Printf("error: %s\n", err.Error())
 		if isNotFound(err) {
 			return false, nil
 		}
 		return false, err
 	}
+	fmt.Println("no error")
 	return true, nil
 }
 

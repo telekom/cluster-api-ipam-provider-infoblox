@@ -1,5 +1,5 @@
 /*
-Copyright 2023 Deutsche Telekom AG.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package main is the main package of the Cluster API In-Cluster IPAM Provider.
 package main
 
 import (
@@ -27,6 +28,8 @@ import (
 	"k8s.io/client-go/pkg/version"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/klog/v2"
+	inclusterv1a2 "sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -35,6 +38,8 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
+	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
 )
 
 var (
@@ -45,7 +50,10 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(ipamv1.AddToScheme(scheme))
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
 
+	utilruntime.Must(inclusterv1a2.AddToScheme(scheme))
+	utilruntime.Must(inclusterv1a2.AddToScheme(scheme))
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
@@ -72,7 +80,9 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
+	// klog.Background will automatically use the right logger.
 	ctrl.SetLogger(klog.Background())
+
 	ctx := ctrl.SetupSignalHandler()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -94,22 +104,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.IPAddressClaimReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+	if err = (&ipamutil.ClaimReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		WatchFilterValue: watchFilter,
+		Provider: &controllers.InfobloxProviderIntegration{
+			NewInfobloxClientFunc: infoblox.NewClient,
+		},
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IPAddressClaim")
 		os.Exit(1)
 	}
 
-	// if err := (&webhooks.InfobloxIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
-	// 	setupLog.Error(err, "unable to create webhook", "webhook", "InfobloxIPPool")
-	// 	os.Exit(1)
-	// }
 	if err = (&controllers.InfobloxInstanceReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InfobloxInstance")
 		os.Exit(1)
 	}
@@ -120,6 +130,16 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "InfobloxIPPool")
 		os.Exit(1)
 	}
+
+	// if err := (&webhooks.InfobloxIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
+	// 	setupLog.Error(err, "unable to create webhook", "webhook", "InfobloxIPPool")
+	// 	os.Exit(1)
+	// }
+
+	// if err := (&webhooks.InClusterIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
+	// 	setupLog.Error(err, "unable to create webhook", "webhook", "InClusterIPPool")
+	// 	os.Exit(1)
+	// }
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
