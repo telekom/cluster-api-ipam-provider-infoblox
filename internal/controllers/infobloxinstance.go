@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
-	"sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,7 +35,7 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 )
 
-// InfobloxInstanceReconciler reconciles a InfobloxInstance object
+// InfobloxInstanceReconciler reconciles a InfobloxInstance object.
 type InfobloxInstanceReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -55,7 +55,7 @@ func (r *InfobloxInstanceReconciler) SetupWithManager(_ context.Context, mgr ctr
 		Complete(r)
 }
 
-// Reconcile and InfobloxInstance
+// Reconcile and InfobloxInstance.
 func (r *InfobloxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
 	instance := &v1alpha1.InfobloxInstance{}
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
@@ -90,7 +90,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		conditions.MarkFalse(instance,
 			v1alpha1.ReadyCondition,
 			v1alpha1.InfobloxAuthenticationFailedReason,
-			v1beta1.ConditionSeverityError,
+			clusterv1.ConditionSeverityError,
 			"the referenced settings secret '%s' could not be found in namespace '%s'",
 			instance.Spec.CredentialsSecretRef.Name, r.operatorNamespace)
 		return ctrl.Result{}, nil
@@ -100,9 +100,9 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 	_ = authConfig
 	if err != nil {
 		conditions.MarkFalse(instance,
-			v1beta1.ReadyCondition,
+			clusterv1.ReadyCondition,
 			v1alpha1.InfobloxAuthenticationFailedReason,
-			v1beta1.ConditionSeverityError,
+			clusterv1.ConditionSeverityError,
 			"referenced credentials secret is invalid: %s", err)
 		return ctrl.Result{}, nil
 	}
@@ -116,9 +116,9 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 	ibcl, err := r.newInfobloxClientFunc(infoblox.Config{HostConfig: hc, AuthConfig: authConfig})
 	if err != nil {
 		conditions.MarkFalse(instance,
-			v1beta1.ReadyCondition,
+			clusterv1.ReadyCondition,
 			v1alpha1.InfobloxAuthenticationFailedReason,
-			v1beta1.ConditionSeverityError,
+			clusterv1.ConditionSeverityError,
 			"could not create infoblox client: %s", err)
 		return ctrl.Result{}, nil
 	}
@@ -127,15 +127,15 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 	if ok, err := ibcl.CheckNetworkViewExists(instance.Spec.DefaultNetworkView); err != nil || !ok {
 		logger.Error(err, "could not find default network view", "networkView")
 		conditions.MarkFalse(instance,
-			v1beta1.ReadyCondition,
+			clusterv1.ReadyCondition,
 			v1alpha1.InfobloxNetworkViewNotFoundReason,
-			v1beta1.ConditionSeverityError,
+			clusterv1.ConditionSeverityError,
 			"could not find default network view: %s", err)
 		return ctrl.Result{}, nil
 	}
 
 	conditions.MarkTrue(instance,
-		v1beta1.ReadyCondition)
+		clusterv1.ReadyCondition)
 
 	return ctrl.Result{}, nil
 }

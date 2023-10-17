@@ -1,3 +1,4 @@
+// Package infoblox is responsible for communication with Infoblox instance.
 package infoblox
 
 import (
@@ -45,12 +46,14 @@ type AuthConfig struct {
 	ClientKey  []byte
 }
 
+// HostConfig contains host configuration patameters.
 type HostConfig struct {
 	Host                  string
 	Version               string
 	InsecureSkipTLSVerify bool
 }
 
+// Config is a wrapper config structures.
 type Config struct {
 	HostConfig
 	AuthConfig
@@ -86,11 +89,9 @@ func NewClient(config Config) (Client, error) {
 		// does not happen with the current infoblox-go-client
 		return nil, err
 	}
+
 	objMgr := ibclient.NewObjectManager(con, "cluster-api-ipam-provider-infoblox", "")
-	// _, err = objMgr.GetGridInfo()
-	// if err != nil {
-	// 	return nil, err
-	// }
+
 	return &client{
 		connector: con,
 		objMgr:    objMgr,

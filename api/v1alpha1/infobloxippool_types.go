@@ -49,10 +49,12 @@ type InfobloxIPPoolList struct {
 	Items           []InfobloxIPPool `json:"items"`
 }
 
+// GetConditions returns pool conditions.
 func (i *InfobloxIPPool) GetConditions() clusterv1.Conditions {
 	return i.Status.Conditions
 }
 
+// SetConditions sets pool conditions.
 func (i *InfobloxIPPool) SetConditions(conditions clusterv1.Conditions) {
 	i.Status.Conditions = conditions
 }

@@ -37,7 +37,7 @@ func getInfobloxTestEnvVar(name, defaultValue string) string {
 }
 
 func strToBool(s string) bool {
-	return strings.ToLower(s) == "true"
+	return strings.EqualFold(s, "true")
 }
 
 func byteArrOrNil(s string) []byte {

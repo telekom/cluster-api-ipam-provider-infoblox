@@ -22,7 +22,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
-// InfobloxInstanceSpec defines the desired state of InfobloxInstance
+// InfobloxInstanceSpec defines the desired state of InfobloxInstance.
 type InfobloxInstanceSpec struct {
 	// Endpoint is the API endpoint of the Infoblox instance.
 	Host string `json:"host"`
@@ -45,7 +45,7 @@ type InfobloxInstanceSpec struct {
 	// maybe add a way to reference a custom CA?
 }
 
-// InfobloxInstanceStatus defines the observed state of InfobloxInstance
+// InfobloxInstanceStatus defines the observed state of InfobloxInstance.
 type InfobloxInstanceStatus struct {
 	Conditions clusterv1.Conditions `json:"conditions"`
 }
@@ -54,7 +54,7 @@ type InfobloxInstanceStatus struct {
 //+kubebuilder:resource:scope=Cluster
 //+kubebuilder:subresource:status
 
-// InfobloxInstance is the Schema for the infobloxinstances API
+// InfobloxInstance is the Schema for the infobloxinstances API.
 type InfobloxInstance struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -65,17 +65,19 @@ type InfobloxInstance struct {
 
 //+kubebuilder:object:root=true
 
-// InfobloxInstanceList contains a list of InfobloxInstance
+// InfobloxInstanceList contains a list of InfobloxInstance.
 type InfobloxInstanceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []InfobloxInstance `json:"items"`
 }
 
+// GetConditions gets cluster conditions.
 func (i *InfobloxInstance) GetConditions() clusterv1.Conditions {
 	return i.Status.Conditions
 }
 
+// SetConditions sets cluster conditions.
 func (i *InfobloxInstance) SetConditions(conditions clusterv1.Conditions) {
 	i.Status.Conditions = conditions
 }

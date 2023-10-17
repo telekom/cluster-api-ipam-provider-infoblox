@@ -24,7 +24,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
-	"sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -40,12 +40,12 @@ const (
 	ProtectPoolFinalizer = "ipam.cluster.x-k8s.io/ProtectPool"
 )
 
-// InfobloxIPPoolReconciler reconciles a InfobloxIPPool objec
+// InfobloxIPPoolReconciler reconciles a InfobloxIPPool object.
 type InfobloxIPPoolReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	operatorNamespace     string
+	// operatorNamespace     string
 	newInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
 }
 
@@ -61,7 +61,7 @@ func (r *InfobloxIPPoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// Reconcile an InfobloxIPPool
+// Reconcile an InfobloxIPPool.
 func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
 	_ = log.FromContext(ctx)
 
@@ -92,9 +92,9 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	ibclient, err := getInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, pool.Namespace, r.newInfobloxClientFunc)
 	if err != nil {
 		conditions.MarkFalse(pool,
-			v1beta1.ReadyCondition,
+			clusterv1.ReadyCondition,
 			v1alpha1.InfobloxClientCreationFailedReason,
-			v1beta1.ConditionSeverityError, "client creation failed for instance %s", pool.Spec.InstanceRef.Name)
+			clusterv1.ConditionSeverityError, "client creation failed for instance %s", pool.Spec.InstanceRef.Name)
 		return ctrl.Result{}, err
 	}
 
@@ -102,9 +102,9 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	if ok, err := ibclient.CheckNetworkViewExists(pool.Spec.NetworkView); err != nil || !ok {
 		logger.Error(err, "could not find network view", "networkView", pool.Spec.NetworkView)
 		conditions.MarkFalse(pool,
-			v1beta1.ReadyCondition,
+			clusterv1.ReadyCondition,
 			v1alpha1.InfobloxNetworkViewNotFoundReason,
-			v1beta1.ConditionSeverityError,
+			clusterv1.ConditionSeverityError,
 			"could not find network view: %s", err)
 		return ctrl.Result{}, nil
 	}
@@ -118,9 +118,9 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	if ok, err := ibclient.CheckNetworkExists(pool.Spec.NetworkView, subnet); err != nil || !ok {
 		logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
 		conditions.MarkFalse(pool,
-			v1beta1.ReadyCondition,
+			clusterv1.ReadyCondition,
 			v1alpha1.InfobloxNetworkNotFoundReason,
-			v1beta1.ConditionSeverityError,
+			clusterv1.ConditionSeverityError,
 			"could not find network: %s", err)
 		return ctrl.Result{}, nil
 	}

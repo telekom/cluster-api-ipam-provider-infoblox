@@ -29,6 +29,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/klog/v2"
 	inclusterv1a2 "sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
+	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -39,7 +40,6 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
 )
 
 var (

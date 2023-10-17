@@ -89,11 +89,6 @@ var _ = BeforeSuite(func() {
 })
 
 func allocateNetwork(cidr string, prefix uint, isIPv6 bool) (*ibclient.Network, netip.Prefix) {
-	// addr, err := netip.ParseAddr(strings.Split(cidr, "/")[0])
-	// Expect(err).ToNot(HaveOccurred())
-	// exists, err := testClient.CheckNetworkExists(testView, netip.PrefixFrom(addr, int(prefix)))
-	// Expect(err).ToNot(HaveOccurred())
-	// Expect(exists).To(BeFalse())
 	ibNetwork, err := testClient.objMgr.AllocateNetwork(testView, cidr, isIPv6, prefix, "", ibclient.EA{})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(ibNetwork).NotTo(BeNil())

@@ -27,7 +27,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -39,7 +40,6 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	ipampredicates "github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/predicates"
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
 )
 
 var (
@@ -61,6 +61,7 @@ type InfobloxProviderIntegration struct {
 
 var _ ipamutil.ProviderIntegration = &InfobloxProviderIntegration{}
 
+// InfobloxClaimHandler handles infoblox claims.
 type InfobloxClaimHandler struct {
 	client.Client
 	claim                 *ipamv1.IPAddressClaim
@@ -72,7 +73,7 @@ type InfobloxClaimHandler struct {
 var _ ipamutil.ClaimHandler = &InfobloxClaimHandler{}
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *InfobloxProviderIntegration) SetupWithManager(ctx context.Context, b *ctrl.Builder) error {
+func (r *InfobloxProviderIntegration) SetupWithManager(_ context.Context, b *ctrl.Builder) error {
 	b.
 		For(&ipamv1.IPAddressClaim{}, builder.WithPredicates(
 			ipampredicates.ClaimReferencesPoolKind(metav1.GroupKind{
@@ -93,6 +94,7 @@ func (r *InfobloxProviderIntegration) SetupWithManager(ctx context.Context, b *c
 	return nil
 }
 
+// ClaimHandlerFor returns handler for claim.
 func (r *InfobloxProviderIntegration) ClaimHandlerFor(cl client.Client, claim *ipamv1.IPAddressClaim) ipamutil.ClaimHandler {
 	return &InfobloxClaimHandler{
 		Client:                cl,
@@ -106,6 +108,7 @@ func (r *InfobloxProviderIntegration) ClaimHandlerFor(cl client.Client, claim *i
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=ipaddressclaims/status;ipaddresses/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=ipaddressclaims/status;ipaddresses/finalizers,verbs=update
 
+// FetchPool fetches pool from cluster.
 func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
 	h.pool = &v1alpha1.InfobloxIPPool{}
@@ -139,6 +142,7 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, err
 	return nil, nil
 }
 
+// EnsureAddress ensures address.
 func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv1.IPAddress) (*ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
@@ -156,9 +160,9 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 	if err != nil {
 		logger.Error(err, "EnsureAddress - GetOrAllocateAddress - error")
 		conditions.MarkFalse(h.claim,
-			v1beta1.ReadyCondition,
+			clusterv1.ReadyCondition,
 			v1alpha1.InfobloxAddressAllocationFailedReason,
-			v1beta1.ConditionSeverityError,
+			clusterv1.ConditionSeverityError,
 			"could not allocate address: %s", err)
 		return nil, fmt.Errorf("could not allocate address: %w", err)
 	}
@@ -175,6 +179,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 	return nil, nil
 }
 
+// ReleaseAddress releases address.
 func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
 	subnet, err := netip.ParsePrefix(h.pool.Spec.Subnet)
 	if err != nil {
@@ -189,6 +194,7 @@ func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
 	return &ctrl.Result{}, nil
 }
 
+// GetPool returns local pool.
 func (h *InfobloxClaimHandler) GetPool() client.Object {
 	logger := log.FromContext(context.TODO())
 	logger.Info("GetPool", "value", h.pool.Annotations)
