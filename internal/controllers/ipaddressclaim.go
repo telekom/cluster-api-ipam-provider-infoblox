@@ -54,12 +54,12 @@ const (
 	ProtectAddressFinalizer = "ipam.cluster.x-k8s.io/ProtectAddress"
 )
 
-// InfobloxProviderIntegration reconciles a InfobloxIPPool object.
-type InfobloxProviderIntegration struct {
+// InfobloxProviderAdapter reconciles a InfobloxIPPool object.
+type InfobloxProviderAdapter struct {
 	NewInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
 }
 
-var _ ipamutil.ProviderIntegration = &InfobloxProviderIntegration{}
+var _ ipamutil.ProviderAdapter = &InfobloxProviderAdapter{}
 
 // InfobloxClaimHandler handles infoblox claims.
 type InfobloxClaimHandler struct {
@@ -73,7 +73,7 @@ type InfobloxClaimHandler struct {
 var _ ipamutil.ClaimHandler = &InfobloxClaimHandler{}
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *InfobloxProviderIntegration) SetupWithManager(_ context.Context, b *ctrl.Builder) error {
+func (r *InfobloxProviderAdapter) SetupWithManager(_ context.Context, b *ctrl.Builder) error {
 	b.
 		For(&ipamv1.IPAddressClaim{}, builder.WithPredicates(
 			ipampredicates.ClaimReferencesPoolKind(metav1.GroupKind{
@@ -95,7 +95,7 @@ func (r *InfobloxProviderIntegration) SetupWithManager(_ context.Context, b *ctr
 }
 
 // ClaimHandlerFor returns handler for claim.
-func (r *InfobloxProviderIntegration) ClaimHandlerFor(cl client.Client, claim *ipamv1.IPAddressClaim) ipamutil.ClaimHandler {
+func (r *InfobloxProviderAdapter) ClaimHandlerFor(cl client.Client, claim *ipamv1.IPAddressClaim) ipamutil.ClaimHandler {
 	return &InfobloxClaimHandler{
 		Client:                cl,
 		claim:                 claim,
@@ -181,23 +181,31 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 
 // ReleaseAddress releases address.
 func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
+	logger := log.FromContext(context.Background())
+	logger.Info("will parse in ReleaseAddress")
 	subnet, err := netip.ParsePrefix(h.pool.Spec.Subnet)
 	if err != nil {
+		logger.Error(err, "failed to parse subnet")
 		// We won't set a condition here since this should be caught by validation
 		return nil, fmt.Errorf("failed to parse subnet: %w", err)
 	}
+	logger.Info("will call release address")
 	err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, "")
 	if err != nil {
+		logger.Error(err, "failed to release address")
 		return nil, fmt.Errorf("failed to release address: %w", err)
 	}
 
-	return &ctrl.Result{}, nil
+	logger.Info("released address")
+
+	return nil, nil
 }
 
 // GetPool returns local pool.
 func (h *InfobloxClaimHandler) GetPool() client.Object {
 	logger := log.FromContext(context.TODO())
 	logger.Info("GetPool", "value", h.pool.Annotations)
+	logger.Info("GetPool", "subnet", h.pool.Spec.Subnet)
 
 	return h.pool
 }

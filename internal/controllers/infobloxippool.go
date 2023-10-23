@@ -110,6 +110,7 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	}
 
 	// for _, subnet := range pool.Spec.Subnets {
+	logger.Info("will parse in recencile")
 	subnet, err := netip.ParsePrefix(pool.Spec.Subnet)
 	if err != nil {
 		// We won't set a condition here since this should be caught by validation

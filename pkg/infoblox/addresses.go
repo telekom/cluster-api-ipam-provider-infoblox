@@ -10,8 +10,6 @@ import (
 
 // Known limitations:
 // - Hostname must be a FQDN. We enable DNS for the host record, so Infoblox will return an error if the hostname is not a FQDN.
-// - When DNS is enabled for a host record, Infoblox returns an error: "IBDataConflictError: IB.Data.Conflict:The action is not allowed. A parent was not found".
-//   DNS was disabled in tests as a workaround.
 // - For some reason Infoblox does not assign network view to the host record. Workarounds were provided in the code with tag: [Issue].
 
 // getOrNewHostRecord returns the host record with the given hostname in the given view, or creates a new host record if no host record with the given hostname exists.

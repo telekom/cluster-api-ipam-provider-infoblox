@@ -8,9 +8,10 @@ import (
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/format"
 )
 
-const defaultView = "testView"
+const defaultView = "capi-ipam-dev"
 
 var (
 	testClient *client
@@ -30,15 +31,18 @@ var (
 
 	networkView *ibclient.NetworkView
 
-	domain string
+	domain            string
+	netviewWasCreated bool
 )
 
 func TestInfoblox(t *testing.T) {
+	format.MaxLength = 0
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Infoblox")
 }
 
 var _ = BeforeSuite(func() {
+	netviewWasCreated = false
 	testView = getInfobloxTestEnvVar("network_view", defaultView)
 	testNetworkIPv4 := netip.MustParsePrefix(getInfobloxTestEnvVar("v4network", "192.168.200.0/24"))
 	testNetworkIPv6 := netip.MustParsePrefix(getInfobloxTestEnvVar("v6network", "fdf0:9824:ab5c:6f73:0000:0000:0000:0000/120"))
@@ -61,6 +65,7 @@ var _ = BeforeSuite(func() {
 		networkView, err = testClient.objMgr.CreateNetworkView(testView, "", ibclient.EA{})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(networkView).NotTo(BeNil())
+		netviewWasCreated = true
 	} else {
 		networkView, err = testClient.objMgr.GetNetworkView(testView)
 		Expect(err).NotTo(HaveOccurred())
@@ -121,7 +126,7 @@ var _ = AfterSuite(func() {
 	_, err = testClient.objMgr.DeleteNetworkContainer(nc.Ref)
 	Expect(err).NotTo(HaveOccurred())
 
-	if testView != "default" {
+	if netviewWasCreated {
 		_, err = testClient.objMgr.DeleteNetworkView(networkView.Ref)
 		Expect(err).NotTo(HaveOccurred())
 	}

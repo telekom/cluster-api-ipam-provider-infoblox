@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const dnsEnabled = false
+const dnsEnabled = true
 
 var _ = Describe("IP Address Management", func() {
 	var hostname string

@@ -108,7 +108,7 @@ func main() {
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		WatchFilterValue: watchFilter,
-		Provider: &controllers.InfobloxProviderIntegration{
+		Provider: &controllers.InfobloxProviderAdapter{
 			NewInfobloxClientFunc: infoblox.NewClient,
 		},
 	}).SetupWithManager(ctx, mgr); err != nil {

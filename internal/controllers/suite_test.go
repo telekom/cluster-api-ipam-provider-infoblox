@@ -125,7 +125,7 @@ var _ = BeforeSuite(func() {
 		(&ipamutil.ClaimReconciler{
 			Client: mgr.GetClient(),
 			Scheme: mgr.GetScheme(),
-			Provider: &InfobloxProviderIntegration{
+			Provider: &InfobloxProviderAdapter{
 				NewInfobloxClientFunc: mockNewInfobloxClientFunc,
 			},
 		}).SetupWithManager(ctx, mgr),
