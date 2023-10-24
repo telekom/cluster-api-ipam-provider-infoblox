@@ -156,7 +156,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 	}
 
 	logger.Info("EnsureAddress - GetOrAllocateAddress")
-	ipaddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, "", h.pool.Spec.DNSZone)
+	ipaddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, "hostname", h.pool.Spec.DNSZone)
 	if err != nil {
 		logger.Error(err, "EnsureAddress - GetOrAllocateAddress - error")
 		conditions.MarkFalse(h.claim,
@@ -190,7 +190,8 @@ func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
 		return nil, fmt.Errorf("failed to parse subnet: %w", err)
 	}
 	logger.Info("will call release address")
-	err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, "")
+
+	err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, "hostname")
 	if err != nil {
 		logger.Error(err, "failed to release address")
 		return nil, fmt.Errorf("failed to release address: %w", err)

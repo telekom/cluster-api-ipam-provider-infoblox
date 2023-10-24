@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/netip"
 	"strings"
+	"time"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 )
@@ -83,7 +84,7 @@ func NewClient(config Config) (Client, error) {
 	}
 	rb := &ibclient.WapiRequestBuilder{}
 	rq := &ibclient.WapiHttpRequestor{}
-	tc := ibclient.NewTransportConfig(tlsVerify, 1, 5)
+	tc := ibclient.NewTransportConfig(tlsVerify, int(time.Second), 5)
 	con, err := ibclient.NewConnector(hc, ac, tc, rb, rq)
 	if err != nil {
 		// does not happen with the current infoblox-go-client

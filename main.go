@@ -124,8 +124,9 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.InfobloxIPPoolReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:                mgr.GetClient(),
+		Scheme:                mgr.GetScheme(),
+		NewInfobloxClientFunc: infoblox.NewClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InfobloxIPPool")
 		os.Exit(1)
