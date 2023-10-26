@@ -44,6 +44,7 @@ import (
 
 var (
 	getInfobloxClientForInstanceFunc = getInfobloxClientForInstance
+	newHostnameHandlerFunc           = newHostnameHandler
 )
 
 const (
@@ -155,8 +156,22 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		return nil, fmt.Errorf("failed to parse subnet: %w", err)
 	}
 
+	hostnameHandler, err := newHostnameHandlerFunc(h.claim, h.Client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create hostname handler: %w", err)
+	}
+
+	hostname, err := hostnameHandler.getHostname(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get hostname: %w", err)
+	}
+
+	if h.pool.Spec.DNSZone != "" {
+		hostname += "." + h.pool.Spec.DNSZone
+	}
+
 	logger.Info("EnsureAddress - GetOrAllocateAddress")
-	ipaddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, "hostname", h.pool.Spec.DNSZone)
+	ipaddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, hostname, h.pool.Spec.DNSZone)
 	if err != nil {
 		logger.Error(err, "EnsureAddress - GetOrAllocateAddress - error")
 		conditions.MarkFalse(h.claim,
@@ -191,7 +206,7 @@ func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
 	}
 	logger.Info("will call release address")
 
-	err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, "hostname")
+	err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, "hostname.capi-ipam.telekom.test")
 	if err != nil {
 		logger.Error(err, "failed to release address")
 		return nil, fmt.Errorf("failed to release address: %w", err)

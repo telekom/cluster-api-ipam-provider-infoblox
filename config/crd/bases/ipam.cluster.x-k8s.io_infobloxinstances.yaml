@@ -16,10 +16,23 @@ spec:
     singular: infobloxinstance
   scope: Cluster
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: Infoblox host's address
+      jsonPath: .spec.host
+      name: Host
+      type: string
+    - description: Port of the Infoblox host
+      jsonPath: .spec.port
+      name: Port
+      type: string
+    - description: version of web API
+      jsonPath: .spec.wapiVersion
+      name: WAPI ver.
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: InfobloxInstance is the Schema for the infobloxinstances API
+        description: InfobloxInstance is the Schema for the infobloxinstances API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -34,7 +47,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: InfobloxInstanceSpec defines the desired state of InfobloxInstance
+            description: InfobloxInstanceSpec defines the desired state of InfobloxInstance.
             properties:
               credentialsSecretRef:
                 description: CredentialsSecretRef is a reference to a secret containing
@@ -71,7 +84,7 @@ spec:
             - wapiVersion
             type: object
           status:
-            description: InfobloxInstanceStatus defines the observed state of InfobloxInstance
+            description: InfobloxInstanceStatus defines the observed state of InfobloxInstance.
             properties:
               conditions:
                 description: Conditions provide observations of the operational state

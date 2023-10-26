@@ -18,16 +18,12 @@ spec:
   versions:
   - additionalPrinterColumns:
     - description: Subnet to allocate IPs from
-      jsonPath: .spec.subnet
+      jsonPath: .spec.subnets
       name: Subnet
       type: string
     - description: First address of the range to allocate from
       jsonPath: .spec.networkView
-      name: First
-      type: string
-    - description: Last address of the range to allocate from
-      jsonPath: .spec.last
-      name: Last
+      name: Network View
       type: string
     name: v1alpha1
     schema:
