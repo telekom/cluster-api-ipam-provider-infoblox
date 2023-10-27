@@ -10,10 +10,10 @@ import (
 type InfobloxIPPoolSpec struct {
 	// Instance is the Infoblox instance to use.
 	InstanceRef corev1.LocalObjectReference `json:"instance"`
-	// Subnet is the subnet to assign IP addresses from.
+	// Subnets is the subnet to assign IP addresses from.
 	// Can be omitted if addresses or first, last and prefix are set.
 	// TODO: turn this into an array to support multiple subnets per pool
-	Subnet string `json:"subnets"`
+	Subnets []Subnet `json:"subnets"`
 	// NetworkView
 	NetworkView string `json:"networkView,omitempty"`
 	// DNSZone is the DNS zone within which hostnames will be allocated.
@@ -23,6 +23,12 @@ type InfobloxIPPoolSpec struct {
 // InfobloxIPPoolStatus defines the observed state of InfobloxIPPool.
 type InfobloxIPPoolStatus struct {
 	Conditions clusterv1.Conditions `json:"conditions"`
+}
+
+// Subnet defines the CIDR and Gateway
+type Subnet struct {
+	CIDR    string `json:"cidr"`
+	Gateway string `json:"gateway"`
 }
 
 // +kubebuilder:object:root=true
