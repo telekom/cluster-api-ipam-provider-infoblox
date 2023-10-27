@@ -9,5 +9,5 @@ spec:
   subnets:
     - cidr: "10.0.0.0/24"
       gateway: "10.0.0.1"
-  networkView: "capi-ipam-dev"
+  networkView: "some-view"
   dnsZone: ""
