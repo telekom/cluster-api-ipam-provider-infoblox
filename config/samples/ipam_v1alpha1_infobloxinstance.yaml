@@ -8,5 +8,13 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: cluster-api-ipam-provider-infoblox
   name: infobloxinstance-sample
+  namespace: caip-infoblox-system
 spec:
   # TODO(user): Add fields here
+  credentialsSecretRef:
+    name: some-credentials
+  defaultNetworkView: "some-namespace"
+  host: "some.host.com"
+  insecureSkipTLSVerify: true
+  port: "443"
+  wapiVersion: "2.12"

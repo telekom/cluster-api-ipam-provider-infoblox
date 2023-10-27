@@ -1,0 +1,13 @@
+apiVersion: ipam.cluster.x-k8s.io/v1alpha1
+kind: InfobloxIPPool
+metadata:
+  name: infobloxippool-sample
+  namespace: caip-infoblox-system
+spec:
+  instance:
+    name: "infobloxinstance-sample"
+  subnets:
+    - cidr: "10.0.0.0/24"
+      gateway: "10.0.0.1"
+  networkView: "capi-ipam-dev"
+  dnsZone: ""
