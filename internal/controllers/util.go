@@ -51,8 +51,9 @@ const (
 	machineKind        = "Machine"
 )
 
-type hostnameHandler interface {
-	getHostname(context.Context) (string, error)
+//go:generate mockgen -destination=utilmock/util.go -package=utilmock . HostnameHandler
+type HostnameHandler interface {
+	GetHostname(context.Context) (string, error)
 }
 
 type metal3HostnameHandler struct {
@@ -65,7 +66,7 @@ type vsphereHostnameHandler struct {
 	claim *ipamv1.IPAddressClaim
 }
 
-func (h *vsphereHostnameHandler) getHostname(ctx context.Context) (string, error) {
+func (h *vsphereHostnameHandler) GetHostname(ctx context.Context) (string, error) {
 	vSphereMachine := v1beta1.VSphereMachine{}
 	if err := getOwnerByKind(ctx, h.claim.ObjectMeta, vsphereMachineKind, &vSphereMachine, h.Client); err != nil {
 		return "", err
@@ -79,7 +80,7 @@ func (h *vsphereHostnameHandler) getHostname(ctx context.Context) (string, error
 	return "", errors.New("hostname not found")
 }
 
-func newHostnameHandler(claim *ipamv1.IPAddressClaim, c client.Client) (hostnameHandler, error) {
+func newHostnameHandler(claim *ipamv1.IPAddressClaim, c client.Client) (HostnameHandler, error) {
 	for _, ref := range claim.ObjectMeta.OwnerReferences {
 		switch ref.Kind {
 		case metal3DataKind:
@@ -110,7 +111,7 @@ func getOwnerByKind(ctx context.Context, meta metav1.ObjectMeta, kind string, ow
 	return nil
 }
 
-func (h *metal3HostnameHandler) getHostname(ctx context.Context) (string, error) {
+func (h *metal3HostnameHandler) GetHostname(ctx context.Context) (string, error) {
 	m3Data := metal3v1.Metal3Data{}
 	if err := getOwnerByKind(ctx, h.claim.ObjectMeta, metal3DataKind, &m3Data, h.Client); err != nil {
 		return "", err

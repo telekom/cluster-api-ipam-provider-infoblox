@@ -97,10 +97,20 @@ rules:
   - update
   - watch
 - apiGroups:
-  - "" # "" indicates the core API group
+  - ""
   resources: 
   - secrets
   verbs: 
   - get
-  - watch
   - list
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources: 
+  - metal3datas
+  - metal3machines
+  - vspheremachines
+  verbs: 
+  - get
+  - list
+  - watch

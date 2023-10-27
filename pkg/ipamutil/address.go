@@ -38,6 +38,7 @@ func NewIPAddress(claim *ipamv1.IPAddressClaim, pool client.Object) ipamv1.IPAdd
 				Kind:     poolGVK.Kind,
 				Name:     pool.GetName(),
 			},
+			Gateway: "",
 		},
 	}
 }

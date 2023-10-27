@@ -18,12 +18,16 @@ spec:
   versions:
   - additionalPrinterColumns:
     - description: Subnet to allocate IPs from
-      jsonPath: .spec.subnets
+      jsonPath: .spec.subnet
       name: Subnet
       type: string
     - description: First address of the range to allocate from
       jsonPath: .spec.networkView
-      name: Network View
+      name: First
+      type: string
+    - description: Last address of the range to allocate from
+      jsonPath: .spec.last
+      name: Last
       type: string
     name: v1alpha1
     schema:
@@ -61,10 +65,21 @@ spec:
                 description: NetworkView
                 type: string
               subnets:
-                description: 'Subnet is the subnet to assign IP addresses from. Can
+                description: 'Subnets is the subnet to assign IP addresses from. Can
                   be omitted if addresses or first, last and prefix are set. TODO:
                   turn this into an array to support multiple subnets per pool'
-                type: string
+                items:
+                  description: Subnet defines the CIDR and Gateway
+                  properties:
+                    cidr:
+                      type: string
+                    gateway:
+                      type: string
+                  required:
+                  - cidr
+                  - gateway
+                  type: object
+                type: array
             required:
             - instance
             - subnets

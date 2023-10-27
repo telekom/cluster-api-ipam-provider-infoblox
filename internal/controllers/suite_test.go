@@ -41,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers/utilmock"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
@@ -56,10 +57,12 @@ var (
 	ctx       context.Context
 	cancelCtx func()
 
-	mockInfobloxClient        *ibmock.MockClient
-	localInfobloxClientMock   *ibmock.MockClient
-	mockNewInfobloxClientFunc func(infoblox.Config) (infoblox.Client, error)
-	mockCtrl                  *gomock.Controller
+	mockInfobloxClient         *ibmock.MockClient
+	localInfobloxClientMock    *ibmock.MockClient
+	mockHostnameHandler        *utilmock.MockHostnameHandler
+	mockNewInfobloxClientFunc  func(infoblox.Config) (infoblox.Client, error)
+	mockNewHostnameHandlerFunc func(claim *ipamv1.IPAddressClaim, c client.Client) (HostnameHandler, error)
+	mockCtrl                   *gomock.Controller
 )
 
 func TestAPIs(t *testing.T) {
@@ -77,6 +80,14 @@ var _ = BeforeSuite(func() {
 	mockNewInfobloxClientFunc = func(infoblox.Config) (infoblox.Client, error) {
 		return mockInfobloxClient, nil
 	}
+
+	mockHostnameHandler = utilmock.NewMockHostnameHandler(mockCtrl)
+	mockNewHostnameHandlerFunc = func(claim *ipamv1.IPAddressClaim, c client.Client) (HostnameHandler, error) {
+		return mockHostnameHandler, nil
+	}
+
+	mockHostnameHandler.EXPECT().GetHostname(gomock.Any()).Return("hostname", nil).AnyTimes()
+	newHostnameHandlerFunc = mockNewHostnameHandlerFunc
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -158,6 +169,7 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
+	newHostnameHandlerFunc = newHostnameHandler
 })
 
 func newClaim(name, namespace, poolKind, poolName string) ipamv1.IPAddressClaim {

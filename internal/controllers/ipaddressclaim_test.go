@@ -74,7 +74,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					},
 					Spec: v1alpha1.InfobloxIPPoolSpec{
 						InstanceRef: corev1.LocalObjectReference{},
-						Subnet:      "10.0.0.0/24",
+						Subnets: []v1alpha1.Subnet{
+							{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+						},
 						NetworkView: "default",
 						DNSZone:     "",
 					},
@@ -116,7 +118,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					},
 					Spec: v1alpha1.InfobloxIPPoolSpec{
 						InstanceRef: corev1.LocalObjectReference{Name: instanceName},
-						Subnet:      "10.0.0.0/24",
+						Subnets: []v1alpha1.Subnet{
+							{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+						},
 						NetworkView: "default",
 						DNSZone:     "",
 					},
@@ -131,7 +135,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			})
 
 			It("should allocate an Address from the Pool", func() {
-				addr, err := netip.ParseAddr("10.0.0.1")
+				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
 				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -168,9 +172,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 							Kind:     "InfobloxIPPool",
 							Name:     poolName,
 						},
-						Address: "10.0.0.1",
+						Address: "10.0.0.2",
 						Prefix:  24,
-						Gateway: "",
+						Gateway: "10.0.0.1",
 					},
 				}
 
@@ -196,7 +200,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					},
 					Spec: v1alpha1.InfobloxIPPoolSpec{
 						InstanceRef: corev1.LocalObjectReference{Name: instanceName},
-						Subnet:      "10.0.0.0/24",
+						Subnets: []v1alpha1.Subnet{
+							{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+						},
 						NetworkView: "default",
 						DNSZone:     "",
 					},
@@ -902,7 +908,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						},
 						Spec: v1alpha1.InfobloxIPPoolSpec{
 							InstanceRef: corev1.LocalObjectReference{Name: instanceName},
-							Subnet:      "10.0.0.0/24",
+							Subnets: []v1alpha1.Subnet{
+								{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+							},
 							NetworkView: "default",
 							DNSZone:     "",
 						},
@@ -918,7 +926,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				})
 
 				It("should not create an IPAddress for claims until the pool is unpaused", func() {
-					addr, err := netip.ParseAddr("10.0.0.1")
+					addr, err := netip.ParseAddr("10.0.0.2")
 					Expect(err).NotTo(HaveOccurred())
 					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 					localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -963,7 +971,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						},
 						Spec: v1alpha1.InfobloxIPPoolSpec{
 							InstanceRef: corev1.LocalObjectReference{Name: instanceName},
-							Subnet:      "10.0.0.0/24",
+							Subnets: []v1alpha1.Subnet{
+								{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+							},
 							NetworkView: "default",
 							DNSZone:     "",
 						},
@@ -978,7 +988,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				})
 
 				It("should prevent deletion of claims", func() {
-					addr, err := netip.ParseAddr("10.0.0.1")
+					addr, err := netip.ParseAddr("10.0.0.2")
 					Expect(err).NotTo(HaveOccurred())
 					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 					localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -1033,7 +1043,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				},
 				Spec: v1alpha1.InfobloxIPPoolSpec{
 					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
-					Subnet:      "10.0.0.0/24",
+					Subnets: []v1alpha1.Subnet{
+						{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+					},
 					NetworkView: "default",
 					DNSZone:     "",
 				},
@@ -1049,7 +1061,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		})
 
 		It("should add the owner references and finalizer", func() {
-			addr, err := netip.ParseAddr("10.0.0.1")
+			addr, err := netip.ParseAddr("10.0.0.2")
 			Expect(err).NotTo(HaveOccurred())
 			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -1063,9 +1075,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					Kind:     "InfobloxIPPool",
 					Name:     poolName,
 				},
-				Address: "10.0.0.1",
+				Address: "10.0.0.2",
 				Prefix:  24,
-				Gateway: "10.0.0.2",
+				Gateway: "10.0.0.1",
 			}
 
 			address := ipamv1.IPAddress{
@@ -1125,7 +1137,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				},
 				Spec: v1alpha1.InfobloxIPPoolSpec{
 					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
-					Subnet:      "10.0.0.0/24",
+					Subnets: []v1alpha1.Subnet{
+						{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+					},
 					NetworkView: "default",
 					DNSZone:     "",
 				},
@@ -1141,7 +1155,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		})
 
 		It("should add the owner references and finalizer", func() {
-			addr, err := netip.ParseAddr("10.0.0.1")
+			addr, err := netip.ParseAddr("10.0.0.2")
 			Expect(err).NotTo(HaveOccurred())
 			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -1155,9 +1169,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					Kind:     "InfobloxIPPool",
 					Name:     poolName,
 				},
-				Address: "10.0.0.1",
+				Address: "10.0.0.2",
 				Prefix:  24,
-				Gateway: "",
+				Gateway: "10.0.0.1",
 			}
 			address := ipamv1.IPAddress{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1356,7 +1370,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				},
 				Spec: v1alpha1.InfobloxIPPoolSpec{
 					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
-					Subnet:      "10.0.0.0/24",
+					Subnets: []v1alpha1.Subnet{
+						{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+					},
 					NetworkView: "default",
 					DNSZone:     "",
 				},
@@ -1537,7 +1553,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			})
 
 			It("allocates an ipaddress upon updating a cluster when removing spec.paused", func() {
-				addr, err := netip.ParseAddr("10.0.0.1")
+				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
 				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -1576,7 +1592,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			})
 
 			It("allocates an ipaddress upon updating a cluster when removing the paused annotation", func() {
-				addr, err := netip.ParseAddr("10.0.0.1")
+				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
 				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -1665,7 +1681,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				},
 				Spec: v1alpha1.InfobloxIPPoolSpec{
 					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
-					Subnet:      "10.0.0.0/24",
+					Subnets: []v1alpha1.Subnet{
+						{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+					},
 					NetworkView: "default",
 					DNSZone:     "",
 				},
@@ -1681,7 +1699,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		})
 
 		It("does not allocate an ipaddress for the claim until the ip address claim is unpaused", func() {
-			addr, err := netip.ParseAddr("10.0.0.1")
+			addr, err := netip.ParseAddr("10.0.0.2")
 			Expect(err).NotTo(HaveOccurred())
 			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -1735,9 +1753,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						Kind:     "InfobloxIPPool",
 						Name:     poolName,
 					},
-					Address: "10.0.0.1",
+					Address: "10.0.0.2",
 					Prefix:  24,
-					Gateway: "",
+					Gateway: "10.0.0.1",
 				},
 			}
 

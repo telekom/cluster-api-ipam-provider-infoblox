@@ -109,23 +109,23 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		return ctrl.Result{}, nil
 	}
 
-	// for _, subnet := range pool.Spec.Subnets {
-	logger.Info("will parse in recencile")
-	subnet, err := netip.ParsePrefix(pool.Spec.Subnet)
-	if err != nil {
-		// We won't set a condition here since this should be caught by validation
-		return ctrl.Result{}, fmt.Errorf("failed to parse subnet: %w", err)
+	for _, sub := range pool.Spec.Subnets {
+		logger.Info("will parse in recencile")
+		subnet, err := netip.ParsePrefix(sub.CIDR)
+		if err != nil {
+			// We won't set a condition here since this should be caught by validation
+			return ctrl.Result{}, fmt.Errorf("failed to parse subnet: %w", err)
+		}
+		if ok, err := ibclient.CheckNetworkExists(pool.Spec.NetworkView, subnet); err != nil || !ok {
+			logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
+			conditions.MarkFalse(pool,
+				clusterv1.ReadyCondition,
+				v1alpha1.InfobloxNetworkNotFoundReason,
+				clusterv1.ConditionSeverityError,
+				"could not find network: %s", err)
+			return ctrl.Result{}, nil
+		}
 	}
-	if ok, err := ibclient.CheckNetworkExists(pool.Spec.NetworkView, subnet); err != nil || !ok {
-		logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
-		conditions.MarkFalse(pool,
-			clusterv1.ReadyCondition,
-			v1alpha1.InfobloxNetworkNotFoundReason,
-			clusterv1.ConditionSeverityError,
-			"could not find network: %s", err)
-		return ctrl.Result{}, nil
-	}
-	// }
 
 	return ctrl.Result{}, nil
 }

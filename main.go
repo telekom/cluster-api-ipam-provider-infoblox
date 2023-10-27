@@ -22,6 +22,7 @@ import (
 	"os"
 
 	//+kubebuilder:scaffold:imports
+	metal3v1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -35,6 +36,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	vspherev1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
@@ -55,6 +58,9 @@ func init() {
 	utilruntime.Must(inclusterv1a2.AddToScheme(scheme))
 	utilruntime.Must(inclusterv1a2.AddToScheme(scheme))
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
+	utilruntime.Must(metal3v1.AddToScheme(scheme))
+	utilruntime.Must(vspherev1.AddToScheme(scheme))
+
 	//+kubebuilder:scaffold:scheme
 }
 
