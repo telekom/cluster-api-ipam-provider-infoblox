@@ -111,32 +111,25 @@ func (r *InfobloxProviderAdapter) ClaimHandlerFor(cl client.Client, claim *ipamv
 
 // FetchPool fetches pool from cluster.
 func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
-	h.pool = &v1alpha1.InfobloxIPPool{}
-	log.Info("InfobloxClaimHandler FetchPool 1")
-	if err := h.Client.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, h.pool); err != nil && !apierrors.IsNotFound(err) {
-		log.Info("InfobloxClaimHandler FetchPool  - failed to fetch")
-		return nil, errors.Wrap(err, "failed to fetch pool")
-	}
-	log.Info("InfobloxClaimHandler FetchPool 2")
-	if h.pool == nil {
-		log.Info("pool not found")
-		err := errors.New("pool not found")
-		log.Error(err, "the referenced pool could not be found")
-		return nil, nil
-	}
-
-	log.Info("InfobloxClaimHandler FetchPool 3")
-
-	// TODO: ensure pool is ready
+	logger := log.FromContext(ctx)
 
 	var err error
 
-	log.Info("Instance info", "name", h.pool.Spec.InstanceRef.Name, "namespace", h.pool.Namespace)
-	log.Info("pool annotations", "annotations", h.pool.Annotations)
+	h.pool = &v1alpha1.InfobloxIPPool{}
+	if err = h.Client.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, h.pool); err != nil && !apierrors.IsNotFound(err) {
+		return nil, errors.Wrap(err, "failed to fetch pool")
+	}
+
+	if h.pool == nil {
+		err := errors.New("pool not found")
+		logger.Error(err, "the referenced pool could not be found")
+		return nil, nil
+	}
+
+	// TODO: ensure pool is ready
+
 	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.pool.Namespace, h.newInfobloxClientFunc)
 	if err != nil {
-		log.Error(err, "failed to get infoblox client")
 		return nil, fmt.Errorf("failed to get infoblox client: %w", err)
 	}
 
@@ -149,52 +142,35 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 
 	var err error
 
-	hostnameHandler, err := newHostnameHandlerFunc(h.claim, h.Client)
+	hostname, err := h.getHostname(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create hostname handler: %w", err)
-	}
-
-	hostname, err := hostnameHandler.GetHostname(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get hostname: %w", err)
-	}
-
-	if h.pool.Spec.DNSZone != "" {
-		hostname += "." + h.pool.Spec.DNSZone
+		return nil, err
 	}
 
 	var subnet netip.Prefix
 	for _, sub := range h.pool.Spec.Subnets {
-		logger.Info("EnsureAddress - ParsePrefix")
 		subnet, err = netip.ParsePrefix(sub.CIDR)
-
 		if err != nil {
 			// We won't set a condition here since this should be caught by validation
 			logger.Error(err, "failed to parse subnet", "subnet", subnet)
-			// return nil, fmt.Errorf("failed to parse subnet: %w", err)
 			continue
 		}
 
-		logger.Info("EnsureAddress - GetOrAllocateAddress")
 		ipaddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, hostname, h.pool.Spec.DNSZone)
 		if err != nil {
-			logger.Error(err, "EnsureAddress - GetOrAllocateAddress - error")
 			conditions.MarkFalse(h.claim,
 				clusterv1.ReadyCondition,
 				v1alpha1.InfobloxAddressAllocationFailedReason,
 				clusterv1.ConditionSeverityError,
 				"could not allocate address: %s", err)
 			logger.Error(err, "could not allocate address")
-			// return nil, fmt.Errorf("could not allocate address: %w", err)
 			continue
 		}
 
-		logger.Info("EnsureAddress - set spec")
 		address.Spec.Address = ipaddr.String()
 
 		if address.Spec.Prefix, err = strconv.Atoi(strings.Split(subnet.String(), "/")[1]); err != nil {
 			logger.Error(err, "could not parse address", "subnet", subnet.String())
-			// return nil, fmt.Errorf("could not parse address: %w", err)
 			continue
 		}
 
@@ -205,75 +181,33 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		return nil, fmt.Errorf("unable to ensure address: %w", err)
 	}
 
-	/*logger.Info("EnsureAddress - ParsePrefix")
-	subnet, err := netip.ParsePrefix(h.pool.Spec.Subnets)
-
-	if err != nil {
-		// We won't set a condition here since this should be caught by validation
-		logger.Info("EnsureAddress - failed to parse subnet")
-		return nil, fmt.Errorf("failed to parse subnet: %w", err)
-	}
-
-	logger.Info("EnsureAddress - GetOrAllocateAddress")
-	ipaddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, hostname, h.pool.Spec.DNSZone)
-	if err != nil {
-		logger.Error(err, "EnsureAddress - GetOrAllocateAddress - error")
-		conditions.MarkFalse(h.claim,
-			clusterv1.ReadyCondition,
-			v1alpha1.InfobloxAddressAllocationFailedReason,
-			clusterv1.ConditionSeverityError,
-			"could not allocate address: %s", err)
-		return nil, fmt.Errorf("could not allocate address: %w", err)
-	}
-
-	logger.Info("EnsureAddress - set spec")
-	address.Spec.Address = ipaddr.String()
-
-	if address.Spec.Prefix, err = strconv.Atoi(strings.Split(h.pool.Spec.Subnets, "/")[1]); err != nil {
-		logger.Error(err, "EnsureAddress - error - could not aprse address")
-		return nil, fmt.Errorf("could not parse address: %w", err)
-	}*/
-
-	logger.Info("EnsureAddress - end")
 	return nil, nil
 }
 
 // ReleaseAddress releases address.
 func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
-	logger := log.FromContext(context.Background())
+	ctx := context.Background()
+	logger := log.FromContext(ctx)
 
 	var err error
 
-	hostnameHandler, err := newHostnameHandlerFunc(h.claim, h.Client)
+	hostname, err := h.getHostname(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create hostname handler: %w", err)
-	}
-
-	hostname, err := hostnameHandler.GetHostname(context.TODO())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get hostname: %w", err)
-	}
-
-	if h.pool.Spec.DNSZone != "" {
-		hostname += "." + h.pool.Spec.DNSZone
+		return nil, err
 	}
 
 	var subnet netip.Prefix
 	for _, sub := range h.pool.Spec.Subnets {
-		logger.Info("will parse in ReleaseAddress")
 		subnet, err = netip.ParsePrefix(sub.CIDR)
 		if err != nil {
 			logger.Error(err, "failed to parse subnet", "subnet", sub)
 			// We won't set a condition here since this should be caught by validation
-			// return nil, fmt.Errorf("failed to parse subnet: %w", err)
 			continue
 		}
-		logger.Info("will call release address")
 
 		err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, hostname)
 		if err != nil {
-			logger.Error(err, "failed to release address")
-			// return nil, fmt.Errorf("failed to release address: %w", err)
+			logger.Info("failed to release address for host", "hostname", hostname, "details", err.Error())
 			continue
 		}
 	}
@@ -282,16 +216,28 @@ func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
 		return nil, fmt.Errorf("unable to release address: %w", err)
 	}
 
-	logger.Info("released address")
-
 	return nil, nil
 }
 
 // GetPool returns local pool.
 func (h *InfobloxClaimHandler) GetPool() client.Object {
-	logger := log.FromContext(context.TODO())
-	logger.Info("GetPool", "value", h.pool.Annotations)
-	logger.Info("GetPool", "subnet", h.pool.Spec.Subnets)
-
 	return h.pool
+}
+
+func (h *InfobloxClaimHandler) getHostname(ctx context.Context) (string, error) {
+	hostnameHandler, err := newHostnameHandlerFunc(h.claim, h.Client)
+	if err != nil {
+		return "", fmt.Errorf("failed to create hostname handler: %w", err)
+	}
+
+	hostname, err := hostnameHandler.GetHostname(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get hostname: %w", err)
+	}
+
+	if h.pool.Spec.DNSZone != "" {
+		hostname += "." + h.pool.Spec.DNSZone
+	}
+
+	return hostname, nil
 }

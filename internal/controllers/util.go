@@ -80,6 +80,26 @@ func (h *vsphereHostnameHandler) GetHostname(ctx context.Context) (string, error
 	return "", errors.New("hostname not found")
 }
 
+func (h *metal3HostnameHandler) GetHostname(ctx context.Context) (string, error) {
+	m3Data := metal3v1.Metal3Data{}
+	if err := getOwnerByKind(ctx, h.claim.ObjectMeta, metal3DataKind, &m3Data, h.Client); err != nil {
+		return "", err
+	}
+
+	m3Machine := metal3v1.Metal3Machine{}
+	if err := getOwnerByKind(ctx, m3Data.ObjectMeta, metal3MachineKind, &m3Machine, h.Client); err != nil {
+		return "", err
+	}
+
+	for _, o := range m3Machine.OwnerReferences {
+		if o.Kind == machineKind {
+			return o.Name, nil
+		}
+	}
+
+	return "", fmt.Errorf("hostname not found for claim %s in namespace %s", h.claim.Name, h.claim.Namespace)
+}
+
 func newHostnameHandler(claim *ipamv1.IPAddressClaim, c client.Client) (HostnameHandler, error) {
 	for _, ref := range claim.ObjectMeta.OwnerReferences {
 		switch ref.Kind {
@@ -109,24 +129,4 @@ func getOwnerByKind(ctx context.Context, meta metav1.ObjectMeta, kind string, ow
 		return fmt.Errorf("failed to fetch object: %w", err)
 	}
 	return nil
-}
-
-func (h *metal3HostnameHandler) GetHostname(ctx context.Context) (string, error) {
-	m3Data := metal3v1.Metal3Data{}
-	if err := getOwnerByKind(ctx, h.claim.ObjectMeta, metal3DataKind, &m3Data, h.Client); err != nil {
-		return "", err
-	}
-
-	m3Machine := metal3v1.Metal3Machine{}
-	if err := getOwnerByKind(ctx, m3Data.ObjectMeta, metal3MachineKind, &m3Machine, h.Client); err != nil {
-		return "", err
-	}
-
-	for _, o := range m3Machine.OwnerReferences {
-		if o.Kind == machineKind {
-			return o.Name, nil
-		}
-	}
-
-	return "", fmt.Errorf("hostname not found for claim %s in namespace %s", h.claim.Name, h.claim.Namespace)
 }
