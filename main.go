@@ -19,6 +19,8 @@ package main
 
 import (
 	"flag"
+	"io"
+	"log"
 	"os"
 
 	//+kubebuilder:scaffold:imports
@@ -85,6 +87,9 @@ func main() {
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	// suppress logs from Infoblox client library
+	log.SetOutput(io.Discard)
 
 	// klog.Background will automatically use the right logger.
 	ctrl.SetLogger(klog.Background())

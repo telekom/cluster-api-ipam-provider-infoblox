@@ -110,6 +110,7 @@ rules:
   - metal3datas
   - metal3machines
   - vspheremachines
+  - vspherevms
   verbs: 
   - get
   - list

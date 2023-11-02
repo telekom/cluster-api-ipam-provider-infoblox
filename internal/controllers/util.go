@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	metal3v1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,6 +47,7 @@ const (
 	metal3DataKind     = "Metal3Data"
 	metal3MachineKind  = "Metal3Machine"
 	vsphereMachineKind = "VSphereMachine"
+	vsphereVMKind      = "VSphereVM"
 	machineKind        = "Machine"
 )
 
@@ -64,11 +64,22 @@ type metal3HostnameHandler struct {
 type vsphereHostnameHandler struct {
 	client.Client
 	claim *ipamv1.IPAddressClaim
+	kind  string
 }
 
 func (h *vsphereHostnameHandler) GetHostname(ctx context.Context) (string, error) {
+	objectMeta := h.claim.ObjectMeta
+
+	if h.kind == vsphereVMKind {
+		vSphereVM := v1beta1.VSphereVM{}
+		if err := getOwnerByKind(ctx, objectMeta, vsphereVMKind, &vSphereVM, h.Client); err != nil {
+			return "", err
+		}
+		objectMeta = vSphereVM.ObjectMeta
+	}
+
 	vSphereMachine := v1beta1.VSphereMachine{}
-	if err := getOwnerByKind(ctx, h.claim.ObjectMeta, vsphereMachineKind, &vSphereMachine, h.Client); err != nil {
+	if err := getOwnerByKind(ctx, objectMeta, vsphereMachineKind, &vSphereMachine, h.Client); err != nil {
 		return "", err
 	}
 
@@ -77,7 +88,8 @@ func (h *vsphereHostnameHandler) GetHostname(ctx context.Context) (string, error
 			return ownerRef.Name, nil
 		}
 	}
-	return "", errors.New("hostname not found")
+
+	return "", fmt.Errorf("hostname not found for claim %s in namespace %s", h.claim.Name, h.claim.Namespace)
 }
 
 func (h *metal3HostnameHandler) GetHostname(ctx context.Context) (string, error) {
@@ -104,9 +116,9 @@ func newHostnameHandler(claim *ipamv1.IPAddressClaim, c client.Client) (Hostname
 	for _, ref := range claim.ObjectMeta.OwnerReferences {
 		switch ref.Kind {
 		case metal3DataKind:
-			return &metal3HostnameHandler{claim: claim, Client: c}, nil
-		case vsphereMachineKind:
-			return &vsphereHostnameHandler{claim: claim, Client: c}, nil
+			return &metal3HostnameHandler{c, claim}, nil
+		case vsphereMachineKind, vsphereVMKind:
+			return &vsphereHostnameHandler{c, claim, ref.Kind}, nil
 		}
 	}
 

@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 
+	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -148,6 +149,8 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 	}
 
 	var subnet netip.Prefix
+
+	conditionSet := false
 	for _, sub := range h.pool.Spec.Subnets {
 		subnet, err = netip.ParsePrefix(sub.CIDR)
 		if err != nil {
@@ -163,8 +166,14 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 				v1alpha1.InfobloxAddressAllocationFailedReason,
 				clusterv1.ConditionSeverityError,
 				"could not allocate address: %s", err)
-			logger.Error(err, "could not allocate address")
+			// logger.Error(err, "could not allocate address")
+			conditionSet = true
 			continue
+		}
+
+		if conditionSet {
+			conditions.MarkTrue(h.claim, clusterv1.ReadyCondition)
+			conditionSet = false
 		}
 
 		address.Spec.Address = ipaddr.String()
@@ -175,6 +184,8 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		}
 
 		address.Spec.Gateway = sub.Gateway
+
+		return nil, nil
 	}
 
 	if err != nil {
@@ -207,13 +218,19 @@ func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
 
 		err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, hostname)
 		if err != nil {
-			logger.Info("failed to release address for host", "hostname", hostname, "details", err.Error())
+			if _, ok := err.(*ibclient.NotFoundError); !ok {
+				logger.Error(err, "failed to release address for host", "hostname", hostname)
+			}
 			continue
+		} else if err == nil {
+			logger.Info("released address for host", "hostname", hostname)
 		}
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to release address: %w", err)
+		if _, ok := err.(*ibclient.NotFoundError); !ok {
+			return nil, fmt.Errorf("unable to release address: %w", err)
+		}
 	}
 
 	return nil, nil
