@@ -21,21 +21,20 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
-	"strconv"
 
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/poolutil"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/poolutil"
 )
 
 const (
@@ -87,7 +86,7 @@ func (webhook *InfobloxIPPool) ValidateCreate(_ context.Context, obj runtime.Obj
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (webhook *InfobloxIPPool) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (webhook *InfobloxIPPool) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	newPool, ok := newObj.(*v1alpha1.InfobloxIPPool)
 	if !ok {
 		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected an InfbloxIPPool but got a %T", newObj))
@@ -153,29 +152,33 @@ func (webhook *InfobloxIPPool) validate(newPool *v1alpha1.InfobloxIPPool) (reter
 	for i, subnet := range newPool.Spec.Subnets {
 		_, network, err := net.ParseCIDR(subnet.CIDR)
 		if err != nil || network.String() != subnet.CIDR {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "Subnet["+strconv.Itoa(i)+"]", "CIDR"),
-				newPool.Spec.Subnets[i].CIDR, "Subnet["+strconv.Itoa(i)+"].CIDR is not a valid CIDR"))
+			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", subnetPath(i), "CIDR"),
+				newPool.Spec.Subnets[i].CIDR, subnetPath(i)+".CIDR is not a valid CIDR"))
 		}
 
 		gatewayIP, err := netip.ParseAddr(subnet.Gateway)
 		if err != nil {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "Subnet["+strconv.Itoa(i)+"]", "Gateway"),
-				newPool.Spec.Subnets[i].Gateway, "Subnet["+strconv.Itoa(i)+"].Gateway is not a valid IP address"+" "+err.Error()))
+			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", subnetPath(i), "Gateway"),
+				newPool.Spec.Subnets[i].Gateway, subnetPath(i)+".Gateway is not a valid IP address"+" "+err.Error()))
 		}
 
 		networkIP, err := netip.ParseAddr(network.IP.String())
 		if err != nil {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "Subnet["+strconv.Itoa(i)+"]", "CIDR"),
-				newPool.Spec.Subnets[i].CIDR, "Subnet["+strconv.Itoa(i)+"].CIDR could not be parsed"))
+			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", subnetPath(i), "CIDR"),
+				newPool.Spec.Subnets[i].CIDR, subnetPath(i)+".CIDR could not be parsed"))
 		}
 
 		ipVersionsMatched := (networkIP.Is4() && gatewayIP.Is4()) || (networkIP.Is6() && gatewayIP.Is6())
 
 		if !ipVersionsMatched {
-			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "Subnet["+strconv.Itoa(i)+"]"),
+			allErrs = append(allErrs, field.Invalid(field.NewPath("spec", subnetPath(i)),
 				newPool.Spec.Subnets[i].CIDR, "CIDR and gateway are mixed IPv4 and IPv6 addresses"))
 		}
 	}
 
 	return //nolint:nakedret
+}
+
+func subnetPath(i int) string {
+	return fmt.Sprintf("Subnet[%d]", i)
 }

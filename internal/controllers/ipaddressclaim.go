@@ -166,7 +166,6 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 				v1alpha1.InfobloxAddressAllocationFailedReason,
 				clusterv1.ConditionSeverityError,
 				"could not allocate address: %s", err)
-			// logger.Error(err, "could not allocate address")
 			conditionSet = true
 			continue
 		}

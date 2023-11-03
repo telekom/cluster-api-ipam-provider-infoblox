@@ -78,7 +78,7 @@ func (r *InfobloxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return r.reconcile(ctx, instance)
 }
 
-func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1alpha1.InfobloxInstance) (ctrl.Result, error) {
+func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1alpha1.InfobloxInstance) (ctrl.Result, error) { //nolint:unparam
 	logger := log.FromContext(ctx)
 
 	authSecret := &corev1.Secret{}

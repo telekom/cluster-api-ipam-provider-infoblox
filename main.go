@@ -33,13 +33,12 @@ import (
 	"k8s.io/klog/v2"
 	inclusterv1a2 "sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
+	vspherev1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	vspherev1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"

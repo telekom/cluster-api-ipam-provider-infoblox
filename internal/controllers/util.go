@@ -55,6 +55,8 @@ const (
 )
 
 //go:generate mockgen -destination=utilmock/util.go -package=utilmock . HostnameHandler
+
+// HostnameHandler is an interface used to get hostname of the machine.
 type HostnameHandler interface {
 	GetHostname(context.Context) (string, error)
 }
@@ -70,6 +72,7 @@ type vsphereHostnameHandler struct {
 	kind  string
 }
 
+// GetHostname is used to get hostname using the VSphere obejct.
 func (h *vsphereHostnameHandler) GetHostname(ctx context.Context) (string, error) {
 	objectMeta := h.claim.ObjectMeta
 
@@ -95,6 +98,7 @@ func (h *vsphereHostnameHandler) GetHostname(ctx context.Context) (string, error
 	return "", fmt.Errorf("hostname not found for claim %s in namespace %s", h.claim.Name, h.claim.Namespace)
 }
 
+// GetHostname is used to get hostname using the Metal3 obejct.
 func (h *metal3HostnameHandler) GetHostname(ctx context.Context) (string, error) {
 	m3Data := metal3v1.Metal3Data{}
 	if err := getOwnerByKind(ctx, h.claim.ObjectMeta, metal3DataKind, &m3Data, h.Client); err != nil {

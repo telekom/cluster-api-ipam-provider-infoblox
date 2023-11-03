@@ -83,10 +83,10 @@ func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}()
 
-	return r.reconcile(ctx, pool)
+	return ctrl.Result{}, r.reconcile(ctx, pool)
 }
 
-func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1.InfobloxIPPool) (ctrl.Result, error) {
+func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1.InfobloxIPPool) error {
 	logger := log.FromContext(ctx)
 
 	ibclient, err := getInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, pool.Namespace, r.NewInfobloxClientFunc)
@@ -95,7 +95,7 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 			clusterv1.ReadyCondition,
 			v1alpha1.InfobloxClientCreationFailedReason,
 			clusterv1.ConditionSeverityError, "client creation failed for instance %s", pool.Spec.InstanceRef.Name)
-		return ctrl.Result{}, err
+		return err
 	}
 
 	// TODO: handle this in a better way
@@ -106,14 +106,14 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 			v1alpha1.InfobloxNetworkViewNotFoundReason,
 			clusterv1.ConditionSeverityError,
 			"could not find network view: %s", err)
-		return ctrl.Result{}, nil
+		return nil
 	}
 
 	for _, sub := range pool.Spec.Subnets {
 		subnet, err := netip.ParsePrefix(sub.CIDR)
 		if err != nil {
 			// We won't set a condition here since this should be caught by validation
-			return ctrl.Result{}, fmt.Errorf("failed to parse subnet: %w", err)
+			return fmt.Errorf("failed to parse subnet: %w", err)
 		}
 		if ok, err := ibclient.CheckNetworkExists(pool.Spec.NetworkView, subnet); err != nil || !ok {
 			logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
@@ -122,9 +122,9 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 				v1alpha1.InfobloxNetworkNotFoundReason,
 				clusterv1.ConditionSeverityError,
 				"could not find network: %s", err)
-			return ctrl.Result{}, nil
+			return nil
 		}
 	}
 
-	return ctrl.Result{}, nil
+	return nil
 }

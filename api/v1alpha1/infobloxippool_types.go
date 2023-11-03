@@ -25,7 +25,7 @@ type InfobloxIPPoolStatus struct {
 	Conditions clusterv1.Conditions `json:"conditions"`
 }
 
-// Subnet defines the CIDR and Gateway
+// Subnet defines the CIDR and Gateway.
 type Subnet struct {
 	CIDR    string `json:"cidr"`
 	Gateway string `json:"gateway"`

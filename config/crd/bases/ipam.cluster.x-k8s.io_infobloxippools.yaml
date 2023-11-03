@@ -69,7 +69,7 @@ spec:
                   be omitted if addresses or first, last and prefix are set. TODO:
                   turn this into an array to support multiple subnets per pool'
                 items:
-                  description: Subnet defines the CIDR and Gateway
+                  description: Subnet defines the CIDR and Gateway.
                   properties:
                     cidr:
                       type: string

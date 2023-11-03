@@ -1788,16 +1788,6 @@ func deleteCluster(name, namespace string) {
 	EventuallyWithOffset(1, Get(&cluster)).Should(Not(Succeed()))
 }
 
-// func deleteClusterScopedPool(name string) {
-// 	pool := v1alpha2.GlobalInClusterIPPool{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name: name,
-// 		},
-// 	}
-// 	ExpectWithOffset(1, k8sClient.Delete(context.Background(), &pool)).To(Succeed())
-// 	EventuallyWithOffset(1, Get(&pool)).Should(Not(Succeed()))
-// }
-
 func deleteNamespacedPool(name, namespace string) {
 	defer GinkgoRecover()
 	pool := v1alpha1.InfobloxIPPool{

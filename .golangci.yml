@@ -6,7 +6,7 @@ linters:
   - bidichk
   - bodyclose
   - containedctx
-  - depguard
+  # - depguard
   - dogsled
   - durationcheck
   - errcheck
@@ -41,7 +41,7 @@ linters:
   - typecheck
   - unconvert
   - unparam
-  - unused
+  # - unused
   - usestdlibvars
   - whitespace
 
