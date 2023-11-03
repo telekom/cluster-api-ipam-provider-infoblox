@@ -89,10 +89,4 @@ require (
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.15.2
 
-// replace k8s.io/client-go => k8s.io/client-go v0.26.1
-
-// replace k8s.io/api v0.27.5 => k8s.io/api v0.26.1
-
-// replace sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.4.1
-
 replace sigs.k8s.io/cluster-api-ipam-provider-in-cluster => ../cluster-api-ipam-provider-in-cluster
