@@ -215,7 +215,7 @@ func TestInvalidScenarios(t *testing.T) {
 		{
 			testcase: "InstanceRef must be set",
 			spec: v1alpha1.InfobloxIPPoolSpec{
-				Subnets:     []v1alpha1.Subnet{v1alpha1.Subnet{CIDR: "10.0.0.0/30", Gateway: "10.0.0.1"}},
+				Subnets:     []v1alpha1.Subnet{{CIDR: "10.0.0.0/30", Gateway: "10.0.0.1"}},
 				InstanceRef: v1.LocalObjectReference{},
 			},
 			expectedError: "InstanceRef.Name is required",
@@ -223,7 +223,7 @@ func TestInvalidScenarios(t *testing.T) {
 		{
 			testcase: "invalid subnet should not be allowed",
 			spec: v1alpha1.InfobloxIPPoolSpec{
-				Subnets:     []v1alpha1.Subnet{v1alpha1.Subnet{CIDR: "10.0.0.3/30", Gateway: "10.0.0.1"}},
+				Subnets:     []v1alpha1.Subnet{{CIDR: "10.0.0.3/30", Gateway: "10.0.0.1"}},
 				InstanceRef: v1.LocalObjectReference{Name: "test-instance"},
 			},
 			expectedError: "is not a valid CIDR",
@@ -231,7 +231,7 @@ func TestInvalidScenarios(t *testing.T) {
 		{
 			testcase: "invalid gateway should not be allowed",
 			spec: v1alpha1.InfobloxIPPoolSpec{
-				Subnets:     []v1alpha1.Subnet{v1alpha1.Subnet{CIDR: "10.0.0.3/30", Gateway: "10.0.0.999"}},
+				Subnets:     []v1alpha1.Subnet{{CIDR: "10.0.0.3/30", Gateway: "10.0.0.999"}},
 				InstanceRef: v1.LocalObjectReference{Name: "test-instance"},
 			},
 			expectedError: "is not a valid IP address",
@@ -239,7 +239,7 @@ func TestInvalidScenarios(t *testing.T) {
 		{
 			testcase: "IPv4 subnet and IPv6 gateway should not be allowed",
 			spec: v1alpha1.InfobloxIPPoolSpec{
-				Subnets:     []v1alpha1.Subnet{v1alpha1.Subnet{CIDR: "10.0.0.3/30", Gateway: "2001:db8::1"}},
+				Subnets:     []v1alpha1.Subnet{{CIDR: "10.0.0.3/30", Gateway: "2001:db8::1"}},
 				InstanceRef: v1.LocalObjectReference{Name: "test-instance"},
 			},
 			expectedError: "CIDR and gateway are mixed IPv4 and IPv6 addresses",
@@ -247,7 +247,7 @@ func TestInvalidScenarios(t *testing.T) {
 		{
 			testcase: "IPv6 subnet and IPv4 gateway should not be allowed",
 			spec: v1alpha1.InfobloxIPPoolSpec{
-				Subnets:     []v1alpha1.Subnet{v1alpha1.Subnet{CIDR: "2001:db8::0/64", Gateway: "10.0.0.1"}},
+				Subnets:     []v1alpha1.Subnet{{CIDR: "2001:db8::0/64", Gateway: "10.0.0.1"}},
 				InstanceRef: v1.LocalObjectReference{Name: "test-instance"},
 			},
 			expectedError: "CIDR and gateway are mixed IPv4 and IPv6 addresses",
