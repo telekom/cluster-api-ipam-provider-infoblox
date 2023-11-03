@@ -16,17 +16,17 @@ webhooks:
       path: /mutate-ipam-cluster-x-k8s-io-v1alpha1-infobloxippool
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: default.infobloxippool.ipam.cluster.x-k8s.io
+  name: default.inclusterippool.ipam.cluster.x-k8s.io
   rules:
   - apiGroups:
     - ipam.cluster.x-k8s.io
     apiVersions:
-    - v1alpha1
+    - v1alpha2
     operations:
     - CREATE
     - UPDATE
     resources:
-    - infobloxippools
+    - inclusterippools
   sideEffects: None
 
 ---
@@ -46,15 +46,16 @@ webhooks:
       path: /validate-ipam-cluster-x-k8s-io-v1alpha1-infobloxippool
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: validation.infobloxippool.ipam.cluster.x-k8s.io
+  name: validation.inclusterippool.ipam.cluster.x-k8s.io
   rules:
   - apiGroups:
     - ipam.cluster.x-k8s.io
     apiVersions:
-    - v1alpha1
+    - v1alpha2
     operations:
     - CREATE
     - UPDATE
+    - DELETE
     resources:
-    - infobloxippools
+    - inclusterippools
   sideEffects: None

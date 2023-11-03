@@ -7,6 +7,24 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - metal3datas
+  - metal3machines
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - vspheremachines
+  - vspherevms
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - ipam.cluster.x-k8s.io
   resources:
   - infobloxinstances
@@ -95,23 +113,4 @@ rules:
   - list
   - patch
   - update
-  - watch
-- apiGroups:
-  - ""
-  resources: 
-  - secrets
-  verbs: 
-  - get
-  - list
-  - watch
-- apiGroups:
-  - infrastructure.cluster.x-k8s.io
-  resources: 
-  - metal3datas
-  - metal3machines
-  - vspheremachines
-  - vspherevms
-  verbs: 
-  - get
-  - list
   - watch

@@ -17,13 +17,17 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: Default network view
-      jsonPath: .spec.networkView
-      name: Network View
+    - description: Subnet to allocate IPs from
+      jsonPath: .spec.subnet
+      name: Subnet
       type: string
-    - description: Subnets to allocate IPs from
-      jsonPath: .spec.subnets
-      name: Subnets
+    - description: First address of the range to allocate from
+      jsonPath: .spec.networkView
+      name: First
+      type: string
+    - description: Last address of the range to allocate from
+      jsonPath: .spec.last
+      name: Last
       type: string
     name: v1alpha1
     schema:

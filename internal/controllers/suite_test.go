@@ -106,7 +106,6 @@ var _ = BeforeSuite(func() {
 	Expect(cfg).NotTo(BeNil())
 
 	Expect(v1alpha1.AddToScheme(scheme.Scheme)).To(Succeed())
-	// Expect(v1alpha2.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(clusterv1.AddToScheme(scheme.Scheme)).To(Succeed())
 	Expect(ipamv1.AddToScheme(scheme.Scheme)).To(Succeed())
 
@@ -141,20 +140,6 @@ var _ = BeforeSuite(func() {
 			},
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())
-
-	// Expect(
-	// 	(&InClusterIPPoolReconciler{
-	// 		Client: mgr.GetClient(),
-	// 		Scheme: mgr.GetScheme(),
-	// 	}).SetupWithManager(ctx, mgr),
-	// ).To(Succeed())
-
-	// Expect(
-	// 	(&GlobalInClusterIPPoolReconciler{
-	// 		Client: mgr.GetClient(),
-	// 		Scheme: mgr.GetScheme(),
-	// 	}).SetupWithManager(ctx, mgr),
-	// ).To(Succeed())
 
 	go func() {
 		defer GinkgoRecover()

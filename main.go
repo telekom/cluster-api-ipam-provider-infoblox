@@ -44,6 +44,7 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/webhooks"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 )
 
@@ -143,15 +144,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// if err := (&webhooks.InfobloxIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
-	// 	setupLog.Error(err, "unable to create webhook", "webhook", "InfobloxIPPool")
-	// 	os.Exit(1)
-	// }
+	if err := (&webhooks.InfobloxIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "InfobloxIPPool")
+		os.Exit(1)
+	}
 
-	// if err := (&webhooks.InClusterIPPool{Client: mgr.GetClient()}).SetupWebhookWithManager(mgr); err != nil {
-	// 	setupLog.Error(err, "unable to create webhook", "webhook", "InClusterIPPool")
-	// 	os.Exit(1)
-	// }
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-var _ = ctrl.SetupSignalHandler()
+var ctx = ctrl.SetupSignalHandler()
 
 // customDefaulterValidator interface is for objects that define both custom defaulting
 // and custom validating webhooks.

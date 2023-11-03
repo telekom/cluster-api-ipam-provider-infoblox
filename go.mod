@@ -21,6 +21,7 @@ require (
 
 require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/metal3-io/ip-address-manager/api v1.5.1 // indirect
 	github.com/onsi/ginkgo v1.16.4 // indirect

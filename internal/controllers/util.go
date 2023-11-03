@@ -43,6 +43,9 @@ func getInfobloxClientForInstance(ctx context.Context, client client.Reader, nam
 	return newClientFn(config)
 }
 
+//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas;metal3machines,verbs=get;list;watch
+//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=vspheremachines;vspherevms,verbs=get;list;watch
+
 const (
 	metal3DataKind     = "Metal3Data"
 	metal3MachineKind  = "Metal3Machine"
