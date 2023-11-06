@@ -16,7 +16,20 @@ spec:
     singular: infobloxinstance
   scope: Cluster
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: Infoblox host's address
+      jsonPath: .spec.host
+      name: Host
+      type: string
+    - description: Networking port of the Infoblox host
+      jsonPath: .spec.port
+      name: Port
+      type: string
+    - description: Version of web API to be used
+      jsonPath: .spec.wapiVersion
+      name: WAPI ver.
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: InfobloxInstance is the Schema for the infobloxinstances API.

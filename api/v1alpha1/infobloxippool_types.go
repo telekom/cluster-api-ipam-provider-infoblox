@@ -33,9 +33,8 @@ type Subnet struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Subnet",type="string",JSONPath=".spec.subnet",description="Subnet to allocate IPs from"
-// +kubebuilder:printcolumn:name="First",type="string",JSONPath=".spec.networkView",description="First address of the range to allocate from"
-// +kubebuilder:printcolumn:name="Last",type="string",JSONPath=".spec.last",description="Last address of the range to allocate from"
+// +kubebuilder:printcolumn:name="Network view",type="string",JSONPath=".spec.networkView",description="Default network view"
+// +kubebuilder:printcolumn:name="Subnets",type="string",JSONPath=".spec.subnets",description="Subnets to allocate IPs from"
 
 // InfobloxIPPool is the Schema for the InfobloxIPPools API.
 type InfobloxIPPool struct {

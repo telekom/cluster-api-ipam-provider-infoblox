@@ -53,6 +53,9 @@ type InfobloxInstanceStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:scope=Cluster
 //+kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Host",type="string",JSONPath=".spec.host",description="Infoblox host's address"
+// +kubebuilder:printcolumn:name="Port",type="string",JSONPath=".spec.port",description="Networking port of the Infoblox host"
+// +kubebuilder:printcolumn:name="WAPI ver.",type="string",JSONPath=".spec.wapiVersion",description="Version of web API to be used"
 
 // InfobloxInstance is the Schema for the infobloxinstances API.
 type InfobloxInstance struct {
