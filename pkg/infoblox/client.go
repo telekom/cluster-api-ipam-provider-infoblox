@@ -10,6 +10,8 @@ import (
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 )
 
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+
 //go:generate mockgen -destination=ibmock/client.go -package=ibmock . Client
 
 const (
