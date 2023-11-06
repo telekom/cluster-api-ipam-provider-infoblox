@@ -63,6 +63,7 @@ var (
 	mockNewInfobloxClientFunc  func(infoblox.Config) (infoblox.Client, error)
 	mockNewHostnameHandlerFunc func(claim *ipamv1.IPAddressClaim, c client.Client) (HostnameHandler, error)
 	mockCtrl                   *gomock.Controller
+	namespace                  string
 )
 
 func TestAPIs(t *testing.T) {
@@ -127,7 +128,8 @@ var _ = BeforeSuite(func() {
 		(&InfobloxInstanceReconciler{
 			Client:                mgr.GetClient(),
 			Scheme:                mgr.GetScheme(),
-			newInfobloxClientFunc: mockNewInfobloxClientFunc,
+			NewInfobloxClientFunc: mockNewInfobloxClientFunc,
+			OperatorNamespace:     namespace,
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())
 
@@ -137,6 +139,7 @@ var _ = BeforeSuite(func() {
 			Scheme: mgr.GetScheme(),
 			Provider: &InfobloxProviderAdapter{
 				NewInfobloxClientFunc: mockNewInfobloxClientFunc,
+				OperatorNamespace:     namespace,
 			},
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())

@@ -14,7 +14,7 @@ spec:
     listKind: InfobloxIPPoolList
     plural: infobloxippools
     singular: infobloxippool
-  scope: Namespaced
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - description: Default network view

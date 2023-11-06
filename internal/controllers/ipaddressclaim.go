@@ -59,6 +59,7 @@ const (
 // InfobloxProviderAdapter reconciles a InfobloxIPPool object.
 type InfobloxProviderAdapter struct {
 	NewInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
+	OperatorNamespace     string
 }
 
 var _ ipamutil.ProviderAdapter = &InfobloxProviderAdapter{}
@@ -70,6 +71,7 @@ type InfobloxClaimHandler struct {
 	pool                  *v1alpha1.InfobloxIPPool
 	newInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
 	ibclient              infoblox.Client
+	operatorNamspace      string
 }
 
 var _ ipamutil.ClaimHandler = &InfobloxClaimHandler{}
@@ -102,6 +104,7 @@ func (r *InfobloxProviderAdapter) ClaimHandlerFor(cl client.Client, claim *ipamv
 		Client:                cl,
 		claim:                 claim,
 		newInfobloxClientFunc: r.NewInfobloxClientFunc,
+		operatorNamspace:      r.OperatorNamespace,
 	}
 }
 
@@ -117,7 +120,7 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, err
 	var err error
 
 	h.pool = &v1alpha1.InfobloxIPPool{}
-	if err = h.Client.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, h.pool); err != nil && !apierrors.IsNotFound(err) {
+	if err = h.Client.Get(ctx, types.NamespacedName{Name: h.claim.Spec.PoolRef.Name}, h.pool); err != nil && !apierrors.IsNotFound(err) {
 		return nil, errors.Wrap(err, "failed to fetch pool")
 	}
 
@@ -128,8 +131,7 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, err
 	}
 
 	// TODO: ensure pool is ready
-
-	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.pool.Namespace, h.newInfobloxClientFunc)
+	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.operatorNamspace, h.newInfobloxClientFunc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get infoblox client: %w", err)
 	}
@@ -141,6 +143,8 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, err
 func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv1.IPAddress) (*ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
+	logger.Info("ensure 1")
+
 	var err error
 
 	hostname, err := h.getHostname(ctx)
@@ -148,17 +152,21 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		return nil, err
 	}
 
+	logger.Info("ensure 2")
+
 	var subnet netip.Prefix
 
 	conditionSet := false
 	for _, sub := range h.pool.Spec.Subnets {
 		subnet, err = netip.ParsePrefix(sub.CIDR)
+		logger.Info("ensure 3")
 		if err != nil {
 			// We won't set a condition here since this should be caught by validation
 			logger.Error(err, "failed to parse subnet", "subnet", subnet)
 			continue
 		}
 
+		logger.Info("ensure 4")
 		ipaddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, hostname, h.pool.Spec.DNSZone)
 		if err != nil {
 			conditions.MarkFalse(h.claim,
@@ -170,6 +178,8 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 			continue
 		}
 
+		logger.Info("ensure 5")
+
 		if conditionSet {
 			conditions.MarkTrue(h.claim, clusterv1.ReadyCondition)
 			conditionSet = false
@@ -177,19 +187,25 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 
 		address.Spec.Address = ipaddr.String()
 
+		logger.Info("ensure 6")
 		if address.Spec.Prefix, err = strconv.Atoi(strings.Split(subnet.String(), "/")[1]); err != nil {
 			logger.Error(err, "could not parse address", "subnet", subnet.String())
 			continue
 		}
 
+		logger.Info("ensure 7")
 		address.Spec.Gateway = sub.Gateway
 
 		return nil, nil
 	}
 
+	logger.Info("ensure 8")
+
 	if err != nil {
 		return nil, fmt.Errorf("unable to ensure address: %w", err)
 	}
+
+	logger.Info("ensure 9")
 
 	return nil, nil
 }

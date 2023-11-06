@@ -78,10 +78,9 @@ func TestPoolDeletionWithExistingIPAddresses(t *testing.T) {
 	scheme := runtime.NewScheme()
 	g.Expect(ipamv1.AddToScheme(scheme)).To(Succeed())
 
-	namespacedPool := &v1alpha1.InfobloxIPPool{
+	pool := &v1alpha1.InfobloxIPPool{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-pool",
-			Namespace: "test-namespace",
+			Name: "my-pool",
 		},
 		Spec: v1alpha1.InfobloxIPPoolSpec{
 			InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
@@ -90,8 +89,8 @@ func TestPoolDeletionWithExistingIPAddresses(t *testing.T) {
 	}
 
 	ips := []client.Object{
-		createIP("address00", "192.168.1.2", namespacedPool),
-		createIP("address01", "192.168.1.3", namespacedPool),
+		createIP("address00", "192.168.1.2", pool),
+		createIP("address01", "192.168.1.3", pool),
 	}
 
 	fakeClient := fake.NewClientBuilder().
@@ -104,12 +103,12 @@ func TestPoolDeletionWithExistingIPAddresses(t *testing.T) {
 		Client: fakeClient,
 	}
 
-	_, err := webhook.ValidateDelete(ctx, namespacedPool)
+	_, err := webhook.ValidateDelete(ctx, pool)
 	g.Expect(err).To(HaveOccurred(), "should not allow deletion when claims exist")
 
 	g.Expect(fakeClient.DeleteAllOf(ctx, &ipamv1.IPAddress{})).To(Succeed())
 
-	_, err = webhook.ValidateDelete(ctx, namespacedPool)
+	_, err = webhook.ValidateDelete(ctx, pool)
 	g.Expect(err).ToNot(HaveOccurred(), "should allow deletion when no claims exist")
 }
 
@@ -119,10 +118,9 @@ func TestPoolDeletionWithExistingIPAddressesAndDeletionSkipAnnotation(t *testing
 	scheme := runtime.NewScheme()
 	g.Expect(ipamv1.AddToScheme(scheme)).To(Succeed())
 
-	namespacedPool := &v1alpha1.InfobloxIPPool{
+	pool := &v1alpha1.InfobloxIPPool{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-pool",
-			Namespace: "test-namespace",
+			Name: "my-pool",
 			Annotations: map[string]string{
 				SkipValidateDeleteWebhookAnnotation: "",
 			},
@@ -134,8 +132,8 @@ func TestPoolDeletionWithExistingIPAddressesAndDeletionSkipAnnotation(t *testing
 	}
 
 	ips := []client.Object{
-		createIP("address00", "192.168.1.2", namespacedPool),
-		createIP("address01", "192.168.1.3", namespacedPool),
+		createIP("address00", "192.168.1.2", pool),
+		createIP("address01", "192.168.1.3", pool),
 	}
 
 	fakeClient := fake.NewClientBuilder().
@@ -148,7 +146,7 @@ func TestPoolDeletionWithExistingIPAddressesAndDeletionSkipAnnotation(t *testing
 		Client: fakeClient,
 	}
 
-	_, err := webhook.ValidateDelete(ctx, namespacedPool)
+	_, err := webhook.ValidateDelete(ctx, pool)
 	g.Expect(err).ToNot(HaveOccurred(), "should not allow deletion when claims exist")
 
 	g.Expect(fakeClient.DeleteAllOf(ctx, &ipamv1.IPAddress{})).To(Succeed())
@@ -160,10 +158,9 @@ func TestUpdatingPool(t *testing.T) {
 	scheme := runtime.NewScheme()
 	g.Expect(ipamv1.AddToScheme(scheme)).To(Succeed())
 
-	namespacedPool := &v1alpha1.InfobloxIPPool{
+	pool := &v1alpha1.InfobloxIPPool{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-pool",
-			Namespace: "test-namespace",
+			Name: "my-pool",
 		},
 		Spec: v1alpha1.InfobloxIPPoolSpec{
 			InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
@@ -172,8 +169,8 @@ func TestUpdatingPool(t *testing.T) {
 	}
 
 	ips := []client.Object{
-		createIP("address00", "192.168.1.2", namespacedPool),
-		createIP("address01", "192.168.1.3", namespacedPool),
+		createIP("address00", "192.168.1.2", pool),
+		createIP("address01", "192.168.1.3", pool),
 	}
 
 	fakeClient := fake.NewClientBuilder().
@@ -186,10 +183,10 @@ func TestUpdatingPool(t *testing.T) {
 		Client: fakeClient,
 	}
 
-	oldNamespacedPool := namespacedPool.DeepCopyObject()
-	namespacedPool.Spec.Subnets = []v1alpha1.Subnet{{CIDR: "192.168.2.0/24", Gateway: "192.168.2.1"}}
+	oldPool := pool.DeepCopyObject()
+	pool.Spec.Subnets = []v1alpha1.Subnet{{CIDR: "192.168.2.0/24", Gateway: "192.168.2.1"}}
 
-	_, err := webhook.ValidateUpdate(ctx, oldNamespacedPool, namespacedPool)
+	_, err := webhook.ValidateUpdate(ctx, oldPool, pool)
 	g.Expect(err).ToNot(HaveOccurred(), "should not allow removing in use IPs from addresses field in pool")
 }
 

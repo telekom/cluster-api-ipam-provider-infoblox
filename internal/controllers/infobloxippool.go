@@ -45,7 +45,7 @@ type InfobloxIPPoolReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	// operatorNamespace     string
+	OperatorNamespace     string
 	NewInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
 }
 
@@ -89,7 +89,7 @@ func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1.InfobloxIPPool) error {
 	logger := log.FromContext(ctx)
 
-	ibclient, err := getInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, pool.Namespace, r.NewInfobloxClientFunc)
+	ibclient, err := getInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, r.OperatorNamespace, r.NewInfobloxClientFunc)
 	if err != nil {
 		conditions.MarkFalse(pool,
 			clusterv1.ReadyCondition,

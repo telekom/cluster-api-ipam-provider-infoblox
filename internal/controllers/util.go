@@ -18,7 +18,7 @@ import (
 
 func getInfobloxClientForInstance(ctx context.Context, client client.Reader, name, namespace string, newClientFn func(infoblox.Config) (infoblox.Client, error)) (infoblox.Client, error) {
 	instance := &v1alpha1.InfobloxInstance{}
-	if err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, instance); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{Name: name}, instance); err != nil {
 		return nil, fmt.Errorf("failed to fetch instance: %w", err)
 	}
 
