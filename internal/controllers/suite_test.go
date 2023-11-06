@@ -127,7 +127,7 @@ var _ = BeforeSuite(func() {
 		(&InfobloxInstanceReconciler{
 			Client:                mgr.GetClient(),
 			Scheme:                mgr.GetScheme(),
-			newInfobloxClientFunc: mockNewInfobloxClientFunc,
+			NewInfobloxClientFunc: mockNewInfobloxClientFunc,
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())
 

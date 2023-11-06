@@ -16,14 +16,14 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 )
 
-func getInfobloxClientForInstance(ctx context.Context, client client.Reader, name, namespace string, newClientFn func(infoblox.Config) (infoblox.Client, error)) (infoblox.Client, error) {
+func getInfobloxClientForInstance(ctx context.Context, client client.Reader, name, secretNamespace string, newClientFn func(infoblox.Config) (infoblox.Client, error)) (infoblox.Client, error) {
 	instance := &v1alpha1.InfobloxInstance{}
-	if err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, instance); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{Name: name}, instance); err != nil {
 		return nil, fmt.Errorf("failed to fetch instance: %w", err)
 	}
 
 	secret := &corev1.Secret{}
-	if err := client.Get(ctx, types.NamespacedName{Name: instance.Spec.CredentialsSecretRef.Name, Namespace: namespace}, secret); err != nil {
+	if err := client.Get(ctx, types.NamespacedName{Name: instance.Spec.CredentialsSecretRef.Name, Namespace: secretNamespace}, secret); err != nil {
 		return nil, fmt.Errorf("failed to fetch secret: %w", err)
 	}
 

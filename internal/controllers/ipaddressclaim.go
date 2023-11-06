@@ -59,6 +59,7 @@ const (
 // InfobloxProviderAdapter reconciles a InfobloxIPPool object.
 type InfobloxProviderAdapter struct {
 	NewInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
+	OperatorNamespace     string
 }
 
 var _ ipamutil.ProviderAdapter = &InfobloxProviderAdapter{}
@@ -69,6 +70,7 @@ type InfobloxClaimHandler struct {
 	claim                 *ipamv1.IPAddressClaim
 	pool                  *v1alpha1.InfobloxIPPool
 	newInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
+	operatorNamespace     string
 	ibclient              infoblox.Client
 }
 
@@ -102,6 +104,7 @@ func (r *InfobloxProviderAdapter) ClaimHandlerFor(cl client.Client, claim *ipamv
 		Client:                cl,
 		claim:                 claim,
 		newInfobloxClientFunc: r.NewInfobloxClientFunc,
+		operatorNamespace:     r.OperatorNamespace,
 	}
 }
 
@@ -129,7 +132,7 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, err
 
 	// TODO: ensure pool is ready
 
-	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.pool.Namespace, h.newInfobloxClientFunc)
+	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.operatorNamespace, h.newInfobloxClientFunc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get infoblox client: %w", err)
 	}

@@ -115,12 +115,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	podNamespace := os.Getenv("NAMESPACE")
+
 	if err = (&ipamutil.ClaimReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		WatchFilterValue: watchFilter,
 		Provider: &controllers.InfobloxProviderAdapter{
 			NewInfobloxClientFunc: infoblox.NewClient,
+			OperatorNamespace:     podNamespace,
 		},
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IPAddressClaim")
@@ -128,8 +131,10 @@ func main() {
 	}
 
 	if err = (&controllers.InfobloxInstanceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:                mgr.GetClient(),
+		Scheme:                mgr.GetScheme(),
+		NewInfobloxClientFunc: infoblox.NewClient,
+		OperatorNamespace:     podNamespace,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InfobloxInstance")
 		os.Exit(1)
@@ -138,6 +143,7 @@ func main() {
 		Client:                mgr.GetClient(),
 		Scheme:                mgr.GetScheme(),
 		NewInfobloxClientFunc: infoblox.NewClient,
+		OperatorNamespace:     podNamespace,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InfobloxIPPool")
 		os.Exit(1)

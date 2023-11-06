@@ -40,8 +40,8 @@ type InfobloxInstanceReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	operatorNamespace     string
-	newInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
+	OperatorNamespace     string
+	NewInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
 }
 
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=infobloxinstances,verbs=get;list;watch;create;update;patch;delete
@@ -82,7 +82,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 	logger := log.FromContext(ctx)
 
 	authSecret := &corev1.Secret{}
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: instance.Spec.CredentialsSecretRef.Name, Namespace: r.operatorNamespace}, authSecret); err != nil {
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: instance.Spec.CredentialsSecretRef.Name, Namespace: r.OperatorNamespace}, authSecret); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, err
 		}
@@ -92,7 +92,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 			v1alpha1.InfobloxAuthenticationFailedReason,
 			clusterv1.ConditionSeverityError,
 			"the referenced settings secret '%s' could not be found in namespace '%s'",
-			instance.Spec.CredentialsSecretRef.Name, r.operatorNamespace)
+			instance.Spec.CredentialsSecretRef.Name, r.OperatorNamespace)
 		return ctrl.Result{}, nil
 	}
 
@@ -113,7 +113,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		InsecureSkipTLSVerify: instance.Spec.InsecureSkipTLSVerify,
 	}
 
-	ibcl, err := r.newInfobloxClientFunc(infoblox.Config{HostConfig: hc, AuthConfig: authConfig})
+	ibcl, err := r.NewInfobloxClientFunc(infoblox.Config{HostConfig: hc, AuthConfig: authConfig})
 	if err != nil {
 		conditions.MarkFalse(instance,
 			clusterv1.ReadyCondition,
