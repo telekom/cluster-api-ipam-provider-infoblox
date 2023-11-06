@@ -69,23 +69,17 @@ type metal3HostnameHandler struct {
 type vsphereHostnameHandler struct {
 	client.Client
 	claim *ipamv1.IPAddressClaim
-	kind  string
 }
 
 // GetHostname is used to get hostname using the VSphere obejct.
 func (h *vsphereHostnameHandler) GetHostname(ctx context.Context) (string, error) {
-	objectMeta := h.claim.ObjectMeta
-
-	if h.kind == vsphereVMKind {
-		vSphereVM := v1beta1.VSphereVM{}
-		if err := getOwnerByKind(ctx, objectMeta, vsphereVMKind, &vSphereVM, h.Client); err != nil {
-			return "", err
-		}
-		objectMeta = vSphereVM.ObjectMeta
+	vSphereVM := v1beta1.VSphereVM{}
+	if err := getOwnerByKind(ctx, h.claim.ObjectMeta, vsphereVMKind, &vSphereVM, h.Client); err != nil {
+		return "", err
 	}
 
 	vSphereMachine := v1beta1.VSphereMachine{}
-	if err := getOwnerByKind(ctx, objectMeta, vsphereMachineKind, &vSphereMachine, h.Client); err != nil {
+	if err := getOwnerByKind(ctx, vSphereVM.ObjectMeta, vsphereMachineKind, &vSphereMachine, h.Client); err != nil {
 		return "", err
 	}
 
@@ -124,8 +118,8 @@ func newHostnameHandler(claim *ipamv1.IPAddressClaim, c client.Client) (Hostname
 		switch ref.Kind {
 		case metal3DataKind:
 			return &metal3HostnameHandler{c, claim}, nil
-		case vsphereMachineKind, vsphereVMKind:
-			return &vsphereHostnameHandler{c, claim, ref.Kind}, nil
+		case vsphereVMKind:
+			return &vsphereHostnameHandler{c, claim}, nil
 		}
 	}
 
