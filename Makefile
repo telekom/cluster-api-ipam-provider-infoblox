@@ -57,8 +57,16 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+.PHONY: test-infoblox
+test-infoblox: manifests generate fmt vet envtest ## Run infoblox instance tests - instance is required to be configured.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test $(shell go list ./... | grep /infoblox) -coverprofile cover.out
+
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
+test: manifests generate fmt vet envtest ## Run default tests (all but infoblox instance specific).
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test $(shell go list ./... | grep -v /infoblox) -coverprofile cover.out
+
+.PHONY: test-all
+test-all: manifests generate fmt vet envtest ## Run all tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
 ##@ Build

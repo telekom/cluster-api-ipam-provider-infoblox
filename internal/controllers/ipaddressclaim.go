@@ -142,19 +142,17 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, err
 
 // EnsureAddress ensures address.
 func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv1.IPAddress) (*ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-
 	var err error
+
+	logger := log.FromContext(ctx)
 
 	hostname, err := h.getHostname(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var subnet netip.Prefix
-
-	conditionSet := false
 	for _, sub := range h.pool.Spec.Subnets {
+		var subnet netip.Prefix
 		subnet, err = netip.ParsePrefix(sub.CIDR)
 		if err != nil {
 			// We won't set a condition here since this should be caught by validation
@@ -162,20 +160,10 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 			continue
 		}
 
-		ipaddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, hostname, h.pool.Spec.DNSZone)
+		var ipaddr netip.Addr
+		ipaddr, err = h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, hostname, h.pool.Spec.DNSZone)
 		if err != nil {
-			conditions.MarkFalse(h.claim,
-				clusterv1.ReadyCondition,
-				v1alpha1.InfobloxAddressAllocationFailedReason,
-				clusterv1.ConditionSeverityError,
-				"could not allocate address: %s", err)
-			conditionSet = true
 			continue
-		}
-
-		if conditionSet {
-			conditions.MarkTrue(h.claim, clusterv1.ReadyCondition)
-			conditionSet = false
 		}
 
 		address.Spec.Address = ipaddr.String()
@@ -187,11 +175,18 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 
 		address.Spec.Gateway = sub.Gateway
 
+		conditions.MarkTrue(h.claim, clusterv1.ReadyCondition)
+
 		return nil, nil
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to ensure address: %w", err)
+		conditions.MarkFalse(h.claim,
+			clusterv1.ReadyCondition,
+			v1alpha1.InfobloxAddressAllocationFailedReason,
+			clusterv1.ConditionSeverityError,
+			"could not allocate address: %s", err)
+		return &ctrl.Result{}, fmt.Errorf("unable to ensure address: %w", err)
 	}
 
 	return nil, nil
