@@ -12,6 +12,7 @@ import (
 	netip "net/netip"
 	reflect "reflect"
 
+	infoblox "github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -66,6 +67,20 @@ func (m *MockClient) CheckNetworkViewExists(arg0 string) (bool, error) {
 func (mr *MockClientMockRecorder) CheckNetworkViewExists(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckNetworkViewExists", reflect.TypeOf((*MockClient)(nil).CheckNetworkViewExists), arg0)
+}
+
+// GetHostConfig mocks base method.
+func (m *MockClient) GetHostConfig() *infoblox.HostConfig {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetHostConfig")
+	ret0, _ := ret[0].(*infoblox.HostConfig)
+	return ret0
+}
+
+// GetHostConfig indicates an expected call of GetHostConfig.
+func (mr *MockClientMockRecorder) GetHostConfig() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHostConfig", reflect.TypeOf((*MockClient)(nil).GetHostConfig))
 }
 
 // GetOrAllocateAddress mocks base method.

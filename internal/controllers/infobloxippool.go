@@ -98,6 +98,10 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		return err
 	}
 
+	if pool.Spec.NetworkView == "" {
+		pool.Spec.NetworkView = ibclient.GetHostConfig().DefaultNetworkView
+	}
+
 	// TODO: handle this in a better way
 	if ok, err := ibclient.CheckNetworkViewExists(pool.Spec.NetworkView); err != nil || !ok {
 		logger.Error(err, "could not find network view", "networkView", pool.Spec.NetworkView)
@@ -125,6 +129,8 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 			return nil
 		}
 	}
+
+	conditions.MarkTrue(pool, clusterv1.ReadyCondition)
 
 	return nil
 }

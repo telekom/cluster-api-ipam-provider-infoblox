@@ -24,14 +24,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
-	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
+	"k8s.io/utils/ptr"
+	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
 )
+
+const ipamAPIVersion = "ipam.cluster.x-k8s.io/v1beta1"
 
 func TestCreatingPool(t *testing.T) {
 	g := NewWithT(t)
@@ -331,7 +333,7 @@ func createIP(name string, ip string, pool *v1alpha1.InfobloxIPPool) *ipamv1.IPA
 	return &ipamv1.IPAddress{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "IPAddress",
-			APIVersion: "ipam.cluster.x-k8s.io/v1alpha1",
+			APIVersion: ipamAPIVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -339,7 +341,7 @@ func createIP(name string, ip string, pool *v1alpha1.InfobloxIPPool) *ipamv1.IPA
 		},
 		Spec: ipamv1.IPAddressSpec{
 			PoolRef: corev1.TypedLocalObjectReference{
-				APIGroup: pointer.String(pool.GetObjectKind().GroupVersionKind().Group),
+				APIGroup: ptr.To[string](pool.GetObjectKind().GroupVersionKind().Group),
 				Kind:     pool.GetObjectKind().GroupVersionKind().Kind,
 				Name:     pool.GetName(),
 			},

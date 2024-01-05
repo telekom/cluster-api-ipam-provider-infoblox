@@ -26,7 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -115,7 +115,7 @@ func (webhook *InfobloxIPPool) ValidateDelete(ctx context.Context, obj runtime.O
 	}
 
 	poolTypeRef := corev1.TypedLocalObjectReference{
-		APIGroup: pointer.String(pool.GetObjectKind().GroupVersionKind().Group),
+		APIGroup: ptr.To[string](pool.GetObjectKind().GroupVersionKind().Group),
 		Kind:     pool.GetObjectKind().GroupVersionKind().Kind,
 		Name:     pool.GetName(),
 	}

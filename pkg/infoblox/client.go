@@ -27,15 +27,17 @@ type Client interface {
 	GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string) (netip.Addr, error)
 	// ReleaseAddress releases an address for a given hostname.
 	ReleaseAddress(view string, subnet netip.Prefix, hostname string) error
-
+	// CheckNetworkViewExists checks if Infoblox network view exists
 	CheckNetworkViewExists(view string) (bool, error)
-
+	//CheckNetworkExists checks if Infoblox network exists
 	CheckNetworkExists(view string, subnet netip.Prefix) (bool, error)
+	GetHostConfig() *HostConfig
 }
 
 type client struct {
 	connector *ibclient.Connector
 	objMgr    ibclient.IBObjectManager
+	hc        HostConfig
 }
 
 var _ Client = &client{}
@@ -54,6 +56,7 @@ type HostConfig struct {
 	Version                string
 	DisableTLSVerification bool
 	CustomCAPath           string
+	DefaultNetworkView     string
 }
 
 // Config is a wrapper config structures.
@@ -101,6 +104,7 @@ func NewClient(config Config) (Client, error) {
 	return &client{
 		connector: con,
 		objMgr:    objMgr,
+		hc:        config.HostConfig,
 	}, nil
 }
 
@@ -140,6 +144,10 @@ func (c *client) CheckNetworkExists(view string, subnet netip.Prefix) (bool, err
 		return false, err
 	}
 	return true, nil
+}
+
+func (c *client) GetHostConfig() *HostConfig {
+	return &c.hc
 }
 
 func isNotFound(err error) bool {

@@ -9,7 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
-	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
+	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
@@ -36,6 +36,7 @@ func getInfobloxClientForInstance(ctx context.Context, client client.Reader, nam
 			Host:                   instance.Spec.Host + ":" + instance.Spec.Port,
 			Version:                instance.Spec.WAPIVersion,
 			DisableTLSVerification: instance.Spec.DisableTLSVerification,
+			DefaultNetworkView:     instance.Spec.DefaultNetworkView,
 		},
 		AuthConfig: ac,
 	}
@@ -43,6 +44,7 @@ func getInfobloxClientForInstance(ctx context.Context, client client.Reader, nam
 	return newClientFn(config)
 }
 
+//+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters,verbs=get;list;watch
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas;metal3machines,verbs=get;list;watch
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=vspheremachines;vspherevms,verbs=get;list;watch
 

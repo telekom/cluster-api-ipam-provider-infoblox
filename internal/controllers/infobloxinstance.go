@@ -112,6 +112,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		Version:                instance.Spec.WAPIVersion,
 		DisableTLSVerification: instance.Spec.DisableTLSVerification,
 		CustomCAPath:           instance.Spec.CustomCAPath,
+		DefaultNetworkView:     instance.Spec.DefaultNetworkView,
 	}
 
 	ibcl, err := r.NewInfobloxClientFunc(infoblox.Config{HostConfig: hc, AuthConfig: authConfig})

@@ -17,6 +17,7 @@ var (
 	testClient *client
 	testView   string
 
+	testNetworkIPv4    netip.Prefix
 	v4testIBNetwork    *ibclient.NetworkContainer
 	v4subnet1IBNetwork *ibclient.Network
 	v4subnet2IBNetwork *ibclient.Network
@@ -44,7 +45,7 @@ func TestInfoblox(t *testing.T) {
 var _ = BeforeSuite(func() {
 	netviewWasCreated = false
 	testView = getInfobloxTestEnvVar("network_view", defaultView)
-	testNetworkIPv4 := netip.MustParsePrefix(getInfobloxTestEnvVar("v4network", "192.168.200.0/24"))
+	testNetworkIPv4 = netip.MustParsePrefix(getInfobloxTestEnvVar("v4network", "192.168.200.0/24"))
 	testNetworkIPv6 := netip.MustParsePrefix(getInfobloxTestEnvVar("v6network", "fdf0:9824:ab5c:6f73:0000:0000:0000:0000/120"))
 
 	config, err := InfobloxConfigFromEnv()

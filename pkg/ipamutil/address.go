@@ -4,8 +4,8 @@ package ipamutil
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
-	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1alpha1"
+	"k8s.io/utils/ptr"
+	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -24,8 +24,8 @@ func NewIPAddress(claim *ipamv1.IPAddressClaim, pool client.Object) ipamv1.IPAdd
 					Kind:               pool.GetObjectKind().GroupVersionKind().Kind,
 					Name:               pool.GetName(),
 					UID:                pool.GetUID(),
-					BlockOwnerDeletion: pointer.Bool(true),
-					Controller:         pointer.Bool(false),
+					BlockOwnerDeletion: ptr.To[bool](true),
+					Controller:         ptr.To[bool](false),
 				},
 			},
 		},

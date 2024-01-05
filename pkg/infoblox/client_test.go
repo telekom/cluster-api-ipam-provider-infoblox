@@ -13,9 +13,7 @@ var _ = Describe("Infoblox Client", func() {
 	When("network view does exist", func() {
 		Context("CheckNetworkExists", func() {
 			It("should return true and no error", func() {
-				addr, err := netip.ParseAddr("192.168.200.0")
-				Expect(err).NotTo(HaveOccurred())
-				exists, err := testClient.CheckNetworkExists(testView, netip.PrefixFrom(addr, 28))
+				exists, err := testClient.CheckNetworkExists(testView, v4subnet1)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(exists).To(BeTrue())
 			})

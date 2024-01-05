@@ -58,22 +58,23 @@ spec:
                     type: string
                 type: object
               networkView:
-                description: NetworkView
+                description: NetworkView defines Infoblox netwok view to be used with
+                  pool.
                 type: string
               subnets:
-                description: 'Subnets is the subnet to assign IP addresses from. Can
-                  be omitted if addresses or first, last and prefix are set. TODO:
-                  turn this into an array to support multiple subnets per pool'
+                description: Subnets is the subnet to assign IP addresses from. Can
+                  be omitted if addresses or first, last and prefix are set.
                 items:
                   description: Subnet defines the CIDR and Gateway.
                   properties:
                     cidr:
+                      description: CIDR for the subnet.
                       type: string
                     gateway:
+                      description: Gateway for the subnet.
                       type: string
                   required:
                   - cidr
-                  - gateway
                   type: object
                 type: array
             required:

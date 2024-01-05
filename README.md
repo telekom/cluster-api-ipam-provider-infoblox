@@ -57,7 +57,7 @@ stringData:
 Next, Infoblox Instance should be defined using `InfobloxInstance` CRD. Ypu can see example, with values explained below.
 
 ```yaml
-apiVersion: ipam.cluster.x-k8s.io/v1alpha1
+apiVersion: ipam.cluster.x-k8s.io/v1beta1
 kind: InfobloxInstance
 metadata:
   name: infobloxinstance-sample     # name of the instance object.
@@ -68,7 +68,7 @@ spec:
   defaultNetworkView: "some-view"   # default Ifoblox network view.
   host: "some.host.com"             # address of the Infoblox server.
   disableTLSVerification: false     # disable/enable SSL verification.
-  customCAPath: "/some/path/ca.crt" # path to a file that contians list of custom Certificate Authorities tha can be used to verify SSL certifcates if 'disableTLSVerification' is set to 'false'. Host's default authorities will be used if not specified.
+  customCAPath: "/some/path/ca.crt" # path to a file which contians list of custom Certificate Authorities that can be used to verify SSL certifcates if 'disableTLSVerification' is set to 'false'. Host's default authorities will be used if not specified.
   port: "443"                       # network port to be used.
   wapiVersion: "2.12"               # Infoblox Web API version.
 ```
@@ -78,7 +78,7 @@ spec:
 This provider comes with a `InfobloxIPPool` resource to specify the pools from which addresses should be assigned. Here is example definition of `InfobloxIPPool` named `infobloxippool-sample` deployed in `caip-infoblox-system` with additional explanation:
 
 ```yaml
-apiVersion: ipam.cluster.x-k8s.io/v1alpha1
+apiVersion: ipam.cluster.x-k8s.io/v1beta1
 kind: InfobloxIPPool
 metadata:
   name: infobloxippool-sample
