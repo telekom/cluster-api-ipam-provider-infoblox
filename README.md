@@ -14,6 +14,21 @@ You can use Makefile to deploy Cluster API IMAP Provider Infoblox. First install
 ```bash
   make install
 ```
+
+Deploy [cert-manager](https://cert-manager.io):
+
+```bash
+  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.3/cert-manager.yaml
+```
+
+Apply required Cluster API CRDs:
+
+```bash
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/release-1.6/config/crd/bases/ipam.cluster.x-k8s.io_ipaddresses.yaml
+
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/release-1.6/config/crd/bases/ipam.cluster.x-k8s.io_ipaddressclaims.yaml
+```
+
 Then, deploy provider itself with:
 
 ```bash
