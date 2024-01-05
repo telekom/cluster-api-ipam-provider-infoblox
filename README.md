@@ -60,16 +60,17 @@ Next, Infoblox Instance should be defined using `InfobloxInstance` CRD. Ypu can 
 apiVersion: ipam.cluster.x-k8s.io/v1alpha1
 kind: InfobloxInstance
 metadata:
-  name: infobloxinstance-sample    # name of the instance object
-  namespace: caip-infoblox-system  # namespace of the instance object
+  name: infobloxinstance-sample     # name of the instance object.
+  namespace: caip-infoblox-system   # namespace of the instance object.
 spec:
-  credentialsSecretRef:            # reference to the credentials 
-    name: some-credentials         # name of the credentials
-  defaultNetworkView: "some-view"  # default Ifoblox network view
-  host: "some.host.com"            # address of the Infoblox server
-  insecureSkipTLSVerify: true      # disable/enable SSL verification
-  port: "443"                      # network port to be used
-  wapiVersion: "2.12"              # Infoblox Web API version
+  credentialsSecretRef:             # reference to the credentials .
+    name: some-credentials          # name of the credentials.
+  defaultNetworkView: "some-view"   # default Ifoblox network view.
+  host: "some.host.com"             # address of the Infoblox server.
+  disableTLSVerification: false     # disable/enable SSL verification.
+  customCAPath: "/some/path/ca.crt" # path to a file that contians list of custom Certificate Authorities tha can be used to verify SSL certifcates if 'disableTLSVerification' is set to 'false'. Host's default authorities will be used if not specified.
+  port: "443"                       # network port to be used.
+  wapiVersion: "2.12"               # Infoblox Web API version.
 ```
 
 ## Usage

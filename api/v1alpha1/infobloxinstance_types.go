@@ -40,9 +40,11 @@ type InfobloxInstanceSpec struct {
 	// InfobloxIPPools will inherit this value when not explicitly specifying a network view.
 	// +optional
 	DefaultNetworkView string `json:"defaultNetworkView,omitempty"`
-	//
-	InsecureSkipTLSVerify bool `json:"insecureSkipTLSVerify,omitempty"`
-	// maybe add a way to reference a custom CA?
+	// DisableTLSVerification if set 'true', certificates for SSL commuunication with Infoblox instance will be not verified
+	DisableTLSVerification bool `json:"disableTLSVerification,omitempty"`
+	// CustomCAPath can be used to point Infoblox client to a file with a list of accepted certificate authorities. Only used if DisableTLSVerification is set to 'false'.
+	// + optional
+	CustomCAPath string `json:"customCAPath,omitempty"`
 }
 
 // InfobloxInstanceStatus defines the observed state of InfobloxInstance.

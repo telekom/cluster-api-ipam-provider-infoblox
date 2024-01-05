@@ -15,6 +15,7 @@ spec:
     name: some-credentials
   defaultNetworkView: "some-view"
   host: "some.host.com"
-  insecureSkipTLSVerify: true
+  disableTLSVerification: false
+  customCAPath: "/some/path/ca.crt"
   port: "443"
   wapiVersion: "2.12"

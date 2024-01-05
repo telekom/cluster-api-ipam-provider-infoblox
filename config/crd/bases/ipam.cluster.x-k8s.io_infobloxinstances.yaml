@@ -60,16 +60,23 @@ spec:
                       TODO: Add other useful fields. apiVersion, kind, uid?'
                     type: string
                 type: object
+              customCAPath:
+                description: CustomCAPath can be used to point Infoblox client to
+                  a file with a list of accepted certificate authorities. Only used
+                  if DisableTLSVerification is set to 'false'.
+                type: string
               defaultNetworkView:
                 description: DefaultNetworkView is the default network view used when
                   interacting with Infoblox. InfobloxIPPools will inherit this value
                   when not explicitly specifying a network view.
                 type: string
+              disableTLSVerification:
+                description: DisableTLSVerification if set 'true', certificates for
+                  SSL commuunication with Infoblox instance will be not verified
+                type: boolean
               host:
                 description: Endpoint is the API endpoint of the Infoblox instance.
                 type: string
-              insecureSkipTLSVerify:
-                type: boolean
               port:
                 default: "443"
                 description: Port

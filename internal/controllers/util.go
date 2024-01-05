@@ -33,9 +33,9 @@ func getInfobloxClientForInstance(ctx context.Context, client client.Reader, nam
 	}
 	config := infoblox.Config{
 		HostConfig: infoblox.HostConfig{
-			Host:                  instance.Spec.Host + ":" + instance.Spec.Port,
-			Version:               instance.Spec.WAPIVersion,
-			InsecureSkipTLSVerify: instance.Spec.InsecureSkipTLSVerify,
+			Host:                   instance.Spec.Host + ":" + instance.Spec.Port,
+			Version:                instance.Spec.WAPIVersion,
+			DisableTLSVerification: instance.Spec.DisableTLSVerification,
 		},
 		AuthConfig: ac,
 	}

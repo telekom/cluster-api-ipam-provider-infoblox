@@ -50,9 +50,10 @@ type AuthConfig struct {
 
 // HostConfig contains host configuration patameters.
 type HostConfig struct {
-	Host                  string
-	Version               string
-	InsecureSkipTLSVerify bool
+	Host                   string
+	Version                string
+	DisableTLSVerification bool
+	CustomCAPath           string
 }
 
 // Config is a wrapper config structures.
@@ -80,9 +81,12 @@ func NewClient(config Config) (Client, error) {
 		ClientKey:  config.ClientKey,
 	}
 	tlsVerify := "true"
-	if config.InsecureSkipTLSVerify {
+	if config.DisableTLSVerification {
 		tlsVerify = "false"
+	} else if config.CustomCAPath != "" {
+		tlsVerify = config.CustomCAPath
 	}
+
 	rb := &ibclient.WapiRequestBuilder{}
 	rq := &ibclient.WapiHttpRequestor{}
 	tc := ibclient.NewTransportConfig(tlsVerify, int(time.Second), 5)

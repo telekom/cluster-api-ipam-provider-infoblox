@@ -11,9 +11,9 @@ const infobloxTestEnvPrefix = "CAIP_INFOBLOX_TEST_"
 func InfobloxConfigFromEnv() (Config, error) {
 	config := Config{
 		HostConfig: HostConfig{
-			Host:                  getInfobloxTestEnvVar("host", ""),
-			InsecureSkipTLSVerify: strToBool(getInfobloxTestEnvVar("skip_tls_verify", "false")),
-			Version:               getInfobloxTestEnvVar("wapi_version", ""),
+			Host:                   getInfobloxTestEnvVar("host", ""),
+			DisableTLSVerification: strToBool(getInfobloxTestEnvVar("skip_tls_verify", "false")),
+			Version:                getInfobloxTestEnvVar("wapi_version", ""),
 		},
 		AuthConfig: AuthConfig{
 			Username:   getInfobloxTestEnvVar("username", ""),
