@@ -51,15 +51,6 @@ var IgnoreUIDsOnIPAddress = IgnorePaths{
 	"Spec.Pool.UID",
 }
 
-var IgnoreManagedFields = IgnorePaths{
-	"TypeMeta",
-	"ObjectMeta.OwnerReferences[0].UID",
-	"ObjectMeta.OwnerReferences[1].UID",
-	"ObjectMeta.OwnerReferences[2].UID",
-	"Spec.Claim.UID",
-	"Spec.Pool.UID",
-}
-
 const instanceName = "test-instance"
 
 const ipamAPIVersion = "ipam.cluster.x-k8s.io/v1beta1"
