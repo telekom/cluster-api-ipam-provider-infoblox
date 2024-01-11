@@ -27,6 +27,8 @@ Apply required Cluster API CRDs:
   kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/release-1.6/config/crd/bases/ipam.cluster.x-k8s.io_ipaddresses.yaml
 
   kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/release-1.6/config/crd/bases/ipam.cluster.x-k8s.io_ipaddressclaims.yaml
+
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/release-1.6/config/crd/bases/cluster.x-k8s.io_clusters.yaml
 ```
 
 Then, deploy provider itself with:
