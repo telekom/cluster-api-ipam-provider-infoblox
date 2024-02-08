@@ -5,8 +5,8 @@ go 1.21
 require (
 	github.com/golang/mock v1.6.0
 	github.com/infobloxopen/infoblox-go-client/v2 v2.3.0
-	github.com/onsi/ginkgo/v2 v2.13.2
-	github.com/onsi/gomega v1.30.0
+	github.com/onsi/ginkgo/v2 v2.15.0
+	github.com/onsi/gomega v1.31.1
 	github.com/pkg/errors v0.9.1
 	go.uber.org/mock v0.4.0
 	k8s.io/api v0.29.0
@@ -14,8 +14,8 @@ require (
 	k8s.io/client-go v0.29.0
 	k8s.io/klog/v2 v2.110.1
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
-	sigs.k8s.io/cluster-api v1.6.0
-	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v0.0.0-00010101000000-000000000000
+	sigs.k8s.io/cluster-api v1.6.1
+	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v0.1.0-rc.0
 	sigs.k8s.io/cluster-api-provider-vsphere v1.8.3
 	sigs.k8s.io/controller-runtime v0.16.3
 )
@@ -74,7 +74,7 @@ require (
 	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.16.0 // indirect
+	golang.org/x/tools v0.16.1 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
@@ -88,5 +88,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-replace sigs.k8s.io/cluster-api-ipam-provider-in-cluster => ../cluster-api-ipam-provider-in-cluster

@@ -48,14 +48,6 @@ var (
 	newHostnameHandlerFunc           = newHostnameHandler
 )
 
-const (
-	// ReleaseAddressFinalizer is used to release an IP address before cleaning up the claim.
-	ReleaseAddressFinalizer = "ipam.cluster.x-k8s.io/ReleaseAddress"
-
-	// ProtectAddressFinalizer is used to prevent deletion of an IPAddress object while its claim is not deleted.
-	ProtectAddressFinalizer = "ipam.cluster.x-k8s.io/ProtectAddress"
-)
-
 // InfobloxProviderAdapter reconciles a InfobloxIPPool object.
 type InfobloxProviderAdapter struct {
 	NewInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
@@ -114,30 +106,30 @@ func (r *InfobloxProviderAdapter) ClaimHandlerFor(cl client.Client, claim *ipamv
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=ipaddressclaims/status;ipaddresses/finalizers,verbs=update
 
 // FetchPool fetches pool from cluster.
-func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (*ctrl.Result, error) {
+func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (client.Object, *ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	var err error
 
 	h.pool = &v1alpha1.InfobloxIPPool{}
 	if err = h.Client.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, h.pool); err != nil && !apierrors.IsNotFound(err) {
-		return nil, errors.Wrap(err, "failed to fetch pool")
+		return nil, nil, errors.Wrap(err, "failed to fetch pool")
 	}
 
 	if h.pool == nil {
 		err := errors.New("pool not found")
 		logger.Error(err, "the referenced pool could not be found")
-		return nil, nil
+		return h.pool, nil, nil
 	}
 
 	// TODO: ensure pool is ready
 
 	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.operatorNamespace, h.newInfobloxClientFunc)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get infoblox client: %w", err)
+		return h.pool, nil, fmt.Errorf("failed to get infoblox client: %w", err)
 	}
 
-	return nil, nil
+	return h.pool, nil, nil
 }
 
 // EnsureAddress ensures address.
