@@ -42,7 +42,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers/utilmock"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/hostname"
+	hostnamemock "github.com/telekom/cluster-api-ipam-provider-infoblox/internal/hostname/mock"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
@@ -58,12 +59,12 @@ var (
 	ctx       context.Context
 	cancelCtx func()
 
-	mockInfobloxClient         *ibmock.MockClient
-	localInfobloxClientMock    *ibmock.MockClient
-	mockHostnameHandler        *utilmock.MockHostnameHandler
-	mockNewInfobloxClientFunc  func(infoblox.Config) (infoblox.Client, error)
-	mockNewHostnameHandlerFunc func(claim *ipamv1.IPAddressClaim, c client.Client) (HostnameHandler, error)
-	mockCtrl                   *gomock.Controller
+	mockInfobloxClient          *ibmock.MockClient
+	localInfobloxClientMock     *ibmock.MockClient
+	mockHostnameHandler         *hostnamemock.MockResolver
+	mockNewInfobloxClientFunc   func(infoblox.Config) (infoblox.Client, error)
+	mockNewHostnameResolverFunc func(c client.Client, claim *ipamv1.IPAddressClaim) (hostname.Resolver, error)
+	mockCtrl                    *gomock.Controller
 )
 
 func TestAPIs(t *testing.T) {
@@ -82,13 +83,12 @@ var _ = BeforeSuite(func() {
 		return mockInfobloxClient, nil
 	}
 
-	mockHostnameHandler = utilmock.NewMockHostnameHandler(mockCtrl)
-	mockNewHostnameHandlerFunc = func(claim *ipamv1.IPAddressClaim, c client.Client) (HostnameHandler, error) {
+	mockHostnameHandler = hostnamemock.NewMockResolver(mockCtrl)
+	mockNewHostnameResolverFunc = func(c client.Client, claim *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
 		return mockHostnameHandler, nil
 	}
-
-	mockHostnameHandler.EXPECT().GetHostname(gomock.Any()).Return("hostname", nil).AnyTimes()
-	newHostnameHandlerFunc = mockNewHostnameHandlerFunc
+	mockHostnameHandler.EXPECT().GetHostname(gomock.Any(), gomock.Any()).Return("hostname", nil).AnyTimes()
+	newHostnameHandlerFunc = mockNewHostnameResolverFunc
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -155,7 +155,7 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
-	newHostnameHandlerFunc = newHostnameHandler
+	newHostnameHandlerFunc = getHostnameResolver
 })
 
 func newClaim(name, namespace, poolKind, poolName string) ipamv1.IPAddressClaim {

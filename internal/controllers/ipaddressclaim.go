@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/hostname"
 	"net/netip"
 	"strconv"
 	"strings"
@@ -45,7 +46,8 @@ import (
 
 var (
 	getInfobloxClientForInstanceFunc = getInfobloxClientForInstance
-	newHostnameHandlerFunc           = newHostnameHandler
+	newHostnameHandlerFunc           = getHostnameResolver
+	hostnameAnnotation               = "ipam.cluster.x-k8s.io/hostname"
 )
 
 // InfobloxProviderAdapter reconciles a InfobloxIPPool object.
@@ -105,6 +107,10 @@ func (r *InfobloxProviderAdapter) ClaimHandlerFor(cl client.Client, claim *ipamv
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=ipaddressclaims/status;ipaddresses/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=ipaddressclaims/status;ipaddresses/finalizers,verbs=update
 
+// for resolving hostnames
+//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas;metal3machines,verbs=get;list;watch
+//+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=vspheremachines;vspherevms,verbs=get;list;watch
+
 // FetchPool fetches pool from cluster.
 func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (client.Object, *ctrl.Result, error) {
 	logger := log.FromContext(ctx)
@@ -138,7 +144,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 
 	logger := log.FromContext(ctx)
 
-	hostname, err := h.getHostname(ctx)
+	hostName, err := h.getHostname(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -148,9 +154,9 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 	}
 	// since we can't guarantee that resolving the hostname during machine deletion will succeed, we store it as an annotation
 	// on the claim, and retrieve it during deletion to delete the infoblox record.
-	h.claim.Annotations[hostnameAnnotation] = hostname
+	h.claim.Annotations[hostnameAnnotation] = hostName
 
-	logger = logger.WithValues("hostname", hostname)
+	logger = logger.WithValues("hostname", hostName)
 
 	for _, sub := range h.pool.Spec.Subnets {
 		var subnet netip.Prefix
@@ -162,7 +168,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		}
 
 		var ipaddr netip.Addr
-		ipaddr, err = h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, hostname, h.pool.Spec.DNSZone)
+		ipaddr, err = h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, hostName, h.pool.Spec.DNSZone)
 		if err != nil {
 			continue
 		}
@@ -170,7 +176,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		address.Spec.Address = ipaddr.String()
 
 		if address.Spec.Prefix, err = strconv.Atoi(strings.Split(subnet.String(), "/")[1]); err != nil {
-			logger.Error(err, "could not parse address", "subnet", subnet.String())
+			logger.Error(err, "could determine prefix length", "subnet", subnet.String())
 			continue
 		}
 
@@ -243,19 +249,44 @@ func (h *InfobloxClaimHandler) GetPool() client.Object {
 }
 
 func (h *InfobloxClaimHandler) getHostname(ctx context.Context) (string, error) {
-	hostnameHandler, err := newHostnameHandlerFunc(h.claim, h.Client)
+	hostnameHandler, err := newHostnameHandlerFunc(h.Client, h.claim)
 	if err != nil {
 		return "", fmt.Errorf("failed to create hostname handler: %w", err)
 	}
 
-	hostname, err := hostnameHandler.GetHostname(ctx)
+	hn, err := hostnameHandler.GetHostname(ctx, h.claim)
 	if err != nil {
 		return "", fmt.Errorf("failed to get hostname: %w", err)
 	}
 
 	if h.pool.Spec.DNSZone != "" {
-		hostname += "." + h.pool.Spec.DNSZone
+		hn += "." + h.pool.Spec.DNSZone
 	}
 
-	return hostname, nil
+	return hn, nil
+}
+
+func getHostnameResolver(cl client.Client, claim *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
+	switch claim.Kind {
+	case "Metal3Data":
+		return &hostname.OwnerChainResolver{
+			Client: cl,
+			Chain: []metav1.GroupKind{
+				{Group: "infrastructure.cluster.x-k8s.io", Kind: "Metal3Data"},
+				{Group: "infrastructure.cluster.x-k8s.io", Kind: "Metal3Machine"},
+				{Group: "cluster.x-k8s.io", Kind: "Machine"},
+			},
+		}, nil
+	case "VSphereVM":
+		return &hostname.OwnerChainResolver{
+			Client: cl,
+			Chain: []metav1.GroupKind{
+				{Group: "infrastructure.cluster.x-k8s.io", Kind: "VSphereVM"},
+				{Group: "infrastructure.cluster.x-k8s.io", Kind: "VSphereMachine"},
+				{Group: "cluster.x-k8s.io", Kind: "Machine"},
+			},
+		}, nil
+	default:
+		return nil, fmt.Errorf("failed to create resolver for kind %s", claim.Kind)
+	}
 }
