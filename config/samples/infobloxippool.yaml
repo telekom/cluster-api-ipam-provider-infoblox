@@ -2,7 +2,7 @@ apiVersion: ipam.cluster.x-k8s.io/v1beta1
 kind: InfobloxIPPool
 metadata:
   name: infobloxippool-sample
-  namespace: caip-infoblox-system
+  namespace: capi-ipam-infoblox-system
 spec:
   instance:
     name: "infobloxinstance-sample"

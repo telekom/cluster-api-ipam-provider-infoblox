@@ -1,10 +1,10 @@
 module github.com/telekom/cluster-api-ipam-provider-infoblox
 
-go 1.21
+go 1.22
 
 require (
 	github.com/golang/mock v1.6.0
-	github.com/infobloxopen/infoblox-go-client/v2 v2.3.0
+	github.com/infobloxopen/infoblox-go-client/v2 v2.4.0
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1
 	github.com/pkg/errors v0.9.1
@@ -15,7 +15,7 @@ require (
 	k8s.io/klog/v2 v2.110.1
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e
 	sigs.k8s.io/cluster-api v1.6.1
-	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v0.1.0-rc.0
+	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v0.1.0
 	sigs.k8s.io/cluster-api-provider-vsphere v1.8.3
 	sigs.k8s.io/controller-runtime v0.16.3
 )
@@ -27,7 +27,6 @@ require (
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/metal3-io/ip-address-manager/api v1.5.1 // indirect
-	github.com/onsi/ginkgo v1.16.4 // indirect
 	golang.org/x/exp v0.0.0-20231226003508-02704c960a9b // indirect
 )
 

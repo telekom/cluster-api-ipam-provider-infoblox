@@ -1,10 +1,7 @@
 # Build the manager binary
-FROM golang:1.21 as builder
+FROM golang:1.22 as builder
 
 WORKDIR /workspace
-
-# Copy cluster-api-ipam-provider-in-cluster dir - to be removed when upstream generic provider for in-cluster changes will be merged
-COPY ../cluster-api-ipam-provider-in-cluster ../cluster-api-ipam-provider-in-cluster
 
 # Copy the Go Modules manifests
 COPY go.mod go.mod
