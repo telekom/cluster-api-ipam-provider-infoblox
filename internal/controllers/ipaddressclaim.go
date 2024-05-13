@@ -143,6 +143,15 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		return nil, err
 	}
 
+	if h.claim.Annotations == nil {
+		h.claim.Annotations = map[string]string{}
+	}
+	// since we can't guarantee that resolving the hostname during machine deletion will succeed, we store it as an annotation
+	// on the claim, and retrieve it during deletion to delete the infoblox record.
+	h.claim.Annotations[hostnameAnnotation] = hostname
+
+	logger = logger.WithValues("hostname", hostname)
+
 	for _, sub := range h.pool.Spec.Subnets {
 		var subnet netip.Prefix
 		subnet, err = netip.ParsePrefix(sub.CIDR)
@@ -185,16 +194,19 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 }
 
 // ReleaseAddress releases address.
-func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
-	ctx := context.Background()
+func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	var err error
-
-	hostname, err := h.getHostname(ctx)
-	if err != nil {
+	hostName := h.claim.Annotations[hostnameAnnotation]
+	if hostName == "" {
+		hostName, err = h.getHostname(ctx)
+		if err != nil {
+		}
 		return nil, err
 	}
+
+	logger = logger.WithValues("hostname", hostName)
 
 	var subnet netip.Prefix
 	for _, sub := range h.pool.Spec.Subnets {
@@ -205,14 +217,14 @@ func (h *InfobloxClaimHandler) ReleaseAddress() (*ctrl.Result, error) {
 			continue
 		}
 
-		err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, hostname)
+		err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, hostName)
 		if err != nil {
 			if _, ok := err.(*ibclient.NotFoundError); !ok {
-				logger.Error(err, "failed to release address for host", "hostname", hostname)
+				logger.Error(err, "failed to release address for host", "hostname", hostName)
 			}
 			continue
 		} else if err == nil {
-			logger.Info("released address for host", "hostname", hostname)
+			logger.Info("released address for host", "hostname", hostName)
 		}
 	}
 
