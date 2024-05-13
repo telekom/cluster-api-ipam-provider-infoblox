@@ -3,6 +3,7 @@ package infoblox
 import (
 	"errors"
 	"fmt"
+	"k8s.io/utils/pointer"
 	"net/netip"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
@@ -17,22 +18,22 @@ func (c *client) getOrNewHostRecord(view, hostname, zone string) (*ibclient.Host
 	// [Issue] For some reason Infoblox does not assign view to the host record. Empty netview and dnsview is a workaround to find host.
 	hostRecord, err := c.objMgr.GetHostRecord("", "", hostname, "", "")
 	if err != nil {
-		if _, ok := err.(*ibclient.NotFoundError); !ok {
+		var notFoundError *ibclient.NotFoundError
+		if !errors.As(err, &notFoundError) {
 			return nil, err
 		}
 	}
 
 	if hostRecord == nil {
 		hostRecord = ibclient.NewEmptyHostRecord()
-		hostRecord.Name = hostname
+		hostRecord.Name = &hostname
 		hostRecord.NetworkView = view
 		hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{}
 		hostRecord.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{}
-		hostRecord.EnableDns = false
+		hostRecord.EnableDns = pointer.Bool(false)
 		if zone != "" {
-			hostRecord.EnableDns = true
+			hostRecord.EnableDns = pointer.Bool(true)
 			hostRecord.View = toDNSView(view)
-			hostRecord.Zone = zone
 		}
 	}
 
@@ -61,31 +62,35 @@ func (c *client) createOrUpdateHostRecord(hr *ibclient.HostRecord) error {
 func getHostRecordAddrInSubnet(hr *ibclient.HostRecord, subnet netip.Prefix) (netip.Addr, bool) {
 	if subnet.Addr().Is4() {
 		for _, ip := range hr.Ipv4Addrs {
-			nip, err := netip.ParseAddr(ip.Ipv4Addr)
-			if err != nil {
-				// As a working IPAM system, Infoblox should only return valid IP addresses. But just in case it doesn't, we just skip the address.
-				continue
-			}
-			if subnet.Contains(nip) {
+			if ip.Ipv4Addr != nil {
+				nip, err := netip.ParseAddr(*ip.Ipv4Addr)
+				if err != nil {
+					// As a working IPAM system, Infoblox should only return valid IP addresses. But just in case it doesn't, we just skip the address.
+					continue
+				}
+				if subnet.Contains(nip) {
+				}
 				return nip, true
 			}
 		}
 	} else {
 		for _, ip := range hr.Ipv6Addrs {
-			nip, err := netip.ParseAddr(ip.Ipv6Addr)
-			if err != nil {
-				// As a working IPAM system, Infoblox should only return valid IP addresses. But just in case it doesn't, we just skip the address.
-				continue
-			}
-			if subnet.Contains(nip) {
-				return nip, true
+			if ip.Ipv6Addr != nil {
+				nip, err := netip.ParseAddr(*ip.Ipv6Addr)
+				if err != nil {
+					// As a working IPAM system, Infoblox should only return valid IP addresses. But just in case it doesn't, we just skip the address.
+					continue
+				}
+				if subnet.Contains(nip) {
+					return nip, true
+				}
 			}
 		}
 	}
 	return netip.Addr{}, false
 }
 
-// getOrAllocateAddress returns the IP address of the given hostname in the given subnet. If the hostname does not have an IP address in the subnet, it will allocate one.
+// GetOrAllocateAddress returns the IP address of the given hostname in the given subnet. If the hostname does not have an IP address in the subnet, it will allocate one.
 func (c *client) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string) (netip.Addr, error) {
 	hr, err := c.getOrNewHostRecord(view, hostname, zone)
 	if err != nil {
@@ -133,26 +138,30 @@ func (c *client) ReleaseAddress(view string, subnet netip.Prefix, hostname strin
 	removed := false
 	if subnet.Addr().Is4() {
 		for i, ip := range hr.Ipv4Addrs {
-			nip, err := netip.ParseAddr(ip.Ipv4Addr)
-			if err != nil {
-				continue
-			}
-			if subnet.Contains(nip) {
-				hr.Ipv4Addrs = append(hr.Ipv4Addrs[:i], hr.Ipv4Addrs[i+1:]...)
-				removed = true
-				break
+			if ip.Ipv4Addr != nil {
+				nip, err := netip.ParseAddr(*ip.Ipv4Addr)
+				if err != nil {
+					continue
+				}
+				if subnet.Contains(nip) {
+					hr.Ipv4Addrs = append(hr.Ipv4Addrs[:i], hr.Ipv4Addrs[i+1:]...)
+					removed = true
+					break
+				}
 			}
 		}
 	} else {
 		for i, ip := range hr.Ipv6Addrs {
-			nip, err := netip.ParseAddr(ip.Ipv6Addr)
-			if err != nil {
-				continue
-			}
-			if subnet.Contains(nip) {
-				hr.Ipv6Addrs = append(hr.Ipv6Addrs[:i], hr.Ipv6Addrs[i+1:]...)
-				removed = true
-				break
+			if ip.Ipv6Addr != nil {
+				nip, err := netip.ParseAddr(*ip.Ipv6Addr)
+				if err != nil {
+					continue
+				}
+				if subnet.Contains(nip) {
+					hr.Ipv6Addrs = append(hr.Ipv6Addrs[:i], hr.Ipv6Addrs[i+1:]...)
+					removed = true
+					break
+				}
 			}
 		}
 	}
@@ -175,14 +184,15 @@ func (c *client) ReleaseAddress(view string, subnet netip.Prefix, hostname strin
 	return err
 }
 
-func toDNSView(view string) string {
+func toDNSView(view string) *string {
 	if view == "" {
-		return ""
+		return nil
 	}
 	if view == "default" {
-		return view
+		return &view
 	}
-	return "default." + view
+	s := "default." + view
+	return &s
 }
 
 func prepareHostRecordForUpdate(hr *ibclient.HostRecord) {
@@ -195,5 +205,12 @@ func prepareHostRecordForUpdate(hr *ibclient.HostRecord) {
 	}
 	if hr.Ipv6Addrs == nil {
 		hr.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{}
+	}
+	// clear Host field for all addresses
+	for i := range hr.Ipv4Addrs {
+		hr.Ipv4Addrs[i].Host = ""
+	}
+	for i := range hr.Ipv6Addrs {
+		hr.Ipv6Addrs[i].Host = ""
 	}
 }

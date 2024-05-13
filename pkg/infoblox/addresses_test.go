@@ -73,7 +73,7 @@ var _ = Describe("IP Address Management", func() {
 		Context("IPv4 record", func() {
 			BeforeEach(func() {
 				var err error
-				hostRecord, err = testClient.objMgr.CreateHostRecord(dnsEnabled, false, hostname, testView, toDNSView(testView), v4subnet1.String(), "", "", "", "", "", false, 0, "", ibclient.EA{}, nil)
+				hostRecord, err = testClient.objMgr.CreateHostRecord(dnsEnabled, false, hostname, testView, *toDNSView(testView), v4subnet1.String(), "", "", "", "", "", false, 0, "", ibclient.EA{}, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(hostRecord).NotTo(BeNil())
 			})
@@ -112,7 +112,7 @@ var _ = Describe("IP Address Management", func() {
 		Context("IPv6 record", func() {
 			BeforeEach(func() {
 				var err error
-				hostRecord, err = testClient.objMgr.CreateHostRecord(dnsEnabled, false, hostname, testView, toDNSView(testView), "", v6subnet1.String(), "", "", "", "", false, 0, "", ibclient.EA{}, nil)
+				hostRecord, err = testClient.objMgr.CreateHostRecord(dnsEnabled, false, hostname, testView, *toDNSView(testView), "", v6subnet1.String(), "", "", "", "", false, 0, "", ibclient.EA{}, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(hostRecord).NotTo(BeNil())
 			})
@@ -120,7 +120,7 @@ var _ = Describe("IP Address Management", func() {
 			It("returns the existing IP if the subnet is the same", func() {
 				addr, err := testClient.GetOrAllocateAddress(testView, v6subnet1, hostname, "")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(addr).To(Equal(netip.MustParseAddr(hostRecord.Ipv6Addrs[0].Ipv6Addr)))
+				Expect(addr).To(Equal(netip.MustParseAddr(*hostRecord.Ipv6Addrs[0].Ipv6Addr)))
 			})
 
 			It("allocates another IP if the subnet is different", func() {
@@ -157,12 +157,13 @@ var _ = Describe("IP Address Management", func() {
 
 		Context("IPv4 record", func() {
 			BeforeEach(func() {
+				dnsEnabled := dnsEnabled
 				var err error
 				hostRecord = ibclient.NewEmptyHostRecord()
-				hostRecord.Name = hostname
+				hostRecord.Name = &hostname
 				hostRecord.NetworkView = testView
 				hostRecord.View = toDNSView(testView)
-				hostRecord.EnableDns = dnsEnabled
+				hostRecord.EnableDns = &dnsEnabled
 				hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{
 					*ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(v4subnet1, testView), "", false, ""),
 					*ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(v4subnet2, testView), "", false, ""),
@@ -188,12 +189,13 @@ var _ = Describe("IP Address Management", func() {
 
 		Context("IPv6 record", func() {
 			BeforeEach(func() {
+				dnsEnabled := dnsEnabled
 				var err error
 				hostRecord = ibclient.NewEmptyHostRecord()
-				hostRecord.Name = hostname
+				hostRecord.Name = &hostname
 				hostRecord.NetworkView = testView
 				hostRecord.View = toDNSView(testView)
-				hostRecord.EnableDns = dnsEnabled
+				hostRecord.EnableDns = &dnsEnabled
 				hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{}
 				hostRecord.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{
 					*ibclient.NewHostRecordIpv6Addr(nextAvailableIBFunc(v6subnet1, testView), "", false, ""),
@@ -219,12 +221,13 @@ var _ = Describe("IP Address Management", func() {
 
 		Context("Mixed record", func() {
 			BeforeEach(func() {
+				dnsEnabled := dnsEnabled
 				var err error
 				hostRecord = ibclient.NewEmptyHostRecord()
-				hostRecord.Name = hostname
+				hostRecord.Name = &hostname
 				hostRecord.NetworkView = testView
 				hostRecord.View = toDNSView(testView)
-				hostRecord.EnableDns = dnsEnabled
+				hostRecord.EnableDns = &dnsEnabled
 				hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{
 					*ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(v4subnet1, testView), "", false, ""),
 				}

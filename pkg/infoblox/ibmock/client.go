@@ -5,6 +5,7 @@
 //
 //	mockgen -destination=ibmock/client.go -package=ibmock . Client
 //
+
 // Package ibmock is a generated GoMock package.
 package ibmock
 
