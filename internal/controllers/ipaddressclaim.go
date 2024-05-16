@@ -149,12 +149,15 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		return nil, err
 	}
 
-	if h.claim.Annotations == nil {
-		h.claim.Annotations = map[string]string{}
-	}
-	// since we can't guarantee that resolving the hostname during machine deletion will succeed, we store it as an annotation
+	// Since we can't guarantee that resolving the hostname during machine deletion will succeed, we store it as an annotation
 	// on the claim, and retrieve it during deletion to delete the infoblox record.
-	h.claim.Annotations[hostnameAnnotation] = hostName
+	// We only need to do so when
+	if h.pool.Spec.DNSZone != "" {
+		if h.claim.Annotations == nil {
+			h.claim.Annotations = map[string]string{}
+		}
+		h.claim.Annotations[hostnameAnnotation] = hostName
+	}
 
 	logger = logger.WithValues("hostname", hostName)
 
@@ -204,13 +207,6 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 	logger := log.FromContext(ctx)
 
 	var err error
-	hostName := h.claim.Annotations[hostnameAnnotation]
-	if hostName == "" {
-		hostName, err = h.getHostname(ctx)
-		if err != nil {
-		}
-		return nil, err
-	}
 
 	logger = logger.WithValues("hostname", hostName)
 
@@ -249,6 +245,15 @@ func (h *InfobloxClaimHandler) GetPool() client.Object {
 }
 
 func (h *InfobloxClaimHandler) getHostname(ctx context.Context) (string, error) {
+	hostName := h.claim.Annotations[hostnameAnnotation]
+	if hostName != "" {
+		return hostName, nil
+	}
+
+	if h.pool.Spec.DNSZone == "" {
+		return h.claim.Name, nil
+	}
+
 	hostnameHandler, err := newHostnameHandlerFunc(h.Client, h.claim)
 	if err != nil {
 		return "", fmt.Errorf("failed to create hostname handler: %w", err)
