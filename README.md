@@ -1,103 +1,104 @@
 # Cluster API IPAM Provider Infoblox
 
 This is an IPAM provider for Cluster API that integrates with Infoblox NIOS for IP address management and DNS.
-It allows to allocate addresses from subnets configured in Infoblox. Since it creates Host resources in Infoblox, it can also be used to configure DNS entries for hosts at the same time.
-
-**NOTE: This provider is still under heavy development so some issues might occur**
+It allows to allocate addresses from subnets configured in Infoblox and allows to add DNS entries for those allocated addresses as well.
 
 ## Deploying
 
-### Installing
+This provider can be installed using `clusterctl install`. Since it's not yet added to the integrated list of providers, you'll need to use the following configuration (or add it to your existing one).
 
-You can use Makefile to deploy Cluster API IMAP Provider Infoblox. First install all required CRDs using:
-
-```bash
-  make install
+```
+providers:
+  - name: "infoblox"
+    url: "${HOME}/projects/cluster-api-ipam-provider-infoblox/out/ipam-components.yaml"
+    type: "IPAMProvider"
 ```
 
-Deploy [cert-manager](https://cert-manager.io):
+Make sure the url points to the correct `ipam-components.yaml` which you can download on the relases page. Alternatively you can generate yourself by running `make release`.
 
-```bash
-  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.3/cert-manager.yaml
+You can then install the provider by adding `--ipam infoblox` to a `clusterctl install` command.
+
+```
+clusterctl install --ipam infoblox
 ```
 
-Apply required Cluster API CRDs:
+## Configuring Infoblox Instances
 
-```bash
-  kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/release-1.6/config/crd/bases/ipam.cluster.x-k8s.io_ipaddresses.yaml
+Next, an `InfobloxInstance` needs to be configured, which contains connection details and credentials to connect to your Infoblox instance.
 
-  kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/release-1.6/config/crd/bases/ipam.cluster.x-k8s.io_ipaddressclaims.yaml
+The credentials need to be provided as a `Secret`, which is referenced by the `InfobloxInstance`. It needs to contain either `username/password` or `clientCert/clientKey`.
 
-  kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/cluster-api/release-1.6/config/crd/bases/cluster.x-k8s.io_clusters.yaml
-```
-
-Then, deploy provider itself with:
-
-```bash
-  make deploy
-```
-
-### Configuring Infoblox Instances
-
-Next thing is to define Infoblox Instances (servers) that will be used by the provider. To connect to the instance, passwrd and username, or certificate and key pair is required. Those should be specified using Kubernetes `secret` deployed in the same `namesapce` as the provider's pods:
+Both the secret needs to be created in the same namespace as the provider (default: `capi-ipam-infoblox-system`). The `InfobloxInstance` is global.
 
 ```yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: some-credentials
-  namespace: caip-infoblox-system
-type: kubernetes.io/basic-auth
+  name: production-credentials
+  namespace: capi-ipam-infoblox-system
 stringData:
-  username: <username>
-  password: <password>
+  username: '<username>'
+  password: '<password>'
 #or
-  clientCert: <cert>
-  clientKey: <key>
+  clientCert: '<cert>'
+  clientKey: '<key>'
 ```
-
-Next, Infoblox Instance should be defined using `InfobloxInstance` CRD. Ypu can see example, with values explained below.
 
 ```yaml
 apiVersion: ipam.cluster.x-k8s.io/v1beta1
 kind: InfobloxInstance
 metadata:
-  name: infobloxinstance-sample     # name of the instance object.
-  namespace: caip-infoblox-system   # namespace of the instance object.
+  name: production
 spec:
-  credentialsSecretRef:             # reference to the credentials .
-    name: some-credentials          # name of the credentials.
-  defaultNetworkView: "some-view"   # default Ifoblox network view.
-  host: "some.host.com"             # address of the Infoblox server.
-  disableTLSVerification: false     # disable/enable SSL verification.
+  host: "some.host.com"             # address of the Infoblox server
+  port: "443"                       # port of the Infoblox server
+  credentialsSecretRef:
+    name: production-credentials
+  disableTLSVerification: true      # disable TLSVerification
   customCAPath: "/some/path/ca.crt" # path to a file which contians list of custom Certificate Authorities that can be used to verify SSL certifcates if 'disableTLSVerification' is set to 'false'. Host's default authorities will be used if not specified.
-  port: "443"                       # network port to be used.
-  wapiVersion: "2.12"               # Infoblox Web API version.
+  defaultNetworkView: "some-view"   # default network view
+  wapiVersion: "2.12"               # Web API Version of the Infoblox server
 ```
 
 ## Usage
 
-This provider comes with a `InfobloxIPPool` resource to specify the pools from which addresses should be assigned. Here is example definition of `InfobloxIPPool` named `infobloxippool-sample` deployed in `caip-infoblox-system` with additional explanation:
+To use Infoblox for assigning IP addresses to nodes, create an InfobloxIPPool. It contains a reference to the InfobloxInstance and one or more subnets managed by that instance that should be used to allocate addresses.
 
 ```yaml
 apiVersion: ipam.cluster.x-k8s.io/v1beta1
 kind: InfobloxIPPool
 metadata:
-  name: infobloxippool-sample
-  namespace: caip-infoblox-system
+  name: example-pool
+  namespace: tenant-clusters-bonn
 spec:
   instance:
-    name: "infobloxinstance-sample" # name of the instance that should be used by pool
-  networkView: "some-view"          # Infoblox network view that will be used
+    name: "production"              # name of the InfobloxInstance
+  networkView: "datacenter-network" # Infoblox network view that will be used
   subnets:                          # list of the subnets in the network view we want to get IP addresses from
     - cidr: "10.0.0.0/24"           # subnet CIDR
       gateway: "10.0.0.1"           # gateway that should ba assigned to the IP Address claim
-  dnsZone: ""                       # Infoblox's DNS zone
 ```
 
-Now, whenever `IPAddressClaim` that references `infobloxippool-sample` will be created, Infoblox instance `infobloxinstance-sample` will be queried to get next free IP from the `10.0.0.0/24` subnet.
+Now, whenever `IPAddressClaim` that references `example-pool` will be created, a host record will be created in the subnet specified by the pool on the InfobloxInstance `production` to allocate an IP Address.
 
-> NOTE: You can find all the example files described above in [config/samples](./config/samples).
+If multiple subnets are specified, the host record will be created in the first subnet with available IP addresses.
+
+> [!NOTE]
+> You can find all the example files described above in [config/samples](./config/samples).
+
+### Creating DNS Entries
+
+Since Infoblox also includes DNS management, host records can also reference a DNS zone to create DNS entries for each host.
+
+In order for these records to be useful, the host record should be named after the hostname of the server it is created for. Unfortunately Cluster API currently offers no common way to set hostnames for machines. While bootstrap providers are likely to provide some way of setting it, there is no way to predict what the hostname will be.
+
+If you need to create DNS records for your machines, you'll therefore be required to follow a convention if you want your hostname to match the DNS record.
+
+We've currently only implemented one strategy for identifying the hostname of a machine, since it's the one we (Deutsche Telekom) are using. In case you have other requirements, we're open to accept contributions for new strategies. Please open an issue if you're interested.
+
+Our strategy uses the name of the CAPI `Machine` as the hostname. To determine the Machine name the provider follows the owner chain from the `IPAddressClaim` via the infrastructure provider resources to the `Machine`. Our implementation is currently provider specific and only supports the VSphere and metal3 providers.
+
+To enable setting DNS entries, set the `spec.dnsZone` parameter on the `InfobloxIPPool` to your desired zone. The resulting DNS entries will then be `<machine name>.<dnsZone>`. The DNS view will be set to `default.<dnsZone>`.
 
 ## Running Tests
 
@@ -117,7 +118,7 @@ To execute unit tests [controller-gen](https://book.kubebuilder.io/reference/con
 
 ## Licensing
 
-Copyright (c) 2023 Deutsche Telekom AG.
+Copyright (c) 2024 Deutsche Telekom AG.
 
 Licensed under the **Apache License, Version 2.0** (the "License"); you may not use this file except in compliance with the License.
 
