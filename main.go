@@ -25,6 +25,11 @@ import (
 
 	//+kubebuilder:scaffold:imports
 	metal3v1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/webhooks"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -42,12 +47,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/webhooks"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 )
 
 var (

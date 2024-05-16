@@ -19,13 +19,16 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/hostname"
 	"net/netip"
 	"strconv"
 	"strings"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 	"github.com/pkg/errors"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/hostname"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
+	ipampredicates "github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/predicates"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,10 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
-	ipampredicates "github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/predicates"
 )
 
 var (
@@ -206,8 +205,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	var err error
-
+	hostName, err := h.getHostname(ctx)
 	logger = logger.WithValues("hostname", hostName)
 
 	var subnet netip.Prefix

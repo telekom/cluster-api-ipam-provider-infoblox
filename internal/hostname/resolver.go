@@ -1,3 +1,4 @@
+// Package hostname implements hostname resolving strategies.
 package hostname
 
 import (
@@ -59,7 +60,7 @@ func findOwnerReferenceWithGK(obj client.Object, gk metav1.GroupKind) (metav1.Ow
 	return metav1.OwnerReference{}, fmt.Errorf("failed to find owner reference with kind '%s'", gk.String())
 }
 
-// apiVersionToGroupVersion converts an api version string to a [metav1.GroupVersion]
+// apiVersionToGroupVersion converts an api version string to a [metav1.GroupVersion].
 func apiVersionToGroupVersion(apiVersion string) metav1.GroupVersion {
 	s := strings.Split(apiVersion, "/")
 	if len(s) == 2 {

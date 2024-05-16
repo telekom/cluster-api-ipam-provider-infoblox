@@ -29,7 +29,7 @@ type Client interface {
 	ReleaseAddress(view string, subnet netip.Prefix, hostname string) error
 	// CheckNetworkViewExists checks if Infoblox network view exists
 	CheckNetworkViewExists(view string) (bool, error)
-	//CheckNetworkExists checks if Infoblox network exists
+	// CheckNetworkExists checks if Infoblox network exists
 	CheckNetworkExists(view string, subnet netip.Prefix) (bool, error)
 	GetHostConfig() *HostConfig
 }

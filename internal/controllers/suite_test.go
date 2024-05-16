@@ -24,6 +24,12 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/hostname"
+	hostnamemock "github.com/telekom/cluster-api-ipam-provider-infoblox/internal/hostname/mock"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,13 +46,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest/komega"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/hostname"
-	hostnamemock "github.com/telekom/cluster-api-ipam-provider-infoblox/internal/hostname/mock"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -84,7 +83,7 @@ var _ = BeforeSuite(func() {
 	}
 
 	mockHostnameHandler = hostnamemock.NewMockResolver(mockCtrl)
-	mockNewHostnameResolverFunc = func(c client.Client, claim *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
+	mockNewHostnameResolverFunc = func(_ client.Client, _ *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
 		return mockHostnameHandler, nil
 	}
 	mockHostnameHandler.EXPECT().GetHostname(gomock.Any(), gomock.Any()).Return("hostname", nil).AnyTimes()

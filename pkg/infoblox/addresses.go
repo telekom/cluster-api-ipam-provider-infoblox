@@ -3,10 +3,10 @@ package infoblox
 import (
 	"errors"
 	"fmt"
-	"k8s.io/utils/pointer"
 	"net/netip"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
+	"k8s.io/utils/ptr"
 )
 
 // Known limitations:
@@ -30,9 +30,9 @@ func (c *client) getOrNewHostRecord(view, hostname, zone string) (*ibclient.Host
 		hostRecord.NetworkView = view
 		hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{}
 		hostRecord.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{}
-		hostRecord.EnableDns = pointer.Bool(false)
+		hostRecord.EnableDns = ptr.To(false)
 		if zone != "" {
-			hostRecord.EnableDns = pointer.Bool(true)
+			hostRecord.EnableDns = ptr.To(true)
 			hostRecord.View = toDNSView(view)
 		}
 	}
@@ -69,8 +69,8 @@ func getHostRecordAddrInSubnet(hr *ibclient.HostRecord, subnet netip.Prefix) (ne
 					continue
 				}
 				if subnet.Contains(nip) {
+					return nip, true
 				}
-				return nip, true
 			}
 		}
 	} else {
