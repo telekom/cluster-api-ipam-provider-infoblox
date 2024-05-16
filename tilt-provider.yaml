@@ -1,0 +1,13 @@
+name: "ipam-infoblox"
+config:
+  image: "ghcr.io/telekom/cluster-api-ipam-provider-infoblox"
+  live_reload_deps:
+  - main.go
+  - go.mod
+  - go.sum
+  - api
+  - controllers
+  - internal
+  - pkg
+  label: "IPAM-infoblox"
+  manager-name: "caip-infoblox-controller-manager"

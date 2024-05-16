@@ -1,0 +1,21 @@
+apiVersion: ipam.cluster.x-k8s.io/v1beta1
+kind: InfobloxInstance
+metadata:
+  labels:
+    app.kubernetes.io/name: infobloxinstance
+    app.kubernetes.io/instance: infobloxinstance-sample
+    app.kubernetes.io/part-of: cluster-api-ipam-provider-infoblox
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: cluster-api-ipam-provider-infoblox
+  name: infobloxinstance-sample
+  namespace: capi-ipam-infoblox-system
+spec:
+  # TODO(user): Add fields here
+  credentialsSecretRef:
+    name: some-credentials
+  defaultNetworkView: "some-view"
+  host: "some.host.com"
+  disableTLSVerification: false
+  customCAPath: "/some/path/ca.crt"
+  port: "443"
+  wapiVersion: "2.12"

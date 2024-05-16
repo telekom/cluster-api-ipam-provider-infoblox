@@ -31,3 +31,5 @@ out/
 
 .testenv
 tmp/
+
+cluster-api-ipam-provider-infoblox

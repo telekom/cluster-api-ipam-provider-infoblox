@@ -1,12 +1,16 @@
+// Package infoblox is responsible for communication with Infoblox instance.
 package infoblox
 
 import (
 	"errors"
 	"net/netip"
 	"strings"
+	"time"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 )
+
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 //go:generate mockgen -destination=ibmock/client.go -package=ibmock . Client
 
@@ -20,16 +24,20 @@ const (
 // Client is a wrapper around the infoblox client that can allocate and release addresses indempotently.
 type Client interface {
 	// GetOrAllocateAddress allocates an address for a given hostname if none exists, and returns the new or existing address.
-	GetOrAllocateAddress(view string, subnet netip.Prefix, hostname string) (netip.Addr, error)
+	GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string) (netip.Addr, error)
 	// ReleaseAddress releases an address for a given hostname.
 	ReleaseAddress(view string, subnet netip.Prefix, hostname string) error
-
+	// CheckNetworkViewExists checks if Infoblox network view exists
 	CheckNetworkViewExists(view string) (bool, error)
+	// CheckNetworkExists checks if Infoblox network exists
+	CheckNetworkExists(view string, subnet netip.Prefix) (bool, error)
+	GetHostConfig() *HostConfig
 }
 
 type client struct {
 	connector *ibclient.Connector
 	objMgr    ibclient.IBObjectManager
+	hc        HostConfig
 }
 
 var _ Client = &client{}
@@ -42,18 +50,23 @@ type AuthConfig struct {
 	ClientKey  []byte
 }
 
+// HostConfig contains host configuration patameters.
 type HostConfig struct {
-	Host                  string
-	Version               string
-	InsecureSkipTLSVerify bool
+	Host                   string
+	Version                string
+	DisableTLSVerification bool
+	CustomCAPath           string
+	DefaultNetworkView     string
+}
+
+// Config is a wrapper config structures.
+type Config struct {
+	HostConfig
+	AuthConfig
 }
 
 // NewClient creates a new infoblox client.
-func NewClient(config HostConfig, auth AuthConfig) (Client, error) {
-	return newClient(config, auth)
-}
-
-func newClient(config HostConfig, auth AuthConfig) (*client, error) {
+func NewClient(config Config) (Client, error) {
 	hc := ibclient.HostConfig{
 		Version: config.Version,
 	}
@@ -65,31 +78,33 @@ func newClient(config HostConfig, auth AuthConfig) (*client, error) {
 		hc.Port = "443"
 	}
 	ac := ibclient.AuthConfig{
-		Username:   auth.Username,
-		Password:   auth.Password,
-		ClientCert: auth.ClientCert,
-		ClientKey:  auth.ClientKey,
+		Username:   config.Username,
+		Password:   config.Password,
+		ClientCert: config.ClientCert,
+		ClientKey:  config.ClientKey,
 	}
 	tlsVerify := "true"
-	if config.InsecureSkipTLSVerify {
+	if config.DisableTLSVerification {
 		tlsVerify = "false"
+	} else if config.CustomCAPath != "" {
+		tlsVerify = config.CustomCAPath
 	}
+
 	rb := &ibclient.WapiRequestBuilder{}
 	rq := &ibclient.WapiHttpRequestor{}
-	tc := ibclient.NewTransportConfig(tlsVerify, 1, 5)
+	tc := ibclient.NewTransportConfig(tlsVerify, int(time.Second), 5)
 	con, err := ibclient.NewConnector(hc, ac, tc, rb, rq)
 	if err != nil {
 		// does not happen with the current infoblox-go-client
 		return nil, err
 	}
+
 	objMgr := ibclient.NewObjectManager(con, "cluster-api-ipam-provider-infoblox", "")
-	_, err = objMgr.GetGridInfo()
-	if err != nil {
-		return nil, err
-	}
+
 	return &client{
 		connector: con,
 		objMgr:    objMgr,
+		hc:        config.HostConfig,
 	}, nil
 }
 
@@ -111,13 +126,28 @@ func AuthConfigFromSecretData(data map[string][]byte) (AuthConfig, error) {
 
 func (c *client) CheckNetworkViewExists(view string) (bool, error) {
 	_, err := c.objMgr.GetNetworkView(view)
-	if isNotFound(err) {
-		return false, nil
-	}
 	if err != nil {
+		if isNotFound(err) {
+			return false, nil
+		}
 		return false, err
 	}
 	return true, nil
+}
+
+func (c *client) CheckNetworkExists(view string, subnet netip.Prefix) (bool, error) {
+	_, err := c.objMgr.GetNetwork(view, subnet.String(), subnet.Addr().Is6(), ibclient.EA{})
+	if err != nil {
+		if isNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (c *client) GetHostConfig() *HostConfig {
+	return &c.hc
 }
 
 func isNotFound(err error) bool {

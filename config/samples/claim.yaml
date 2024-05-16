@@ -1,0 +1,17 @@
+apiVersion: ipam.cluster.x-k8s.io/v1beta1
+kind: IPAddressClaim
+metadata:
+  name: some-claim
+  namespace: capi-ipam-infoblox-system
+  # ownerReferences:
+  # - apiVersion: cluster.x-k8s.io/v1beta1
+  #   blockOwnerDeletion: true
+  #   controller: true
+  #   kind: Metal3Data
+  #   name: sample-data
+  #   uid: 4c5aef69-ed646975-6975-91c7-9cab3d891c48
+spec:
+  poolRef:
+    apiGroup: ipam.cluster.x-k8s.io
+    kind: InfobloxIPPool
+    name: infobloxippool-sample

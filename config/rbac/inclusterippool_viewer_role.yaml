@@ -1,0 +1,20 @@
+# permissions for end users to view infobloxippools.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: infobloxippool-viewer-role
+rules:
+- apiGroups:
+  - ipam.cluster.x-k8s.io
+  resources:
+  - infobloxippools
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ipam.cluster.x-k8s.io
+  resources:
+  - infobloxippools/status
+  verbs:
+  - get

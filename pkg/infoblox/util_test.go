@@ -8,22 +8,24 @@ import (
 
 const infobloxTestEnvPrefix = "CAIP_INFOBLOX_TEST_"
 
-func InfobloxConfigFromEnv() (HostConfig, AuthConfig, error) {
-	hc := HostConfig{
-		Host:                  getInfobloxTestEnvVar("host", ""),
-		InsecureSkipTLSVerify: strToBool(getInfobloxTestEnvVar("skip_tls_verify", "false")),
-		Version:               getInfobloxTestEnvVar("wapi_version", ""),
+func InfobloxConfigFromEnv() (Config, error) {
+	config := Config{
+		HostConfig: HostConfig{
+			Host:                   getInfobloxTestEnvVar("host", ""),
+			DisableTLSVerification: strToBool(getInfobloxTestEnvVar("skip_tls_verify", "false")),
+			Version:                getInfobloxTestEnvVar("wapi_version", ""),
+		},
+		AuthConfig: AuthConfig{
+			Username:   getInfobloxTestEnvVar("username", ""),
+			Password:   getInfobloxTestEnvVar("password", ""),
+			ClientCert: byteArrOrNil(getInfobloxTestEnvVar("clientcert", "")),
+			ClientKey:  byteArrOrNil(getInfobloxTestEnvVar("clientkey", "")),
+		},
 	}
-	if hc.Host == "" {
-		return HostConfig{}, AuthConfig{}, errors.New(infobloxTestEnvPrefix + "HOST is not set")
+	if config.Host == "" {
+		return Config{}, errors.New(infobloxTestEnvPrefix + "HOST is not set")
 	}
-	ac := AuthConfig{
-		Username:   getInfobloxTestEnvVar("username", ""),
-		Password:   getInfobloxTestEnvVar("password", ""),
-		ClientCert: byteArrOrNil(getInfobloxTestEnvVar("clientcert", "")),
-		ClientKey:  byteArrOrNil(getInfobloxTestEnvVar("clientkey", "")),
-	}
-	return hc, ac, nil
+	return config, nil
 }
 
 func getInfobloxTestEnvVar(name, defaultValue string) string {
@@ -35,7 +37,7 @@ func getInfobloxTestEnvVar(name, defaultValue string) string {
 }
 
 func strToBool(s string) bool {
-	return strings.ToLower(s) == "true"
+	return strings.EqualFold(s, "true")
 }
 
 func byteArrOrNil(s string) []byte {
