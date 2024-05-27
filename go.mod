@@ -19,7 +19,7 @@ require (
 	sigs.k8s.io/cluster-api v1.7.2
 	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v0.1.0
 	sigs.k8s.io/cluster-api-provider-vsphere v1.10.0
-	sigs.k8s.io/controller-runtime v0.18.2
+	sigs.k8s.io/controller-runtime v0.18.3
 )
 
 require (
