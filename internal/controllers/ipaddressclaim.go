@@ -128,6 +128,14 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (client.Object, *c
 	}
 
 	// TODO: ensure pool is ready
+	if conditions.IsFalse(h.pool, clusterv1.ReadyCondition) {
+		conditions.MarkFalse(h.claim,
+			clusterv1.ReadyCondition,
+			ipamv1.PoolNotReadyReason,
+			clusterv1.ConditionSeverityError,
+			"the referenced pool is not ready")
+		return h.pool, nil, fmt.Errorf("pool not ready")
+	}
 
 	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.operatorNamespace, h.newInfobloxClientFunc)
 	if err != nil {
@@ -192,7 +200,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 	if err != nil {
 		conditions.MarkFalse(h.claim,
 			clusterv1.ReadyCondition,
-			v1alpha1.InfobloxAddressAllocationFailedReason,
+			ipamv1.AllocationFailedReason,
 			clusterv1.ConditionSeverityError,
 			"could not allocate address: %s", err)
 		return &ctrl.Result{}, fmt.Errorf("unable to ensure address: %w", err)
@@ -219,7 +227,7 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 
 		err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, hostName)
 		if err != nil {
-			if _, ok := err.(*ibclient.NotFoundError); !ok {
+			if errors.As(err, &ibclient.NotFoundError{}) {
 				logger.Error(err, "failed to release address for host", "hostname", hostName)
 			}
 			continue
@@ -229,7 +237,7 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 	}
 
 	if err != nil {
-		if _, ok := err.(*ibclient.NotFoundError); !ok {
+		if errors.As(err, &ibclient.NotFoundError{}) {
 			return nil, fmt.Errorf("unable to release address: %w", err)
 		}
 	}

@@ -92,7 +92,7 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	if err != nil {
 		conditions.MarkFalse(pool,
 			clusterv1.ReadyCondition,
-			v1alpha1.InfobloxClientCreationFailedReason,
+			v1alpha1.AuthenticationFailedReason,
 			clusterv1.ConditionSeverityError, "client creation failed for instance %s", pool.Spec.InstanceRef.Name)
 		return err
 	}
@@ -106,7 +106,7 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		logger.Error(err, "could not find network view", "networkView", pool.Spec.NetworkView)
 		conditions.MarkFalse(pool,
 			clusterv1.ReadyCondition,
-			v1alpha1.InfobloxNetworkViewNotFoundReason,
+			v1alpha1.NetworkViewNotFoundReason,
 			clusterv1.ConditionSeverityError,
 			"could not find network view: %s", err)
 		return nil
@@ -122,7 +122,7 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 			logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
 			conditions.MarkFalse(pool,
 				clusterv1.ReadyCondition,
-				v1alpha1.InfobloxNetworkNotFoundReason,
+				v1alpha1.NetworkNotFoundReason,
 				clusterv1.ConditionSeverityError,
 				"could not find network: %s", err)
 			return nil

@@ -87,8 +87,8 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		}
 
 		conditions.MarkFalse(instance,
-			v1alpha1.ReadyCondition,
-			v1alpha1.InfobloxAuthenticationFailedReason,
+			clusterv1.ReadyCondition,
+			v1alpha1.AuthenticationFailedReason,
 			clusterv1.ConditionSeverityError,
 			"the referenced settings secret '%s' could not be found in namespace '%s'",
 			instance.Spec.CredentialsSecretRef.Name, r.OperatorNamespace)
@@ -100,7 +100,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 	if err != nil {
 		conditions.MarkFalse(instance,
 			clusterv1.ReadyCondition,
-			v1alpha1.InfobloxAuthenticationFailedReason,
+			v1alpha1.AuthenticationFailedReason,
 			clusterv1.ConditionSeverityError,
 			"referenced credentials secret is invalid: %s", err)
 		return ctrl.Result{}, nil
@@ -118,7 +118,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 	if err != nil {
 		conditions.MarkFalse(instance,
 			clusterv1.ReadyCondition,
-			v1alpha1.InfobloxAuthenticationFailedReason,
+			v1alpha1.AuthenticationFailedReason,
 			clusterv1.ConditionSeverityError,
 			"could not create infoblox client: %s", err)
 		return ctrl.Result{}, nil
@@ -129,7 +129,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		logger.Error(err, "could not find default network view", "networkView")
 		conditions.MarkFalse(instance,
 			clusterv1.ReadyCondition,
-			v1alpha1.InfobloxNetworkViewNotFoundReason,
+			v1alpha1.NetworkViewNotFoundReason,
 			clusterv1.ConditionSeverityError,
 			"could not find default network view: %s", err)
 		return ctrl.Result{}, nil

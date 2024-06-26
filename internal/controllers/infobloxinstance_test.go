@@ -8,6 +8,7 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	. "sigs.k8s.io/controller-runtime/pkg/envtest/komega"
 )
@@ -43,9 +44,9 @@ var _ = Describe("InfobloxInstance controller", func() {
 				},
 			})).WithTimeout(time.Second).WithPolling(100 * time.Millisecond).Should(And(
 				HaveField("Status.Conditions", ContainElement(And(
-					HaveField("Type", BeEquivalentTo(v1alpha1.ReadyCondition)),
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
 					HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
-					HaveField("Reason", BeEquivalentTo(v1alpha1.InfobloxAuthenticationFailedReason)),
+					HaveField("Reason", BeEquivalentTo(v1alpha1.AuthenticationFailedReason)),
 				)))))
 		})
 	})
@@ -82,9 +83,9 @@ var _ = Describe("InfobloxInstance controller", func() {
 				},
 			})).WithTimeout(time.Second).WithPolling(100 * time.Millisecond).Should(And(
 				HaveField("Status.Conditions", ContainElement(And(
-					HaveField("Type", BeEquivalentTo(v1alpha1.ReadyCondition)),
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
 					HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
-					HaveField("Reason", BeEquivalentTo(v1alpha1.InfobloxAuthenticationFailedReason)),
+					HaveField("Reason", BeEquivalentTo(v1alpha1.AuthenticationFailedReason)),
 				)))))
 		})
 	})

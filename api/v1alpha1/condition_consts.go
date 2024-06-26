@@ -1,28 +1,26 @@
+/*
+Copyright 2023 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package v1alpha1
 
 const (
-	// ReadyCondition indicates whether a resource is ready.
-	ReadyCondition = "Ready"
-
-	// InfobloxConnectionFailedReason indicates that the connection to infoblox failed.
-	InfobloxConnectionFailedReason = "InfobloxConnectionFailed" // #nosec G101
-	// InfobloxAuthenticationFailedReason indicates that the credentials provided to infoblox were invalid.
-	InfobloxAuthenticationFailedReason = "InfobloxAuthenticationFailed"
-	// InfobloxNetworkViewNotFoundReason indicates that the specified network view could not be found on the Infoblox instance.
-	InfobloxNetworkViewNotFoundReason = "InfobloxNetworkViewNotFound"
-	// InfobloxNetworkNotFoundReason indicates that the specified network could not be found on the Infoblox instance.
-	InfobloxNetworkNotFoundReason = "InfobloxNetworkNotFound"
-	// InfobloxAddressAllocationFailedReason indicates that the address allocation in Infoblox failed.
-	InfobloxAddressAllocationFailedReason = "InfobloxAddressAllocationFailed"
-
-	// InfobloxInstanceNotReadyReason indicates that the referenced InfobloxInstance is not ready.
-	InfobloxInstanceNotReadyReason = "InfobloxInstanceNotReady" // #nosec G101
-
-	// InfobloxClientCreationFailedReason indicates that the Infoblox client could not be created.
-	InfobloxClientCreationFailedReason = "InfobloxClientCreationFailed"
-
-	// AddressesAvailableCondition indicates whether there are still addresses available to allocate from a pool.
-	AddressesAvailableCondition = "AddressesAavailable"
-	// PoolExhaustedReason indicates that there are no more unallocated addresses in a pool.
-	PoolExhaustedReason = "PoolExhausted"
+	// AuthenticationFailedReason indicates that the credentials provided to Infoblox were invalid.
+	AuthenticationFailedReason = "AuthenticationFailed"
+	// NetworkViewNotFoundReason indicates that the specified network view could not be found on the Infoblox instance.
+	NetworkViewNotFoundReason = "NetworkViewNotFound"
+	// NetworkNotFoundReason indicates that the specified network could not be found on the Infoblox instance.
+	NetworkNotFoundReason = "NetworkNotFound"
 )
