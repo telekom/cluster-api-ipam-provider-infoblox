@@ -4,6 +4,7 @@ package hostname
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,6 +49,75 @@ func (r *OwnerChainResolver) GetHostname(ctx context.Context, claim *ipamv1.IPAd
 	}
 	// should be unreachable
 	return "", fmt.Errorf("failed to follow owner chain")
+}
+
+// SearchOwnerReferenceResolver performs a depth search on the owner references until it finds the specified [metav1.GroupKind]
+// and uses it's name as the hostname.
+type SearchOwnerReferenceResolver struct {
+	client.Client
+	MaxDepth  int
+	SearchFor metav1.GroupKind
+}
+
+// GetHostname returns the hostname for the specified claim.
+func (r *SearchOwnerReferenceResolver) GetHostname(ctx context.Context, claim *ipamv1.IPAddressClaim) (string, error) {
+	if r.MaxDepth == 0 {
+		r.MaxDepth = 5
+	}
+	obj := client.Object(claim)
+	name, err := r.find(ctx, obj, 1)
+	if err != nil {
+		return "", err
+	}
+	if name != "" {
+		return name, nil
+	}
+	return "", fmt.Errorf("failed to find owner reference to specified group and kind")
+}
+
+func (r *SearchOwnerReferenceResolver) find(ctx context.Context, obj client.Object, currentDepth int) (string, error) {
+	nextRefs := []metav1.OwnerReference{}
+	for _, o := range obj.GetOwnerReferences() {
+		if o.Kind == r.SearchFor.Kind && apiVersionToGroupVersion(o.APIVersion).Group == r.SearchFor.Group {
+			return o.Name, nil
+		}
+
+		nextRefs = append(nextRefs, o)
+	}
+
+	// We'll try to iterate through promising things first to reduce the amount of api requests.
+	// The simple heuristic is that anything in the infrastructure.capi.x-k8s.io group or anything that contains Machine in
+	// it's name comes first. The name is more important than the group.
+	// We don't care for equality since this is just optimization.
+	slices.SortFunc(nextRefs, func(a, b metav1.OwnerReference) int {
+		if strings.Contains(b.Kind, "Machine") {
+			return 1
+		}
+		if strings.Contains(a.Kind, "Machine") || strings.HasPrefix(b.APIVersion, "infrastructure") {
+			return -1
+		}
+		if strings.HasPrefix(b.APIVersion, "infrastructure") {
+			return 1
+		}
+		return 0
+	})
+
+	for _, o := range nextRefs {
+		if currentDepth >= r.MaxDepth {
+			continue
+		}
+
+		obj2 := &unstructured.Unstructured{}
+		obj2.SetAPIVersion(o.APIVersion)
+		obj2.SetKind(o.Kind)
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: o.Name, Namespace: obj2.GetNamespace()}, obj2); err != nil {
+			return "", err
+		}
+		if name, err := r.find(ctx, obj2, currentDepth+1); name != "" || err != nil {
+			return name, err
+		}
+	}
+	return "", nil
 }
 
 // findOwnerReferenceWithGK searches the owner references of an object and returns the first with the specified [metav1.GroupVersion].

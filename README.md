@@ -96,7 +96,7 @@ If you need to create DNS records for your machines, you'll therefore be require
 
 We've currently only implemented one strategy for identifying the hostname of a machine, since it's the one we (Deutsche Telekom) are using. In case you have other requirements, we're open to accept contributions for new strategies. Please open an issue if you're interested.
 
-Our strategy uses the name of the CAPI `Machine` as the hostname. To determine the Machine name the provider follows the owner chain from the `IPAddressClaim` via the infrastructure provider resources to the `Machine`. Our implementation is currently provider specific and only supports the VSphere and metal3 providers.
+Our strategy uses the name of the CAPI `Machine` as the hostname. To determine the Machine name the provider follows the owner chain from the `IPAddressClaim` via the infrastructure provider resources to the `Machine`. This is used by searching through the owner references up to a depth of five.
 
 To enable setting DNS entries, set the `spec.dnsZone` parameter on the `InfobloxIPPool` to your desired zone. The resulting DNS entries will then be `<machine name>.<dnsZone>`. The DNS view will be set to `default.<dnsZone>`.
 

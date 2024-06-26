@@ -278,26 +278,9 @@ func (h *InfobloxClaimHandler) getHostname(ctx context.Context) (string, error) 
 }
 
 func getHostnameResolver(cl client.Client, claim *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
-	switch claim.Kind {
-	case "Metal3Data":
-		return &hostname.OwnerChainResolver{
-			Client: cl,
-			Chain: []metav1.GroupKind{
-				{Group: "infrastructure.cluster.x-k8s.io", Kind: "Metal3Data"},
-				{Group: "infrastructure.cluster.x-k8s.io", Kind: "Metal3Machine"},
-				{Group: "cluster.x-k8s.io", Kind: "Machine"},
-			},
-		}, nil
-	case "VSphereVM":
-		return &hostname.OwnerChainResolver{
-			Client: cl,
-			Chain: []metav1.GroupKind{
-				{Group: "infrastructure.cluster.x-k8s.io", Kind: "VSphereVM"},
-				{Group: "infrastructure.cluster.x-k8s.io", Kind: "VSphereMachine"},
-				{Group: "cluster.x-k8s.io", Kind: "Machine"},
-			},
-		}, nil
-	default:
-		return nil, fmt.Errorf("failed to create resolver for kind %s", claim.Kind)
-	}
+	return &hostname.SearchOwnerReferenceResolver{
+		Client:    cl,
+		SearchFor: metav1.GroupKind{Group: "cluster.x-k8s.io", Kind: "Machine"},
+		MaxDepth:  5,
+	}, nil
 }
