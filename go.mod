@@ -7,8 +7,8 @@ toolchain go1.22.3
 require (
 	github.com/golang/mock v1.6.0
 	github.com/infobloxopen/infoblox-go-client/v2 v2.6.0
-	github.com/onsi/ginkgo/v2 v2.19.0
-	github.com/onsi/gomega v1.33.1
+	github.com/onsi/ginkgo/v2 v2.19.1
+	github.com/onsi/gomega v1.34.0
 	github.com/pkg/errors v0.9.1
 	go.uber.org/mock v0.4.0
 	k8s.io/api v0.30.1
