@@ -278,7 +278,7 @@ func (h *InfobloxClaimHandler) getHostname(ctx context.Context) (string, error) 
 	return hn, nil
 }
 
-func getHostnameResolver(cl client.Client, claim *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
+func getHostnameResolver(cl client.Client, _ *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
 	return &hostname.SearchOwnerReferenceResolver{
 		Client:    cl,
 		SearchFor: metav1.GroupKind{Group: "cluster.x-k8s.io", Kind: "Machine"},
