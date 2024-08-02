@@ -23,8 +23,6 @@ import (
 	"log"
 	"os"
 
-	//+kubebuilder:scaffold:imports
-	metal3v1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
@@ -38,7 +36,6 @@ import (
 	"k8s.io/klog/v2"
 	inclusterv1a2 "sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
-	vspherev1 "sigs.k8s.io/cluster-api-provider-vsphere/apis/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -62,8 +59,6 @@ func init() {
 	utilruntime.Must(inclusterv1a2.AddToScheme(scheme))
 	utilruntime.Must(inclusterv1a2.AddToScheme(scheme))
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
-	utilruntime.Must(metal3v1.AddToScheme(scheme))
-	utilruntime.Must(vspherev1.AddToScheme(scheme))
 
 	//+kubebuilder:scaffold:scheme
 }
