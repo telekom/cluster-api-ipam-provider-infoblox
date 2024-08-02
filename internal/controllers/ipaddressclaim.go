@@ -105,6 +105,7 @@ func (r *InfobloxProviderAdapter) ClaimHandlerFor(cl client.Client, claim *ipamv
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=ipaddresses,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=ipaddressclaims/status;ipaddresses/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=ipaddressclaims/status;ipaddresses/finalizers,verbs=update
+//+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters,verbs=get;list;watch
 
 // for resolving hostnames
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas;metal3machines,verbs=get;list;watch
@@ -277,7 +278,7 @@ func (h *InfobloxClaimHandler) getHostname(ctx context.Context) (string, error) 
 	return hn, nil
 }
 
-func getHostnameResolver(cl client.Client, claim *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
+func getHostnameResolver(cl client.Client, _ *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
 	return &hostname.SearchOwnerReferenceResolver{
 		Client:    cl,
 		SearchFor: metav1.GroupKind{Group: "cluster.x-k8s.io", Kind: "Machine"},

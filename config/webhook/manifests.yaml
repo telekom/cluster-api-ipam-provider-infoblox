@@ -14,7 +14,7 @@ webhooks:
       path: /mutate-ipam-cluster-x-k8s-io-v1alpha1-infobloxippool
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: default.inclusterippool.ipam.cluster.x-k8s.io
+  name: default.infobloxippool.ipam.cluster.x-k8s.io
   rules:
   - apiGroups:
     - ipam.cluster.x-k8s.io
@@ -24,7 +24,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - inclusterippools
+    - infobloxippools
   sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
@@ -42,7 +42,7 @@ webhooks:
       path: /validate-ipam-cluster-x-k8s-io-v1alpha1-infobloxippool
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: validation.inclusterippool.ipam.cluster.x-k8s.io
+  name: validation.infobloxippool.ipam.cluster.x-k8s.io
   rules:
   - apiGroups:
     - ipam.cluster.x-k8s.io
@@ -53,5 +53,5 @@ webhooks:
     - UPDATE
     - DELETE
     resources:
-    - inclusterippools
+    - infobloxippools
   sideEffects: None
