@@ -110,7 +110,7 @@ func (r *SearchOwnerReferenceResolver) find(ctx context.Context, obj client.Obje
 		obj2 := &unstructured.Unstructured{}
 		obj2.SetAPIVersion(o.APIVersion)
 		obj2.SetKind(o.Kind)
-		if err := r.Client.Get(ctx, types.NamespacedName{Name: o.Name, Namespace: obj2.GetNamespace()}, obj2); err != nil {
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: o.Name, Namespace: obj.GetNamespace()}, obj2); err != nil {
 			return "", err
 		}
 		if name, err := r.find(ctx, obj2, currentDepth+1); name != "" || err != nil {
