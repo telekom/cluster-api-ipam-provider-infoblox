@@ -35,7 +35,8 @@ var _ = Describe("determining hostnames", func() {
 				WithObjects(
 					&metal3v1.Metal3Data{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "data",
+							Name:      "data",
+							Namespace: "default",
 							OwnerReferences: []metav1.OwnerReference{
 								{
 									Name:       "machine",
@@ -47,7 +48,8 @@ var _ = Describe("determining hostnames", func() {
 					},
 					&metal3v1.Metal3Machine{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "machine",
+							Name:      "machine",
+							Namespace: "default",
 							OwnerReferences: []metav1.OwnerReference{
 								{
 									Name:       "capimachine",
@@ -87,7 +89,8 @@ var _ = Describe("determining hostnames", func() {
 				WithObjects([]client.Object{
 					&capv1.VSphereVM{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "vm",
+							Name:      "vm",
+							Namespace: "default",
 							OwnerReferences: []metav1.OwnerReference{
 								{
 									Name:       "machine",
@@ -99,7 +102,8 @@ var _ = Describe("determining hostnames", func() {
 					},
 					&capv1.VSphereMachine{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "machine",
+							Name:      "machine",
+							Namespace: "default",
 							OwnerReferences: []metav1.OwnerReference{
 								{
 									Name:       "capimachine",
@@ -135,6 +139,7 @@ var _ = Describe("determining hostnames", func() {
 func newClaim(name, kind, apiVersion string) ipamv1.IPAddressClaim {
 	return ipamv1.IPAddressClaim{
 		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					Name:       name,
