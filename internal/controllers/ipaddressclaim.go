@@ -18,13 +18,13 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/netip"
 	"strconv"
 	"strings"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
-	"github.com/pkg/errors"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/hostname"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
@@ -119,7 +119,7 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (client.Object, *c
 
 	h.pool = &v1alpha1.InfobloxIPPool{}
 	if err = h.Client.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, h.pool); err != nil && !apierrors.IsNotFound(err) {
-		return nil, nil, errors.Wrap(err, "failed to fetch pool")
+		return nil, nil, fmt.Errorf("failed to fetch pool: %w", err)
 	}
 
 	if h.pool == nil {
@@ -228,7 +228,8 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 
 		err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, hostName)
 		if err != nil {
-			if errors.As(err, &ibclient.NotFoundError{}) {
+			// since ibclient.NotFoundError has a pointer receiver on it's Error() method, we can't use errors.As() here.
+			if _, ok := err.(*ibclient.NotFoundError); !ok {
 				logger.Error(err, "failed to release address for host", "hostname", hostName)
 			}
 			continue
@@ -238,7 +239,8 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 	}
 
 	if err != nil {
-		if errors.As(err, &ibclient.NotFoundError{}) {
+		// since ibclient.NotFoundError has a pointer receiver on it's Error() method, we can't use errors.As() here.
+		if _, ok := err.(*ibclient.NotFoundError); !ok {
 			return nil, fmt.Errorf("unable to release address: %w", err)
 		}
 	}

@@ -18,8 +18,8 @@ func (c *client) getOrNewHostRecord(view, hostname, zone string) (*ibclient.Host
 	// [Issue] For some reason Infoblox does not assign view to the host record. Empty netview and dnsview is a workaround to find host.
 	hostRecord, err := c.objMgr.GetHostRecord("", "", hostname, "", "")
 	if err != nil {
-		var notFoundError *ibclient.NotFoundError
-		if !errors.As(err, &notFoundError) {
+		// since ibclient.NotFoundError has a pointer receiver on it's Error() method, we can't use errors.As() here.
+		if _, ok := err.(*ibclient.NotFoundError); !ok {
 			return nil, err
 		}
 	}
