@@ -6,7 +6,7 @@ linters:
     - containedctx
     - dogsled
     - errcheck
-    - exportloopref
+    - copyloopvar
     - gci
     - ginkgolinter
     - goconst

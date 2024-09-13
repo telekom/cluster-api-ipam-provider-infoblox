@@ -7,7 +7,7 @@ toolchain go1.22.3
 require (
 	github.com/golang/mock v1.6.0
 	github.com/infobloxopen/infoblox-go-client/v2 v2.7.0
-	github.com/onsi/ginkgo/v2 v2.20.1
+	github.com/onsi/ginkgo/v2 v2.20.2
 	github.com/onsi/gomega v1.34.2
 	github.com/pkg/errors v0.9.1
 	go.uber.org/mock v0.4.0
@@ -17,7 +17,7 @@ require (
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20240902221715-702e33fdd3c3
 	sigs.k8s.io/cluster-api v1.8.3
-	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v0.1.0
+	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v1.0.0-rc.0
 	sigs.k8s.io/cluster-api-provider-vsphere v1.10.2
 	sigs.k8s.io/controller-runtime v0.19.0
 )
