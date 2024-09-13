@@ -233,7 +233,7 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 				logger.Error(err, "failed to release address for host", "hostname", hostName)
 			}
 			continue
-		} else if err == nil {
+		} else {
 			logger.Info("released address for host", "hostname", hostName)
 		}
 	}
