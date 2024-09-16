@@ -25,13 +25,6 @@ rules:
   resources:
   - metal3datas
   - metal3machines
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - infrastructure.cluster.x-k8s.io
-  resources:
   - vspheremachines
   - vspherevms
   verbs:
@@ -42,6 +35,8 @@ rules:
   - ipam.cluster.x-k8s.io
   resources:
   - infobloxinstances
+  - infobloxippools
+  - ipaddresses
   verbs:
   - create
   - delete
@@ -54,62 +49,15 @@ rules:
   - ipam.cluster.x-k8s.io
   resources:
   - infobloxinstances/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - ipam.cluster.x-k8s.io
-  resources:
-  - infobloxinstances/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ipam.cluster.x-k8s.io
-  resources:
-  - infobloxippools
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ipam.cluster.x-k8s.io
-  resources:
   - infobloxippools/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - ipam.cluster.x-k8s.io
-  resources:
-  - infobloxippools/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ipam.cluster.x-k8s.io
-  resources:
-  - ipaddressclaims
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ipam.cluster.x-k8s.io
-  resources:
-  - ipaddressclaims/status
   - ipaddresses/finalizers
   verbs:
   - update
 - apiGroups:
   - ipam.cluster.x-k8s.io
   resources:
+  - infobloxinstances/status
+  - infobloxippools/status
   - ipaddressclaims/status
   - ipaddresses/status
   verbs:
@@ -119,10 +67,8 @@ rules:
 - apiGroups:
   - ipam.cluster.x-k8s.io
   resources:
-  - ipaddresses
+  - ipaddressclaims
   verbs:
-  - create
-  - delete
   - get
   - list
   - patch
