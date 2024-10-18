@@ -18,7 +18,7 @@ require (
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
 	sigs.k8s.io/cluster-api v1.8.4
 	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v1.0.0-rc.2
-	sigs.k8s.io/cluster-api-provider-vsphere v1.10.2
+	sigs.k8s.io/cluster-api-provider-vsphere v1.11.2
 	sigs.k8s.io/controller-runtime v0.19.0
 )
 
