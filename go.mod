@@ -15,9 +15,9 @@ require (
 	k8s.io/apimachinery v0.31.1
 	k8s.io/client-go v0.31.1
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/utils v0.0.0-20240902221715-702e33fdd3c3
-	sigs.k8s.io/cluster-api v1.8.3
-	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v1.0.0-rc.0
+	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
+	sigs.k8s.io/cluster-api v1.8.4
+	sigs.k8s.io/cluster-api-ipam-provider-in-cluster v1.0.0-rc.2
 	sigs.k8s.io/cluster-api-provider-vsphere v1.10.2
 	sigs.k8s.io/controller-runtime v0.19.0
 )
@@ -33,7 +33,7 @@ require (
 	github.com/metal3-io/ip-address-manager/api v1.7.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 )
 
