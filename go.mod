@@ -6,7 +6,7 @@ toolchain go1.22.3
 
 require (
 	github.com/golang/mock v1.6.0
-	github.com/infobloxopen/infoblox-go-client/v2 v2.7.0
+	github.com/infobloxopen/infoblox-go-client/v2 v2.9.0
 	github.com/onsi/ginkgo/v2 v2.20.2
 	github.com/onsi/gomega v1.34.2
 	github.com/pkg/errors v0.9.1
