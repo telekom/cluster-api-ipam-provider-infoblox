@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/netip"
 
+	"github.com/go-logr/logr"
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 	"k8s.io/utils/ptr"
 )
@@ -41,13 +42,15 @@ func (c *client) getOrNewHostRecord(view, hostname, zone string) (*ibclient.Host
 }
 
 // createOrUpdateHostRecord creates or updates a host record and then fetches the updated record.
-func (c *client) createOrUpdateHostRecord(hr *ibclient.HostRecord) error {
+func (c *client) createOrUpdateHostRecord(hr *ibclient.HostRecord, logger logr.Logger) error {
 	ref := ""
 	var err error
 	if hr.Ref == "" {
+		logger.Info("Creating Infoblox host record", "hostname", *hr.Name)
 		ref, err = c.connector.CreateObject(hr)
 	} else {
 		prepareHostRecordForUpdate(hr)
+		logger.Info("Updating Infoblox host record", "hostname", *hr.Name)
 		ref, err = c.connector.UpdateObject(hr, hr.Ref)
 	}
 
@@ -55,6 +58,7 @@ func (c *client) createOrUpdateHostRecord(hr *ibclient.HostRecord) error {
 		return err
 	}
 
+	logger.Info("Fetching Infoblox host record", "hostname", *hr.Name)
 	return c.connector.GetObject(hr, ref, ibclient.NewQueryParams(false, nil), hr)
 }
 
@@ -91,7 +95,7 @@ func getHostRecordAddrInSubnet(hr *ibclient.HostRecord, subnet netip.Prefix) (ne
 }
 
 // GetOrAllocateAddress returns the IP address of the given hostname in the given subnet. If the hostname does not have an IP address in the subnet, it will allocate one.
-func (c *client) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string) (netip.Addr, error) {
+func (c *client) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string, logger logr.Logger) (netip.Addr, error) {
 	hr, err := c.getOrNewHostRecord(view, hostname, zone)
 	if err != nil {
 		return netip.Addr{}, fmt.Errorf("failed to get or create Infoblox host record: %w", err)
@@ -113,7 +117,7 @@ func (c *client) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname
 	hr.NetworkView = view
 	hr.View = toDNSView(view)
 
-	if err := c.createOrUpdateHostRecord(hr); err != nil {
+	if err := c.createOrUpdateHostRecord(hr, logger); err != nil {
 		return netip.Addr{}, fmt.Errorf("failed to create or update Infoblox host record: %w", err)
 	}
 
@@ -129,7 +133,7 @@ func nextAvailableIBFunc(subnet netip.Prefix, view string) string {
 }
 
 // ReleaseAddress releases the IP address of the given hostname in the given subnet.
-func (c *client) ReleaseAddress(view string, subnet netip.Prefix, hostname string) error {
+func (c *client) ReleaseAddress(view string, subnet netip.Prefix, hostname string, logger logr.Logger) error {
 	hr, err := c.objMgr.GetHostRecord("", "", hostname, "", "")
 	if err != nil {
 		return err
@@ -176,12 +180,18 @@ func (c *client) ReleaseAddress(view string, subnet netip.Prefix, hostname strin
 	hr.View = toDNSView(view)
 
 	if len(hr.Ipv4Addrs) == 0 && len(hr.Ipv6Addrs) == 0 {
-		_, err := c.connector.DeleteObject(hr.Ref)
-		return err
+		logger.Info("Deleting Infoblox host record", "hostname", hostname)
+		if _, err := c.connector.DeleteObject(hr.Ref); err != nil {
+			return fmt.Errorf("failed to delete Infoblox host record: %w", err)
+		}
+		return nil
 	}
 	prepareHostRecordForUpdate(hr)
-	_, err = c.connector.UpdateObject(hr, hr.Ref)
-	return err
+	logger.Info("Updating Infoblox host record", "hostname", hostname)
+	if _, err = c.connector.UpdateObject(hr, hr.Ref); err != nil {
+		return fmt.Errorf("failed to update Infoblox host record: %w", err)
+	}
+	return nil
 }
 
 func toDNSView(view string) *string {
