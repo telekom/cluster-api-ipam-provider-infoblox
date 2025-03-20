@@ -73,7 +73,7 @@ var _ = Describe("IP Address Management", func() {
 		Context("IPv4 record", func() {
 			BeforeEach(func() {
 				var err error
-				hostRecord, err = testClient.objMgr.CreateHostRecord(dnsEnabled, false, hostname, testView, *toDNSView(testView), v4subnet1.String(), "", "", "", "", "", false, 0, "", ibclient.EA{}, nil)
+				hostRecord, err = testClient.objMgr.CreateHostRecord(dnsEnabled, false, hostname, testView, *toDNSView(testView), v4subnet1.String(), "", "", "", "", "", false, 0, "", ibclient.EA{}, nil, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(hostRecord).NotTo(BeNil())
 			})
@@ -81,7 +81,7 @@ var _ = Describe("IP Address Management", func() {
 			It("returns the existing IP if the subnet is the same", func() {
 				addr, err := testClient.GetOrAllocateAddress(testView, v4subnet1, hostname, "")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(addr.String()).To(BeEquivalentTo(hostRecord.Ipv4Addrs[0].Ipv4Addr))
+				Expect(addr.String()).To(BeEquivalentTo(*hostRecord.Ipv4Addrs[0].Ipv4Addr))
 			})
 
 			It("allocates another IP if the subnet is different", func() {
@@ -112,7 +112,7 @@ var _ = Describe("IP Address Management", func() {
 		Context("IPv6 record", func() {
 			BeforeEach(func() {
 				var err error
-				hostRecord, err = testClient.objMgr.CreateHostRecord(dnsEnabled, false, hostname, testView, *toDNSView(testView), "", v6subnet1.String(), "", "", "", "", false, 0, "", ibclient.EA{}, nil)
+				hostRecord, err = testClient.objMgr.CreateHostRecord(dnsEnabled, false, hostname, testView, *toDNSView(testView), "", v6subnet1.String(), "", "", "", "", false, 0, "", ibclient.EA{}, nil, false)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(hostRecord).NotTo(BeNil())
 			})
