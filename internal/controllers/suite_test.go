@@ -76,6 +76,8 @@ var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancelCtx = context.WithCancel(ctrl.SetupSignalHandler())
+	// add logger to context
+	ctx = logf.IntoContext(ctx, logf.Log)
 
 	mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
 	mockNewInfobloxClientFunc = func(infoblox.Config) (infoblox.Client, error) {

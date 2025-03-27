@@ -43,7 +43,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
@@ -87,3 +87,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.2 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
+
+// replace sigs.k8s.io/cluster-api-ipam-provider-in-cluster v1.0.1 => sigs.k8s.io/cluster-api-ipam-provider-in-cluster v1.0.2-0.20250324174343-c27549f693f3
+replace sigs.k8s.io/cluster-api-ipam-provider-in-cluster v1.0.1 => github.com/llxp/cluster-api-ipam-provider-in-cluster v0.0.0-20250328150857-d15f570431c6
