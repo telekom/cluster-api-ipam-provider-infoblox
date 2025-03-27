@@ -64,7 +64,7 @@ func (webhook *InfobloxIPPool) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // InfobloxIPPool implements a validating and defaulting webhook for InfobloxIPPool.
 type InfobloxIPPool struct {
-	Client client.Reader
+	Client client.Client
 }
 
 var _ webhook.CustomDefaulter = &InfobloxIPPool{}
@@ -114,7 +114,7 @@ func (webhook *InfobloxIPPool) ValidateDelete(ctx context.Context, obj runtime.O
 	}
 
 	poolTypeRef := corev1.TypedLocalObjectReference{
-		APIGroup: ptr.To[string](pool.GetObjectKind().GroupVersionKind().Group),
+		APIGroup: ptr.To(pool.GetObjectKind().GroupVersionKind().Group),
 		Kind:     pool.GetObjectKind().GroupVersionKind().Kind,
 		Name:     pool.GetName(),
 	}
