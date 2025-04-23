@@ -1,4 +1,4 @@
-name: Manual Container Image Build
+name: 'Manual: Build Container Image'
 
 on:
   workflow_dispatch:
@@ -39,4 +39,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/telekom/cluster-api-ipam-provider-infoblox:$image_tag
+          tags: ghcr.io/telekom/cluster-api-ipam-provider-infoblox:${{ image_tag }}
