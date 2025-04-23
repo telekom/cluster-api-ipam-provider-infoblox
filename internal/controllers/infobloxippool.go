@@ -22,15 +22,19 @@ import (
 	"net/netip"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/poolutil"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/utils/ptr"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -62,8 +66,9 @@ func (r *InfobloxIPPoolReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Reconcile an InfobloxIPPool.
 func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reterr error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
+	// get object
 	pool := &v1alpha1.InfobloxIPPool{}
 	if err := r.Client.Get(ctx, req.NamespacedName, pool); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -72,15 +77,46 @@ func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
+	// setup patch helper
 	patchHelper, err := patch.NewHelper(pool, r.Client)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
 	defer func() {
 		if err := patchHelper.Patch(ctx, pool, patch.WithOwnedConditions{}); err != nil {
 			reterr = kerrors.NewAggregate([]error{reterr, err})
 		}
 	}()
+
+	// add finalizer
+	isMarkedForDeletion := pool.GetDeletionTimestamp() != nil
+	if !isMarkedForDeletion && controllerutil.AddFinalizer(pool, ProtectPoolFinalizer) {
+		return ctrl.Result{}, nil
+	}
+
+	// remove finalizer if no claims point to this pool anymore
+	if isMarkedForDeletion {
+		poolTypeRef := corev1.TypedLocalObjectReference{
+			APIGroup: ptr.To(pool.GetObjectKind().GroupVersionKind().Group),
+			Kind:     pool.GetObjectKind().GroupVersionKind().Kind,
+			Name:     pool.GetName(),
+		}
+		inUseClaims, err := poolutil.ListClaimsReferencingPool(ctx, r.Client, pool.GetNamespace(), poolTypeRef)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		for _, claim := range inUseClaims {
+			logger.Info("still found claim in use", "claim", claim.Name)
+		}
+		if len(inUseClaims) == 0 {
+			if controllerutil.RemoveFinalizer(pool, ProtectPoolFinalizer) {
+				return ctrl.Result{}, nil
+			}
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, fmt.Errorf("pool has IPAddresses or IPAddressClaims allocated. Cannot delete Pool until all IPAddresses and IPAddressClaims have been removed")
+	}
 
 	return ctrl.Result{}, r.reconcile(ctx, pool)
 }

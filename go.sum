@@ -103,6 +103,8 @@ github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
+github.com/llxp/cluster-api-ipam-provider-in-cluster v0.0.0-20250328150857-d15f570431c6 h1:QMki4n/ltCifHyIJJ4WUSoLCxOTfEzYuqRYzXXbU18s=
+github.com/llxp/cluster-api-ipam-provider-in-cluster v0.0.0-20250328150857-d15f570431c6/go.mod h1:n5zzjmAnq+aM0v2HobTRL1sxMNx5PYIZToF9OGfCfIY=
 github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0=
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/metal3-io/cluster-api-provider-metal3/api v1.9.2 h1:K2YlClQB+O4bxQY4BgBUqBg/s6CgcebkXc5o7oCyJko=
@@ -291,8 +293,6 @@ sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.31.0 h1:CPT0ExVicCzcp
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.31.0/go.mod h1:Ve9uj1L+deCXFrPOk1LpFXqTg7LCFzFso6PA48q/XZw=
 sigs.k8s.io/cluster-api v1.9.5 h1:68164Q201Y5ANVkhyrOZenoMbfL2SEBjVYZs/ihhSro=
 sigs.k8s.io/cluster-api v1.9.5/go.mod h1:DyqyZ4jRvKGKewDRn1Q4OCHaVjsdTogymbO6mrgHEDI=
-sigs.k8s.io/cluster-api-ipam-provider-in-cluster v1.0.1 h1:Jn8EV4EK2djN1704SAaBFoHf7BBp0PrNIMquE2OeAeI=
-sigs.k8s.io/cluster-api-ipam-provider-in-cluster v1.0.1/go.mod h1:n5zzjmAnq+aM0v2HobTRL1sxMNx5PYIZToF9OGfCfIY=
 sigs.k8s.io/cluster-api-provider-vsphere v1.12.0 h1:9ze+1JSdLAGiLklsnORvj/vs2XpR9jyVmkT0Dwo1nuc=
 sigs.k8s.io/cluster-api-provider-vsphere v1.12.0/go.mod h1:2y9fsZQ3qjT1kL6IXiOUVcyV0n8DLBQGvyPnId9xRzk=
 sigs.k8s.io/controller-runtime v0.19.6 h1:fuq53qTLQ7aJTA7aNsklNnu7eQtSFqJUomOyM+phPLk=
