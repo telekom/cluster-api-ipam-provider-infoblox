@@ -13,8 +13,6 @@ jobs:
   build-container-image:
     name: build container image
     runs-on: "ubuntu-latest"
-    env:
-      image_tag: ${{ inputs.tag != '' && inputs.tag || format('{0}-{1}', github.ref_name, github.sha) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,6 +20,14 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '^1.24'
+
+      - name: "Sanitize Branch name"
+        id: sanitize-tag
+        shell: bash
+        run: |
+          SANITIZED_TAG=$(echo -n ${{ inputs.tag != '' && inputs.tag || format('{0}-{1}', github.ref_name, github.sha) }} | tr "/" "-")
+          echo "Sanitized tag: $SANITIZED_TAG"
+          echo "sanitized-tag=$SANITIZED_TAG" >> $GITHUB_OUTPUT;
 
       - name: Create Licenses Report
         run: |
@@ -39,4 +45,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/telekom/cluster-api-ipam-provider-infoblox:${{ env.image_tag }}
+          tags: ghcr.io/telekom/cluster-api-ipam-provider-infoblox:${{ steps.sanitize-tag.outputs.sanitized-tag }}
