@@ -39,4 +39,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/telekom/cluster-api-ipam-provider-infoblox:${{ image_tag }}
+          tags: ghcr.io/telekom/cluster-api-ipam-provider-infoblox:${{ env.image_tag }}
