@@ -1,0 +1,42 @@
+name: Manual Container Image Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Custom tag for the image. Set to empty string to use an auto-generated tag.'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  build-container-image:
+    name: build container image
+    runs-on: "ubuntu-latest"
+    env:
+      image_tag: ${{ inputs.tag != '' && inputs.tag || format('{0}-{1}', github.ref_name, github.sha) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '^1.24'
+
+      - name: Create Licenses Report
+        run: |
+          make licenses-report
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6.5.0
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/telekom/cluster-api-ipam-provider-infoblox:$image_tag
