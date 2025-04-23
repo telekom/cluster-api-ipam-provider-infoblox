@@ -23,11 +23,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/webhooks"
-	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -44,6 +39,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/webhooks"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 )
 
 var (
@@ -79,10 +80,10 @@ func main() {
 	flag.StringVar(&watchNamespace, "namespace", "",
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.")
 	flag.StringVar(&watchFilter, "watch-filter", "", "")
-	opts := zap.Options{
+	zapOpts := zap.Options{
 		Development: true,
 	}
-	opts.BindFlags(flag.CommandLine)
+	zapOpts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
 	// suppress logs from Infoblox client library
@@ -93,17 +94,24 @@ func main() {
 
 	ctx := ctrl.SetupSignalHandler()
 
-	namespacesToWatch := map[string]cache.Config{watchNamespace: {}}
-
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	opts := ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                server.Options{BindAddress: metricsAddr},
 		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7bb7acb4.ipam.cluster.x-k8s.io",
-		Cache:                  cache.Options{DefaultNamespaces: namespacesToWatch},
-	})
+	}
+
+	if watchNamespace != "" {
+		opts.Cache = cache.Options{
+			DefaultNamespaces: map[string]cache.Config{
+				watchNamespace: {},
+			},
+		}
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), opts)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
