@@ -118,14 +118,13 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (client.Object, *c
 	var err error
 
 	h.pool = &v1alpha1.InfobloxIPPool{}
-	if err = h.Client.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, h.pool); err != nil && !apierrors.IsNotFound(err) {
+	if err = h.Client.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, h.pool); err != nil {
+		if apierrors.IsNotFound(err) {
+			err := errors.New("pool could not be found")
+			logger.Error(err, "the referenced pool in the claim could not be found")
+			return nil, nil, fmt.Errorf("pool not found: %w", err)
+		}
 		return nil, nil, fmt.Errorf("failed to fetch pool: %w", err)
-	}
-
-	if h.pool == nil {
-		err := errors.New("pool not found")
-		logger.Error(err, "the referenced pool could not be found")
-		return h.pool, nil, nil
 	}
 
 	// TODO: ensure pool is ready
@@ -179,7 +178,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		}
 
 		var ipaddr netip.Addr
-		ipaddr, err = h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, hostName, h.pool.Spec.DNSZone)
+		ipaddr, err = h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, subnet, hostName, h.pool.Spec.DNSZone, logger)
 		if err != nil {
 			continue
 		}
@@ -215,7 +214,15 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 	logger := log.FromContext(ctx)
 
 	hostName, err := h.getHostname(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	logger = logger.WithValues("hostname", hostName)
+
+	if len(h.pool.Spec.Subnets) == 0 || h.pool == nil {
+		return nil, fmt.Errorf("no subnets found in pool or pool not found")
+	}
 
 	var subnet netip.Prefix
 	for _, sub := range h.pool.Spec.Subnets {
@@ -226,21 +233,15 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 			continue
 		}
 
-		err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, hostName)
+		err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, subnet, hostName, logger)
 		if err != nil {
 			// since ibclient.NotFoundError has a pointer receiver on it's Error() method, we can't use errors.As() here.
 			if _, ok := err.(*ibclient.NotFoundError); !ok {
 				logger.Error(err, "failed to release address for host", "hostname", hostName)
 			}
+			logger.Info("did not find address for host", "hostname", hostName, "error", err)
 		} else {
 			logger.Info("released address for host", "hostname", hostName)
-		}
-	}
-
-	if err != nil {
-		// since ibclient.NotFoundError has a pointer receiver on it's Error() method, we can't use errors.As() here.
-		if _, ok := err.(*ibclient.NotFoundError); !ok {
-			return nil, fmt.Errorf("unable to release address: %w", err)
 		}
 	}
 
