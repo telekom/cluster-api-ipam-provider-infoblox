@@ -15,7 +15,7 @@ import (
 // - For some reason Infoblox does not assign network view to the host record. Workarounds were provided in the code with tag: [Issue].
 
 // getOrNewHostRecord returns the host record with the given hostname in the given view, or creates a new host record if no host record with the given hostname exists.
-func (c *client) getOrNewHostRecord(view, hostname, zone string) (*ibclient.HostRecord, error) {
+func (c *client) getOrNewHostRecord(networkView, dnsView, hostname, zone string) (*ibclient.HostRecord, error) {
 	// [Issue] For some reason Infoblox does not assign view to the host record. Empty netview and dnsview is a workaround to find host.
 	hostRecord, err := c.objMgr.GetHostRecord("", "", hostname, "", "")
 	if err != nil {
@@ -28,13 +28,13 @@ func (c *client) getOrNewHostRecord(view, hostname, zone string) (*ibclient.Host
 	if hostRecord == nil {
 		hostRecord = ibclient.NewEmptyHostRecord()
 		hostRecord.Name = &hostname
-		hostRecord.NetworkView = view
+		hostRecord.NetworkView = networkView
 		hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{}
 		hostRecord.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{}
 		hostRecord.EnableDns = ptr.To(false)
 		if zone != "" {
 			hostRecord.EnableDns = ptr.To(true)
-			hostRecord.View = toDNSView(view)
+			hostRecord.View = toDNSView(dnsView)
 		}
 	}
 
@@ -95,8 +95,8 @@ func getHostRecordAddrInSubnet(hr *ibclient.HostRecord, subnet netip.Prefix) (ne
 }
 
 // GetOrAllocateAddress returns the IP address of the given hostname in the given subnet. If the hostname does not have an IP address in the subnet, it will allocate one.
-func (c *client) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string, logger logr.Logger) (netip.Addr, error) {
-	hr, err := c.getOrNewHostRecord(view, hostname, zone)
+func (c *client) GetOrAllocateAddress(networkView, dnsView string, subnet netip.Prefix, hostname, zone string, logger logr.Logger) (netip.Addr, error) {
+	hr, err := c.getOrNewHostRecord(networkView, dnsView, hostname, zone)
 	if err != nil {
 		return netip.Addr{}, fmt.Errorf("failed to get or create Infoblox host record: %w", err)
 	}
@@ -106,16 +106,16 @@ func (c *client) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname
 	}
 
 	if subnet.Addr().Is4() {
-		ipr := ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(subnet, view), "", false, "")
+		ipr := ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(subnet, networkView), "", false, "")
 		hr.Ipv4Addrs = append(hr.Ipv4Addrs, *ipr)
 	} else {
-		ipr := ibclient.NewHostRecordIpv6Addr(nextAvailableIBFunc(subnet, view), "", false, "")
+		ipr := ibclient.NewHostRecordIpv6Addr(nextAvailableIBFunc(subnet, networkView), "", false, "")
 		hr.Ipv6Addrs = append(hr.Ipv6Addrs, *ipr)
 	}
 
 	// [Issue] this is to reassign netview and view as Infoblox is dropping them for me. Without that updating host record by reference will not work
-	hr.NetworkView = view
-	hr.View = toDNSView(view)
+	hr.NetworkView = networkView
+	hr.View = toDNSView(dnsView)
 
 	if err := c.createOrUpdateHostRecord(hr, logger); err != nil {
 		return netip.Addr{}, fmt.Errorf("failed to create or update Infoblox host record: %w", err)
@@ -133,7 +133,7 @@ func nextAvailableIBFunc(subnet netip.Prefix, view string) string {
 }
 
 // ReleaseAddress releases the IP address of the given hostname in the given subnet.
-func (c *client) ReleaseAddress(view string, subnet netip.Prefix, hostname string, logger logr.Logger) error {
+func (c *client) ReleaseAddress(networkView, dnsView string, subnet netip.Prefix, hostname string, logger logr.Logger) error {
 	hr, err := c.objMgr.GetHostRecord("", "", hostname, "", "")
 	if err != nil {
 		return err
@@ -176,8 +176,8 @@ func (c *client) ReleaseAddress(view string, subnet netip.Prefix, hostname strin
 	}
 
 	// [Issue] this is to reassign netview and view as Infoblox is dropping them for me. Without that updating host record by reference will not work
-	hr.NetworkView = view
-	hr.View = toDNSView(view)
+	hr.NetworkView = networkView
+	hr.View = toDNSView(dnsView)
 
 	if len(hr.Ipv4Addrs) == 0 && len(hr.Ipv6Addrs) == 0 {
 		logger.Info("Deleting Infoblox host record", "hostname", hostname)
@@ -194,14 +194,14 @@ func (c *client) ReleaseAddress(view string, subnet netip.Prefix, hostname strin
 	return nil
 }
 
-func toDNSView(view string) *string {
-	if view == "" {
+func toDNSView(dnsView string) *string {
+	if dnsView == "" {
 		return nil
 	}
-	if view == "default" {
-		return &view
+	if dnsView == "default" {
+		return &dnsView
 	}
-	s := "default." + view
+	s := "default." + dnsView
 	return &s
 }
 

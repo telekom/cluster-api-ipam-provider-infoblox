@@ -137,6 +137,10 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		pool.Spec.NetworkView = ibclient.GetHostConfig().DefaultNetworkView
 	}
 
+	if pool.Spec.DnsView == "" {
+		pool.Spec.DnsView = ibclient.GetHostConfig().DefaultDnsView
+	}
+
 	// TODO: handle this in a better way
 	if ok, err := ibclient.CheckNetworkViewExists(pool.Spec.NetworkView); err != nil || !ok {
 		logger.Error(err, "could not find network view", "networkView", pool.Spec.NetworkView)
@@ -146,6 +150,19 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 			clusterv1.ConditionSeverityError,
 			"could not find network view: %s", err)
 		return nil
+	}
+
+	// Check DNS view if specified
+	if pool.Spec.DnsView != "" {
+		if ok, err := ibclient.CheckDnsViewExists(pool.Spec.DnsView); err != nil || !ok {
+			logger.Error(err, "could not find DNS view", "dnsView", pool.Spec.DnsView)
+			conditions.MarkFalse(pool,
+				clusterv1.ReadyCondition,
+				v1alpha1.DnsViewNotFoundReason,
+				clusterv1.ConditionSeverityError,
+				"could not find DNS view: %s", err)
+			return nil
+		}
 	}
 
 	for _, sub := range pool.Spec.Subnets {

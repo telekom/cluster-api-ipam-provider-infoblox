@@ -42,6 +42,21 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
+// CheckDnsViewExists mocks base method.
+func (m *MockClient) CheckDnsViewExists(view string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckDnsViewExists", view)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckDnsViewExists indicates an expected call of CheckDnsViewExists.
+func (mr *MockClientMockRecorder) CheckDnsViewExists(view any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckDnsViewExists", reflect.TypeOf((*MockClient)(nil).CheckDnsViewExists), view)
+}
+
 // CheckNetworkExists mocks base method.
 func (m *MockClient) CheckNetworkExists(view string, subnet netip.Prefix) (bool, error) {
 	m.ctrl.T.Helper()
@@ -87,30 +102,30 @@ func (mr *MockClientMockRecorder) GetHostConfig() *gomock.Call {
 }
 
 // GetOrAllocateAddress mocks base method.
-func (m *MockClient) GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string, logger logr.Logger) (netip.Addr, error) {
+func (m *MockClient) GetOrAllocateAddress(networkView, dnsView string, subnet netip.Prefix, hostname, zone string, logger logr.Logger) (netip.Addr, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetOrAllocateAddress", view, subnet, hostname, zone, logger)
+	ret := m.ctrl.Call(m, "GetOrAllocateAddress", networkView, dnsView, subnet, hostname, zone, logger)
 	ret0, _ := ret[0].(netip.Addr)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetOrAllocateAddress indicates an expected call of GetOrAllocateAddress.
-func (mr *MockClientMockRecorder) GetOrAllocateAddress(view, subnet, hostname, zone, logger any) *gomock.Call {
+func (mr *MockClientMockRecorder) GetOrAllocateAddress(networkView, dnsView, subnet, hostname, zone, logger any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrAllocateAddress", reflect.TypeOf((*MockClient)(nil).GetOrAllocateAddress), view, subnet, hostname, zone, logger)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrAllocateAddress", reflect.TypeOf((*MockClient)(nil).GetOrAllocateAddress), networkView, dnsView, subnet, hostname, zone, logger)
 }
 
 // ReleaseAddress mocks base method.
-func (m *MockClient) ReleaseAddress(view string, subnet netip.Prefix, hostname string, logger logr.Logger) error {
+func (m *MockClient) ReleaseAddress(networkView, dnsView string, subnet netip.Prefix, hostname string, logger logr.Logger) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReleaseAddress", view, subnet, hostname, logger)
+	ret := m.ctrl.Call(m, "ReleaseAddress", networkView, dnsView, subnet, hostname, logger)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReleaseAddress indicates an expected call of ReleaseAddress.
-func (mr *MockClientMockRecorder) ReleaseAddress(view, subnet, hostname, logger any) *gomock.Call {
+func (mr *MockClientMockRecorder) ReleaseAddress(networkView, dnsView, subnet, hostname, logger any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseAddress", reflect.TypeOf((*MockClient)(nil).ReleaseAddress), view, subnet, hostname, logger)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseAddress", reflect.TypeOf((*MockClient)(nil).ReleaseAddress), networkView, dnsView, subnet, hostname, logger)
 }
