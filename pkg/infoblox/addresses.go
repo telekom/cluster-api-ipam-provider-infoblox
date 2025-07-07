@@ -198,11 +198,7 @@ func toDNSView(dnsView string) *string {
 	if dnsView == "" {
 		return nil
 	}
-	if dnsView == "default" {
-		return &dnsView
-	}
-	s := "default." + dnsView
-	return &s
+	return &dnsView
 }
 
 func prepareHostRecordForUpdate(hr *ibclient.HostRecord) {

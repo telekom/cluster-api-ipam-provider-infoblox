@@ -138,7 +138,16 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	}
 
 	if pool.Spec.DnsView == "" {
-		pool.Spec.DnsView = ibclient.GetHostConfig().DefaultDnsView
+		if ibclient.GetHostConfig().DefaultDnsView != "" {
+			pool.Spec.DnsView = ibclient.GetHostConfig().DefaultDnsView
+		} else {
+			// fallback to old behavior: derive DNS view from networkView
+			if pool.Spec.NetworkView == "" || pool.Spec.NetworkView == "default" {
+				pool.Spec.DnsView = "default"
+			} else {
+				pool.Spec.DnsView = "default." + pool.Spec.NetworkView
+			}
+		}
 	}
 
 	// TODO: handle this in a better way
