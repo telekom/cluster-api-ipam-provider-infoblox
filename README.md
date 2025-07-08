@@ -57,7 +57,7 @@ spec:
   disableTLSVerification: true      # disable TLSVerification
   customCAPath: "/some/path/ca.crt" # path to a file which contians list of custom Certificate Authorities that can be used to verify SSL certifcates if 'disableTLSVerification' is set to 'false'. Host's default authorities will be used if not specified.
   defaultNetworkView: "some-view"   # default network view
-  defaultDnsView: "some-dns-view"   # <--- NEW: default DNS view
+  defaultDnsView: "some-dns-view"   # default DNS view
   wapiVersion: "2.12"               # Web API Version of the Infoblox server
 ```
 
@@ -75,14 +75,11 @@ spec:
   instance:
     name: "production"              # name of the InfobloxInstance
   networkView: "datacenter-network" # Infoblox network view that will be used
-  dnsView: "some-dns-view"          # <--- NEW: DNS view for this pool (optional)
+  dnsView: "some-dns-view"          # DNS view for this pool (optional)
   subnets:                          # list of the subnets in the network view we want to get IP addresses from
     - cidr: "10.0.0.0/24"           # subnet CIDR
       gateway: "10.0.0.1"           # gateway that should ba assigned to the IP Address claim
 ```
-
-- If `dnsView` is not set, the pool will inherit the `defaultDnsView` from the referenced InfobloxInstance.
-- If neither is set, the provider will use the Infoblox default DNS view.
 
 Now, whenever `IPAddressClaim` that references `example-pool` will be created, a host record will be created in the subnet specified by the pool on the InfobloxInstance `production` to allocate an IP Address.
 
@@ -103,7 +100,14 @@ We've currently only implemented one strategy for identifying the hostname of a 
 
 Our strategy uses the name of the CAPI `Machine` as the hostname. To determine the Machine name the provider follows the owner chain from the `IPAddressClaim` via the infrastructure provider resources to the `Machine`. This is used by searching through the owner references up to a depth of five.
 
-To enable setting DNS entries, set the `spec.dnsZone` parameter on the `InfobloxIPPool` to your desired zone. The resulting DNS entries will then be `<machine name>.<dnsZone>`. The DNS view will be set to the value of `dnsView` (or `defaultDnsView` if not set).
+To enable setting DNS entries, set the `spec.dnsZone` parameter on the `InfobloxIPPool` to your desired zone. The resulting DNS entries will then be `<machine name>.<dnsZone>`. 
+
+The DNS view is determined in the following priority order:
+1. **Pool.spec.dnsView** - if explicitly set on the pool
+2. **Instance.spec.defaultDnsView** - if not set on pool but set on the instance  
+3. **Derived from networkView** - if neither is set, follows the pattern:
+   - If `networkView` is `"default"` or empty → DNS view is `"default"`
+   - Otherwise → DNS view is `"default.<networkView>"` (e.g., `networkView: "production"` → DNS view `"default.production"`)
 
 ## Running Tests
 
