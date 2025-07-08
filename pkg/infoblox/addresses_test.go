@@ -36,14 +36,14 @@ var _ = Describe("IP Address Management", func() {
 		})
 		Context("IPv4", func() {
 			It("creates a new host record and allocates an IP", func() {
-				addr, err := testClient.GetOrAllocateAddress(testView, v4subnet1, hostname, "", logger)
+				addr, err := testClient.GetOrAllocateAddress(testView, testView, v4subnet1, hostname, "", logger)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(v4subnet1.Contains(addr)).To(BeTrue())
 			})
 		})
 		Context("IPv6", func() {
 			It("creates a new host record and allocates an IP", func() {
-				addr, err := testClient.GetOrAllocateAddress(testView, v6subnet1, hostname, "", logger)
+				addr, err := testClient.GetOrAllocateAddress(testView, testView, v6subnet1, hostname, "", logger)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(v6subnet1.Contains(addr)).To(BeTrue())
 			})
@@ -81,32 +81,32 @@ var _ = Describe("IP Address Management", func() {
 			})
 
 			It("returns the existing IP if the subnet is the same", func() {
-				addr, err := testClient.GetOrAllocateAddress(testView, v4subnet1, hostname, "", logger)
+				addr, err := testClient.GetOrAllocateAddress(testView, testView, v4subnet1, hostname, "", logger)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(addr.String()).To(BeEquivalentTo(*hostRecord.Ipv4Addrs[0].Ipv4Addr))
 			})
 
 			It("allocates another IP if the subnet is different", func() {
 				Expect(testView).To(Equal(defaultView))
-				addr, err := testClient.GetOrAllocateAddress(testView, v4subnet2, hostname, "", logger)
+				addr, err := testClient.GetOrAllocateAddress(testView, testView, v4subnet2, hostname, "", logger)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(v4subnet2.Contains(addr)).To(BeTrue())
 			})
 
 			It("allocates an IPv6 address if the subnet is IPv6", func() {
-				addr, err := testClient.GetOrAllocateAddress(testView, v6subnet1, hostname, "", logger)
+				addr, err := testClient.GetOrAllocateAddress(testView, testView, v6subnet1, hostname, "", logger)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(v6subnet1.Contains(addr)).To(BeTrue())
 			})
 
 			It("deletes the host record when releasing the address", func() {
-				err := testClient.ReleaseAddress(testView, v4subnet1, hostname, logger)
+				err := testClient.ReleaseAddress(testView, testView, v4subnet1, hostname, logger)
 				Expect(err).NotTo(HaveOccurred())
 				hrDeleted = true
 			})
 
 			It("doesnt change the host record when releasing an address in a different subnet", func() {
-				err := testClient.ReleaseAddress(testView, v4subnet2, hostname, logger)
+				err := testClient.ReleaseAddress(testView, testView, v4subnet2, hostname, logger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -120,31 +120,31 @@ var _ = Describe("IP Address Management", func() {
 			})
 
 			It("returns the existing IP if the subnet is the same", func() {
-				addr, err := testClient.GetOrAllocateAddress(testView, v6subnet1, hostname, "", logger)
+				addr, err := testClient.GetOrAllocateAddress(testView, testView, v6subnet1, hostname, "", logger)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(addr).To(Equal(netip.MustParseAddr(*hostRecord.Ipv6Addrs[0].Ipv6Addr)))
 			})
 
 			It("allocates another IP if the subnet is different", func() {
-				addr, err := testClient.GetOrAllocateAddress(testView, v6subnet2, hostname, "", logger)
+				addr, err := testClient.GetOrAllocateAddress(testView, testView, v6subnet2, hostname, "", logger)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(v6subnet2.Contains(addr)).To(BeTrue())
 			})
 
 			It("allocates an IPv4 address if the subnet is IPv4", func() {
-				addr, err := testClient.GetOrAllocateAddress(testView, v4subnet1, hostname, "", logger)
+				addr, err := testClient.GetOrAllocateAddress(testView, testView, v4subnet1, hostname, "", logger)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(v4subnet1.Contains(addr)).To(BeTrue())
 			})
 
 			It("deletes the host record when releasing the address", func() {
-				err := testClient.ReleaseAddress(testView, v6subnet1, hostname, logger)
+				err := testClient.ReleaseAddress(testView, testView, v6subnet1, hostname, logger)
 				Expect(err).NotTo(HaveOccurred())
 				hrDeleted = true
 			})
 
 			It("doesnt change the host record when releasing an address in a different subnet", func() {
-				err := testClient.ReleaseAddress(testView, v6subnet2, hostname, logger)
+				err := testClient.ReleaseAddress(testView, testView, v6subnet2, hostname, logger)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -180,7 +180,7 @@ var _ = Describe("IP Address Management", func() {
 			})
 
 			It("keeps the host record when releasing an address", func() {
-				err := testClient.ReleaseAddress(testView, v4subnet1, hostname, logger)
+				err := testClient.ReleaseAddress(testView, testView, v4subnet1, hostname, logger)
 				Expect(err).NotTo(HaveOccurred())
 
 				hostRecord, err := testClient.objMgr.GetHostRecordByRef(hostRecord.Ref)
@@ -212,7 +212,7 @@ var _ = Describe("IP Address Management", func() {
 			})
 
 			It("keeps the host record when releasing an address", func() {
-				err := testClient.ReleaseAddress(testView, v6subnet1, hostname, logger)
+				err := testClient.ReleaseAddress(testView, testView, v6subnet1, hostname, logger)
 				Expect(err).NotTo(HaveOccurred())
 
 				hostRecord, err := testClient.objMgr.GetHostRecordByRef(hostRecord.Ref)
@@ -245,7 +245,7 @@ var _ = Describe("IP Address Management", func() {
 			})
 
 			It("keeps the host record when releasing a v4 address", func() {
-				err := testClient.ReleaseAddress(testView, v4subnet1, hostname, logger)
+				err := testClient.ReleaseAddress(testView, testView, v4subnet1, hostname, logger)
 				Expect(err).NotTo(HaveOccurred())
 
 				hostRecord, err := testClient.objMgr.GetHostRecordByRef(hostRecord.Ref)
@@ -254,7 +254,7 @@ var _ = Describe("IP Address Management", func() {
 			})
 
 			It("keeps the host record when releasing a v6 address", func() {
-				err := testClient.ReleaseAddress(testView, v6subnet1, hostname, logger)
+				err := testClient.ReleaseAddress(testView, testView, v6subnet1, hostname, logger)
 				Expect(err).NotTo(HaveOccurred())
 
 				hostRecord, err := testClient.objMgr.GetHostRecordByRef(hostRecord.Ref)
