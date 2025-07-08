@@ -42,19 +42,19 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
-// CheckDnsViewExists mocks base method.
-func (m *MockClient) CheckDnsViewExists(view string) (bool, error) {
+// CheckDNSViewExists mocks base method.
+func (m *MockClient) CheckDNSViewExists(view string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CheckDnsViewExists", view)
+	ret := m.ctrl.Call(m, "CheckDNSViewExists", view)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// CheckDnsViewExists indicates an expected call of CheckDnsViewExists.
-func (mr *MockClientMockRecorder) CheckDnsViewExists(view any) *gomock.Call {
+// CheckDNSViewExists indicates an expected call of CheckDNSViewExists.
+func (mr *MockClientMockRecorder) CheckDNSViewExists(view any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckDnsViewExists", reflect.TypeOf((*MockClient)(nil).CheckDnsViewExists), view)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckDNSViewExists", reflect.TypeOf((*MockClient)(nil).CheckDNSViewExists), view)
 }
 
 // CheckNetworkExists mocks base method.

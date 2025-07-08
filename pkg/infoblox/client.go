@@ -30,8 +30,8 @@ type Client interface {
 	ReleaseAddress(networkView, dnsView string, subnet netip.Prefix, hostname string, logger logr.Logger) error
 	// CheckNetworkViewExists checks if Infoblox network view exists
 	CheckNetworkViewExists(view string) (bool, error)
-	// CheckDnsViewExists checks if Infoblox DNS view exists
-	CheckDnsViewExists(view string) (bool, error)
+	// CheckDNSViewExists checks if Infoblox DNS view exists
+	CheckDNSViewExists(view string) (bool, error)
 	// CheckNetworkExists checks if Infoblox network exists
 	CheckNetworkExists(view string, subnet netip.Prefix) (bool, error)
 	GetHostConfig() *HostConfig
@@ -139,7 +139,7 @@ func (c *client) CheckNetworkViewExists(view string) (bool, error) {
 	return true, nil
 }
 
-func (c *client) CheckDnsViewExists(view string) (bool, error) {
+func (c *client) CheckDNSViewExists(view string) (bool, error) {
 	_, err := c.objMgr.GetDNSView(view)
 	if err != nil {
 		if isNotFound(err) {

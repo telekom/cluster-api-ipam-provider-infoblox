@@ -138,7 +138,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 
 	// Check DNS view if specified
 	if instance.Spec.DefaultDNSView != "" {
-		if ok, err := ibcl.CheckDnsViewExists(instance.Spec.DefaultDNSView); err != nil || !ok {
+		if ok, err := ibcl.CheckDNSViewExists(instance.Spec.DefaultDNSView); err != nil || !ok {
 			logger.Error(err, "could not find default DNS view", "dnsView", instance.Spec.DefaultDNSView)
 			conditions.MarkFalse(instance,
 				clusterv1.ReadyCondition,

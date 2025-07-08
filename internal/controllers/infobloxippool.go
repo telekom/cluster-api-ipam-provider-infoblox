@@ -163,7 +163,7 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 
 	// Check DNS view if specified
 	if pool.Spec.DNSView != "" {
-		if ok, err := ibclient.CheckDnsViewExists(pool.Spec.DNSView); err != nil || !ok {
+		if ok, err := ibclient.CheckDNSViewExists(pool.Spec.DNSView); err != nil || !ok {
 			logger.Error(err, "could not find DNS view", "dnsView", pool.Spec.DNSView)
 			conditions.MarkFalse(pool,
 				clusterv1.ReadyCondition,
