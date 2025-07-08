@@ -112,7 +112,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		DisableTLSVerification: instance.Spec.DisableTLSVerification,
 		CustomCAPath:           instance.Spec.CustomCAPath,
 		DefaultNetworkView:     instance.Spec.DefaultNetworkView,
-		DefaultDnsView:         instance.Spec.DefaultDnsView,
+		DefaultDNSView:         instance.Spec.DefaultDNSView,
 	}
 
 	ibcl, err := r.NewInfobloxClientFunc(infoblox.Config{HostConfig: hc, AuthConfig: authConfig})
@@ -137,12 +137,12 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 	}
 
 	// Check DNS view if specified
-	if instance.Spec.DefaultDnsView != "" {
-		if ok, err := ibcl.CheckDnsViewExists(instance.Spec.DefaultDnsView); err != nil || !ok {
-			logger.Error(err, "could not find default DNS view", "dnsView", instance.Spec.DefaultDnsView)
+	if instance.Spec.DefaultDNSView != "" {
+		if ok, err := ibcl.CheckDnsViewExists(instance.Spec.DefaultDNSView); err != nil || !ok {
+			logger.Error(err, "could not find default DNS view", "dnsView", instance.Spec.DefaultDNSView)
 			conditions.MarkFalse(instance,
 				clusterv1.ReadyCondition,
-				v1alpha1.DnsViewNotFoundReason,
+				v1alpha1.DNSViewNotFoundReason,
 				clusterv1.ConditionSeverityError,
 				"could not find default DNS view: %s", err)
 			return ctrl.Result{}, nil

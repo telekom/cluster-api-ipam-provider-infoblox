@@ -21,8 +21,8 @@ const (
 	AuthenticationFailedReason = "AuthenticationFailed"
 	// NetworkViewNotFoundReason indicates that the specified network view could not be found on the Infoblox instance.
 	NetworkViewNotFoundReason = "NetworkViewNotFound"
-	// DnsViewNotFoundReason indicates that the specified DNS view could not be found on the Infoblox instance.
-	DnsViewNotFoundReason = "DnsViewNotFound"
+	// DNSViewNotFoundReason indicates that the specified DNS view could not be found on the Infoblox instance.
+	DNSViewNotFoundReason = "DnsViewNotFound"
 	// NetworkNotFoundReason indicates that the specified network could not be found on the Infoblox instance.
 	NetworkNotFoundReason = "NetworkNotFound"
 )

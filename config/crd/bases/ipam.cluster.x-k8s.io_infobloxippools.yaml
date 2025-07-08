@@ -49,7 +49,7 @@ spec:
             description: InfobloxIPPoolSpec defines the desired state of InfobloxIPPool.
             properties:
               dnsView:
-                description: DnsView defines Infoblox DNS view to be used with pool.
+                description: DNSView defines Infoblox DNS view to be used with pool.
                 type: string
               dnsZone:
                 description: DNSZone is the DNS zone within which hostnames will be

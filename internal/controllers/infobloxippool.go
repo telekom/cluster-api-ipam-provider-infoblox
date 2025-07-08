@@ -137,15 +137,15 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		pool.Spec.NetworkView = ibclient.GetHostConfig().DefaultNetworkView
 	}
 
-	if pool.Spec.DnsView == "" {
-		if ibclient.GetHostConfig().DefaultDnsView != "" {
-			pool.Spec.DnsView = ibclient.GetHostConfig().DefaultDnsView
+	if pool.Spec.DNSView == "" {
+		if ibclient.GetHostConfig().DefaultDNSView != "" {
+			pool.Spec.DNSView = ibclient.GetHostConfig().DefaultDNSView
 		} else {
 			// fallback to old behavior: derive DNS view from networkView
 			if pool.Spec.NetworkView == "" || pool.Spec.NetworkView == "default" {
-				pool.Spec.DnsView = "default"
+				pool.Spec.DNSView = "default"
 			} else {
-				pool.Spec.DnsView = "default." + pool.Spec.NetworkView
+				pool.Spec.DNSView = "default." + pool.Spec.NetworkView
 			}
 		}
 	}
@@ -162,12 +162,12 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	}
 
 	// Check DNS view if specified
-	if pool.Spec.DnsView != "" {
-		if ok, err := ibclient.CheckDnsViewExists(pool.Spec.DnsView); err != nil || !ok {
-			logger.Error(err, "could not find DNS view", "dnsView", pool.Spec.DnsView)
+	if pool.Spec.DNSView != "" {
+		if ok, err := ibclient.CheckDnsViewExists(pool.Spec.DNSView); err != nil || !ok {
+			logger.Error(err, "could not find DNS view", "dnsView", pool.Spec.DNSView)
 			conditions.MarkFalse(pool,
 				clusterv1.ReadyCondition,
-				v1alpha1.DnsViewNotFoundReason,
+				v1alpha1.DNSViewNotFoundReason,
 				clusterv1.ConditionSeverityError,
 				"could not find DNS view: %s", err)
 			return nil

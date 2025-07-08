@@ -60,7 +60,7 @@ type HostConfig struct {
 	DisableTLSVerification bool
 	CustomCAPath           string
 	DefaultNetworkView     string
-	DefaultDnsView         string
+	DefaultDNSView         string
 }
 
 // Config is a wrapper config structures.

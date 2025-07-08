@@ -178,7 +178,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		}
 
 		var ipaddr netip.Addr
-		ipaddr, err = h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, h.pool.Spec.DnsView, subnet, hostName, h.pool.Spec.DNSZone, logger)
+		ipaddr, err = h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, h.pool.Spec.DNSView, subnet, hostName, h.pool.Spec.DNSZone, logger)
 		if err != nil {
 			continue
 		}
@@ -233,7 +233,7 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 			continue
 		}
 
-		err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, h.pool.Spec.DnsView, subnet, hostName, logger)
+		err = h.ibclient.ReleaseAddress(h.pool.Spec.NetworkView, h.pool.Spec.DNSView, subnet, hostName, logger)
 		if err != nil {
 			// since ibclient.NotFoundError has a pointer receiver on it's Error() method, we can't use errors.As() here.
 			if _, ok := err.(*ibclient.NotFoundError); !ok {
