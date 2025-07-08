@@ -111,6 +111,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 			BeforeEach(func() {
 				localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+				localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 				getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 				pool = v1alpha1.InfobloxIPPool{
 					ObjectMeta: metav1.ObjectMeta{
@@ -256,6 +257,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 			BeforeEach(func() {
 				localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+				localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 				getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 				pool = v1alpha1.InfobloxIPPool{
 					ObjectMeta: metav1.ObjectMeta{
@@ -380,6 +382,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 				BeforeEach(func() {
 					localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+					localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 					getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 					pool = v1alpha1.InfobloxIPPool{
 						ObjectMeta: metav1.ObjectMeta{
@@ -446,6 +449,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 				BeforeEach(func() {
 					localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+					localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 					getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 					pool = v1alpha1.InfobloxIPPool{
 						ObjectMeta: metav1.ObjectMeta{
@@ -518,6 +522,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 		BeforeEach(func() {
 			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 			pool := v1alpha1.InfobloxIPPool{
 				ObjectMeta: metav1.ObjectMeta{
@@ -612,6 +617,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 		BeforeEach(func() {
 			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 			pool := v1alpha1.InfobloxIPPool{
 				ObjectMeta: metav1.ObjectMeta{
@@ -726,6 +732,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 		BeforeEach(func() {
 			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 
 			pool := v1alpha1.InfobloxIPPool{
@@ -1037,6 +1044,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 		BeforeEach(func() {
 			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 
 			pool := v1alpha1.InfobloxIPPool{
@@ -1138,6 +1146,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 		BeforeEach(func() {
 			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 			pool := v1alpha1.InfobloxIPPool{
 				ObjectMeta: metav1.ObjectMeta{
