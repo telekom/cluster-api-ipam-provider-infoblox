@@ -59,7 +59,7 @@ var _ ipamutil.ProviderAdapter = &InfobloxProviderAdapter{}
 
 // InfobloxClaimHandler handles infoblox claims.
 type InfobloxClaimHandler struct {
-	client.Client
+	Client                client.Client
 	claim                 *ipamv1.IPAddressClaim
 	pool                  *v1alpha1.InfobloxIPPool
 	newInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)

@@ -937,7 +937,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				Eventually(Get(&cluster)).Should(Succeed())
 
 				claim := newClaim("test", namespace, "InfobloxIPPool", poolName)
-				claim.ObjectMeta.Labels = map[string]string{
+				claim.Labels = map[string]string{
 					clusterv1.ClusterNameLabel: cluster.GetName(),
 				}
 				Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
@@ -1016,7 +1016,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			})
 			It("does not allocate an ipaddress for the claim", func() {
 				claim := newClaim("test", namespace, "InfobloxIPPool", poolName)
-				claim.ObjectMeta.Labels = map[string]string{
+				claim.Labels = map[string]string{
 					clusterv1.ClusterNameLabel: "an-unfindable-cluster",
 				}
 				Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
@@ -1070,7 +1070,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			claim := newClaim("test", namespace, "InfobloxIPPool", poolName)
-			claim.ObjectMeta.Annotations = map[string]string{
+			claim.Annotations = map[string]string{
 				clusterv1.PausedAnnotation: "",
 			}
 			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())

@@ -54,7 +54,7 @@ func (r *OwnerChainResolver) GetHostname(ctx context.Context, claim *ipamv1.IPAd
 // SearchOwnerReferenceResolver performs a depth search on the owner references until it finds the specified [metav1.GroupKind]
 // and uses it's name as the hostname.
 type SearchOwnerReferenceResolver struct {
-	client.Client
+	Client    client.Client
 	MaxDepth  int
 	SearchFor metav1.GroupKind
 }

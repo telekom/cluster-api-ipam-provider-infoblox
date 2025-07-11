@@ -36,7 +36,7 @@ import (
 
 // InfobloxInstanceReconciler reconciles a InfobloxInstance object.
 type InfobloxInstanceReconciler struct {
-	client.Client
+	Client client.Client
 	Scheme *runtime.Scheme
 
 	OperatorNamespace     string
