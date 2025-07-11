@@ -45,7 +45,7 @@ const (
 
 // InfobloxIPPoolReconciler reconciles a InfobloxIPPool object.
 type InfobloxIPPoolReconciler struct {
-	client.Client
+	Client client.Client
 	Scheme *runtime.Scheme
 
 	OperatorNamespace     string
