@@ -111,6 +111,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 			BeforeEach(func() {
 				localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+				localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 				getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 				pool = v1alpha1.InfobloxIPPool{
 					ObjectMeta: metav1.ObjectMeta{
@@ -139,8 +140,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			It("should allocate an Address from the Pool", func() {
 				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
-				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 				claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
 				expectedIPAddress = ipamv1.IPAddress{
@@ -195,9 +196,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				Expect(err).NotTo(HaveOccurred())
 				addr, err := netip.ParseAddr("10.0.1.2")
 				Expect(err).NotTo(HaveOccurred())
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), subnet0, gomock.Any(), gomock.Any(), gomock.Any()).Return(netip.Addr{}, errors.New("no available addresses")).AnyTimes()
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), subnet1, gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
-				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), subnet0, gomock.Any(), gomock.Any(), gomock.Any()).Return(netip.Addr{}, errors.New("no available addresses")).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), subnet1, gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 				claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
 				expectedIPAddress = ipamv1.IPAddress{
@@ -256,6 +257,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 			BeforeEach(func() {
 				localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+				localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 				getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 				pool = v1alpha1.InfobloxIPPool{
 					ObjectMeta: metav1.ObjectMeta{
@@ -284,8 +286,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			It("should allocate an Address from the Pool", func() {
 				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
-				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 				claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
 				expectedIPAddress = ipamv1.IPAddress{
@@ -380,6 +382,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 				BeforeEach(func() {
 					localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+					localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 					getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 					pool = v1alpha1.InfobloxIPPool{
 						ObjectMeta: metav1.ObjectMeta{
@@ -411,8 +414,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				It("should not create an IPAddress for claims until the pool is unpaused", func() {
 					addr, err := netip.ParseAddr("10.0.0.2")
 					Expect(err).NotTo(HaveOccurred())
-					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
-					localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+					localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 					tmpPool := &v1alpha1.InfobloxIPPool{}
 					err = k8sClient.Get(ctx, client.ObjectKeyFromObject(&pool), tmpPool)
@@ -446,6 +449,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 				BeforeEach(func() {
 					localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+					localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 					getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 					pool = v1alpha1.InfobloxIPPool{
 						ObjectMeta: metav1.ObjectMeta{
@@ -473,8 +477,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				It("should prevent deletion of claims", func() {
 					addr, err := netip.ParseAddr("10.0.0.2")
 					Expect(err).NotTo(HaveOccurred())
-					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
-					localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+					localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 					claim := newClaim("paused-pool-delete-claim-test", namespace, "InfobloxIPPool", poolName)
 					Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
@@ -518,6 +522,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 		BeforeEach(func() {
 			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 			pool := v1alpha1.InfobloxIPPool{
 				ObjectMeta: metav1.ObjectMeta{
@@ -546,8 +551,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		It("should add the owner references and finalizer", func() {
 			addr, err := netip.ParseAddr("10.0.0.2")
 			Expect(err).NotTo(HaveOccurred())
-			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
-			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			addressSpec := ipamv1.IPAddressSpec{
 				ClaimRef: corev1.LocalObjectReference{
@@ -612,6 +617,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 		BeforeEach(func() {
 			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 			pool := v1alpha1.InfobloxIPPool{
 				ObjectMeta: metav1.ObjectMeta{
@@ -640,8 +646,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		It("should add the owner references and finalizer", func() {
 			addr, err := netip.ParseAddr("10.0.0.2")
 			Expect(err).NotTo(HaveOccurred())
-			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
-			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			addressSpec := ipamv1.IPAddressSpec{
 				ClaimRef: corev1.LocalObjectReference{
@@ -726,6 +732,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 		BeforeEach(func() {
 			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 
 			pool := v1alpha1.InfobloxIPPool{
@@ -920,8 +927,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			It("allocates an ipaddress upon updating a cluster when removing spec.paused", func() {
 				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
-				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 				cluster = clusterv1.Cluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -959,8 +966,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			It("allocates an ipaddress upon updating a cluster when removing the paused annotation", func() {
 				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
-				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 				cluster = clusterv1.Cluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1037,6 +1044,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 		BeforeEach(func() {
 			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 
 			pool := v1alpha1.InfobloxIPPool{
@@ -1066,8 +1074,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		It("does not allocate an ipaddress for the claim until the ip address claim is unpaused", func() {
 			addr, err := netip.ParseAddr("10.0.0.2")
 			Expect(err).NotTo(HaveOccurred())
-			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
-			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			claim := newClaim("test", namespace, "InfobloxIPPool", poolName)
 			claim.Annotations = map[string]string{
@@ -1138,6 +1146,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 		BeforeEach(func() {
 			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
 			pool := v1alpha1.InfobloxIPPool{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1164,7 +1173,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		})
 
 		It("should not allocate an Address if there are no addresses available", func() {
-			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(netip.Addr{}, errors.New("no available addresses")).AnyTimes()
+			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(netip.Addr{}, errors.New("no available addresses")).AnyTimes()
 
 			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
 

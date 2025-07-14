@@ -137,6 +137,8 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		pool.Spec.NetworkView = ibclient.GetHostConfig().DefaultNetworkView
 	}
 
+	dnsView := determineDNSView(pool.Spec.DNSView, ibclient.GetHostConfig().DefaultDNSView, pool.Spec.NetworkView)
+
 	// TODO: handle this in a better way
 	if ok, err := ibclient.CheckNetworkViewExists(pool.Spec.NetworkView); err != nil || !ok {
 		logger.Error(err, "could not find network view", "networkView", pool.Spec.NetworkView)
@@ -146,6 +148,19 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 			clusterv1.ConditionSeverityError,
 			"could not find network view: %s", err)
 		return nil
+	}
+
+	// Check DNS view if specified
+	if dnsView != "" {
+		if ok, err := ibclient.CheckDNSViewExists(dnsView); err != nil || !ok {
+			logger.Error(err, "could not find DNS view", "dnsView", dnsView)
+			conditions.MarkFalse(pool,
+				clusterv1.ReadyCondition,
+				v1alpha1.DNSViewNotFoundReason,
+				clusterv1.ConditionSeverityError,
+				"could not find DNS view: %s", err)
+			return nil
+		}
 	}
 
 	for _, sub := range pool.Spec.Subnets {
@@ -168,4 +183,22 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	conditions.MarkTrue(pool, clusterv1.ReadyCondition)
 
 	return nil
+}
+
+// determineDNSView determines the DNS view to use based on the priority order:
+// 1. Pool.spec.dnsView (if set)
+// 2. Instance.spec.defaultDnsView (if not set on pool but set on instance)
+// 3. Derived from networkView (if neither is set)
+func determineDNSView(poolDNSView, instanceDefaultDNSView, networkView string) string {
+	if poolDNSView != "" {
+		return poolDNSView
+	}
+	if instanceDefaultDNSView != "" {
+		return instanceDefaultDNSView
+	}
+	// fallback to old behavior: derive DNS view from networkView
+	if networkView == "" || networkView == "default" {
+		return "default"
+	}
+	return "default." + networkView
 }
