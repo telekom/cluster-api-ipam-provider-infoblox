@@ -68,7 +68,7 @@ jobs:
           echo "LDFLAGS=$(hack/version.sh)" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-      - uses: docker/setup-buildx-action@v3.11.1
+        uses: docker/setup-buildx-action@v3.11.1
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6.18.0
