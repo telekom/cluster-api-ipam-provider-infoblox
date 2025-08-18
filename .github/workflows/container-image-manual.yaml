@@ -4,45 +4,26 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Custom tag for the image. Set to empty string to use an auto-generated tag.'
+        description: 'Custom tag for the image. Empty = auto-generated tag'
         required: false
         default: ''
         type: string
 
 jobs:
-  build-container-image:
-    name: build container image
-    runs-on: "ubuntu-latest"
+  sanitize-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.sanitize.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '^1.24'
-
-      - name: "Sanitize Branch name"
-        id: sanitize-tag
-        shell: bash
+      - name: Sanitize tag
+        id: sanitize
         run: |
-          SANITIZED_TAG=$(echo -n ${{ inputs.tag != '' && inputs.tag || format('{0}-{1}', github.ref_name, github.sha) }} | tr "/" "-")
-          echo "Sanitized tag: $SANITIZED_TAG"
-          echo "sanitized-tag=$SANITIZED_TAG" >> $GITHUB_OUTPUT;
+          RAW_TAG="${{ inputs.tag != '' && inputs.tag || format('{0}-{1}', github.ref_name, github.sha) }}"
+          SANITIZED=$(echo "$RAW_TAG" | tr "/" "-")
+          echo "tag=$SANITIZED" >> $GITHUB_OUTPUT
 
-      - name: Create Licenses Report
-        run: |
-          make licenses-report
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3.3.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6.5.0
-        with:
-          context: .
-          push: true
-          tags: ghcr.io/telekom/cluster-api-ipam-provider-infoblox:${{ steps.sanitize-tag.outputs.sanitized-tag }}
+  build-image:
+    needs: sanitize-tag
+    uses: ./.github/workflows/build-image.yaml
+    with:
+      image_tags: ghcr.io/telekom/cluster-api-ipam-provider-infoblox:${{ needs.sanitize-tag.outputs.tag }}

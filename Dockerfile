@@ -17,9 +17,11 @@ COPY internal/ internal/
 COPY pkg/ pkg/
 
 ARG ldflags
+ARG TARGETOS
+ARG TARGETARCH
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+RUN CGO_ENABLED=0 GOOS=$TARGETOS  GOARCH=$TARGETARCH \
     go build -trimpath -ldflags "${ldflags}" -a -o manager main.go
 
 # Use distroless as minimal base image to package the manager binary
