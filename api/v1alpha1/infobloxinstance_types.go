@@ -43,7 +43,7 @@ type InfobloxInstanceSpec struct {
 	// DefaultDNSView is the default DNS view used when interacting with Infoblox.
 	// InfobloxIPPools will inherit this value when not explicitly specifying a DNS view.
 	// +optional
-	DefaultDNSView string `json:"defaultDnsView,omitempty"`
+	DefaultDNSView string `json:"defaultDNSView,omitempty"`
 	// DisableTLSVerification if set 'true', certificates for SSL commuunication with Infoblox instance will be not verified
 	DisableTLSVerification bool `json:"disableTLSVerification,omitempty"`
 	// CustomCAPath can be used to point Infoblox client to a file with a list of accepted certificate authorities. Only used if DisableTLSVerification is set to 'false'.

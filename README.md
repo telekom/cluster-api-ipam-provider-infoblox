@@ -57,7 +57,7 @@ spec:
   disableTLSVerification: true      # disable TLSVerification
   customCAPath: "/some/path/ca.crt" # path to a file which contians list of custom Certificate Authorities that can be used to verify SSL certifcates if 'disableTLSVerification' is set to 'false'. Host's default authorities will be used if not specified.
   defaultNetworkView: "some-view"   # default network view
-  defaultDnsView: "some-dns-view"   # default DNS view
+  defaultDNSView: "some-dns-view"   # default DNS view
   wapiVersion: "2.12"               # Web API Version of the Infoblox server
 ```
 
@@ -104,7 +104,7 @@ To enable setting DNS entries, set the `spec.dnsZone` parameter on the `Infoblox
 
 The DNS view is determined in the following priority order:
 1. **Pool.spec.dnsView** - if explicitly set on the pool
-2. **Instance.spec.defaultDnsView** - if not set on pool but set on the instance  
+2. **Instance.spec.defaultDNSView** - if not set on pool but set on the instance  
 3. **Derived from networkView** - if neither is set, follows the pattern:
    - If `networkView` is `"default"` or empty → DNS view is `"default"`
    - Otherwise → DNS view is `"default.<networkView>"` (e.g., `networkView: "production"` → DNS view `"default.production"`)
