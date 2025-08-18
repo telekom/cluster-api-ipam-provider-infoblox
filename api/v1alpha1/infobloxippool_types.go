@@ -16,6 +16,9 @@ type InfobloxIPPoolSpec struct {
 	// NetworkView defines Infoblox netwok view to be used with pool.
 	// +optional
 	NetworkView string `json:"networkView,omitempty"`
+	// DNSView defines Infoblox DNS view to be used with pool.
+	// +optional
+	DNSView string `json:"dnsView,omitempty"`
 	// DNSZone is the DNS zone within which hostnames will be allocated.
 	// +optional
 	DNSZone string `json:"dnsZone,omitempty"`

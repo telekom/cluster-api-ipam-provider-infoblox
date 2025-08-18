@@ -73,6 +73,11 @@ spec:
                   a file with a list of accepted certificate authorities. Only used
                   if DisableTLSVerification is set to 'false'.
                 type: string
+              defaultDNSView:
+                description: |-
+                  DefaultDNSView is the default DNS view used when interacting with Infoblox.
+                  InfobloxIPPools will inherit this value when not explicitly specifying a DNS view.
+                type: string
               defaultNetworkView:
                 description: |-
                   DefaultNetworkView is the default network view used when interacting with Infoblox.

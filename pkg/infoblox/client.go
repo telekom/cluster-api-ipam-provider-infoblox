@@ -25,11 +25,13 @@ const (
 // Client is a wrapper around the infoblox client that can allocate and release addresses indempotently.
 type Client interface {
 	// GetOrAllocateAddress allocates an address for a given hostname if none exists, and returns the new or existing address.
-	GetOrAllocateAddress(view string, subnet netip.Prefix, hostname, zone string, logger logr.Logger) (netip.Addr, error)
+	GetOrAllocateAddress(networkView, dnsView string, subnet netip.Prefix, hostname, zone string, logger logr.Logger) (netip.Addr, error)
 	// ReleaseAddress releases an address for a given hostname.
-	ReleaseAddress(view string, subnet netip.Prefix, hostname string, logger logr.Logger) error
+	ReleaseAddress(networkView, dnsView string, subnet netip.Prefix, hostname string, logger logr.Logger) error
 	// CheckNetworkViewExists checks if Infoblox network view exists
 	CheckNetworkViewExists(view string) (bool, error)
+	// CheckDNSViewExists checks if Infoblox DNS view exists
+	CheckDNSViewExists(view string) (bool, error)
 	// CheckNetworkExists checks if Infoblox network exists
 	CheckNetworkExists(view string, subnet netip.Prefix) (bool, error)
 	GetHostConfig() *HostConfig
@@ -58,6 +60,7 @@ type HostConfig struct {
 	DisableTLSVerification bool
 	CustomCAPath           string
 	DefaultNetworkView     string
+	DefaultDNSView         string
 }
 
 // Config is a wrapper config structures.
@@ -127,6 +130,17 @@ func AuthConfigFromSecretData(data map[string][]byte) (AuthConfig, error) {
 
 func (c *client) CheckNetworkViewExists(view string) (bool, error) {
 	_, err := c.objMgr.GetNetworkView(view)
+	if err != nil {
+		if isNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (c *client) CheckDNSViewExists(view string) (bool, error) {
+	_, err := c.objMgr.GetDNSView(view)
 	if err != nil {
 		if isNotFound(err) {
 			return false, nil
