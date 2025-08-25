@@ -9,7 +9,7 @@ jobs:
   draft_release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Install Go
@@ -31,7 +31,7 @@ jobs:
       labels: ${{ steps.meta.outputs.labels }}
       ldflags: ${{ steps.version_info.outputs.LDFLAGS }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: docker/metadata-action@v5.5.1
         id: meta
         with:
