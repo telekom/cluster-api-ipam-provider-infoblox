@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
-	v1beta1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1beta1"
+	v1beta1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 )
 
 // MockResolver is a mock of Resolver interface.

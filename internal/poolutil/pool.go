@@ -21,15 +21,14 @@ import (
 	"context"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1beta1"
+	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ListAddressesInUse fetches all IPAddresses belonging to the specified pool.
 // Note: requires `index.ipAddressByCombinedPoolRef` to be set up.
-func ListAddressesInUse(ctx context.Context, c client.Client, namespace string, poolRef corev1.TypedLocalObjectReference) ([]ipamv1.IPAddress, error) {
+func ListAddressesInUse(ctx context.Context, c client.Client, namespace string, poolRef ipamv1.IPPoolReference) ([]ipamv1.IPAddress, error) {
 	addresses := &ipamv1.IPAddressList{}
 	err := c.List(ctx, addresses,
 		client.MatchingFields{
@@ -49,7 +48,7 @@ func ListAddressesInUse(ctx context.Context, c client.Client, namespace string, 
 }
 
 // ListClaimsReferencingPool fetches all IPAddressClaims belonging to the specified pool.
-func ListClaimsReferencingPool(ctx context.Context, c client.Client, namespace string, poolRef corev1.TypedLocalObjectReference) ([]ipamv1.IPAddressClaim, error) {
+func ListClaimsReferencingPool(ctx context.Context, c client.Client, namespace string, poolRef ipamv1.IPPoolReference) ([]ipamv1.IPAddressClaim, error) {
 	addresses := &ipamv1.IPAddressClaimList{}
 	err := c.List(ctx, addresses,
 		client.MatchingFields{

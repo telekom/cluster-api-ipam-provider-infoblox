@@ -32,8 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 	"sigs.k8s.io/cluster-api/util/annotations"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,7 +51,7 @@ var IgnoreUIDsOnIPAddress = IgnorePaths{
 
 const instanceName = "test-instance"
 
-const ipamAPIVersion = "ipam.cluster.x-k8s.io/v1beta1"
+var ipamAPIVersion = ipamv1.GroupVersion.String()
 
 var _ = Describe("IPAddressClaimReconciler", func() {
 	var (
@@ -167,16 +167,16 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						},
 					},
 					Spec: ipamv1.IPAddressSpec{
-						ClaimRef: corev1.LocalObjectReference{
+						ClaimRef: ipamv1.IPAddressClaimReference{
 							Name: claimName,
 						},
-						PoolRef: corev1.TypedLocalObjectReference{
-							APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+						PoolRef: ipamv1.IPPoolReference{
+							APIGroup: "ipam.cluster.x-k8s.io",
 							Kind:     "InfobloxIPPool",
 							Name:     poolName,
 						},
 						Address: "10.0.0.2",
-						Prefix:  24,
+						Prefix:  ptr.To[int32](24),
 						Gateway: "10.0.0.1",
 					},
 				}
@@ -224,16 +224,16 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						},
 					},
 					Spec: ipamv1.IPAddressSpec{
-						ClaimRef: corev1.LocalObjectReference{
+						ClaimRef: ipamv1.IPAddressClaimReference{
 							Name: claimName,
 						},
-						PoolRef: corev1.TypedLocalObjectReference{
-							APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+						PoolRef: ipamv1.IPPoolReference{
+							APIGroup: "ipam.cluster.x-k8s.io",
 							Kind:     "InfobloxIPPool",
 							Name:     poolName,
 						},
 						Address: "10.0.1.2",
-						Prefix:  24,
+						Prefix:  ptr.To[int32](24),
 						Gateway: "10.0.1.1",
 					},
 				}
@@ -313,16 +313,16 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						},
 					},
 					Spec: ipamv1.IPAddressSpec{
-						ClaimRef: corev1.LocalObjectReference{
+						ClaimRef: ipamv1.IPAddressClaimReference{
 							Name: claimName,
 						},
-						PoolRef: corev1.TypedLocalObjectReference{
-							APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+						PoolRef: ipamv1.IPPoolReference{
+							APIGroup: "ipam.cluster.x-k8s.io",
 							Kind:     "InfobloxIPPool",
 							Name:     poolName,
 						},
 						Address: "10.0.0.2",
-						Prefix:  24,
+						Prefix:  ptr.To[int32](24),
 					},
 				}
 
@@ -555,16 +555,16 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			addressSpec := ipamv1.IPAddressSpec{
-				ClaimRef: corev1.LocalObjectReference{
+				ClaimRef: ipamv1.IPAddressClaimReference{
 					Name: "test",
 				},
-				PoolRef: corev1.TypedLocalObjectReference{
-					APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+				PoolRef: ipamv1.IPPoolReference{
+					APIGroup: "ipam.cluster.x-k8s.io",
 					Kind:     "InfobloxIPPool",
 					Name:     poolName,
 				},
 				Address: "10.0.0.2",
-				Prefix:  24,
+				Prefix:  ptr.To[int32](24),
 				Gateway: "10.0.0.1",
 			}
 
@@ -650,16 +650,16 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			addressSpec := ipamv1.IPAddressSpec{
-				ClaimRef: corev1.LocalObjectReference{
+				ClaimRef: ipamv1.IPAddressClaimReference{
 					Name: "test",
 				},
-				PoolRef: corev1.TypedLocalObjectReference{
-					APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+				PoolRef: ipamv1.IPPoolReference{
+					APIGroup: "ipam.cluster.x-k8s.io",
 					Kind:     "InfobloxIPPool",
 					Name:     poolName,
 				},
 				Address: "10.0.0.2",
-				Prefix:  24,
+				Prefix:  ptr.To[int32](24),
 				Gateway: "10.0.0.1",
 			}
 			address := ipamv1.IPAddress{
@@ -771,8 +771,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						},
 					},
 					Spec: ipamv1.IPAddressClaimSpec{
-						PoolRef: corev1.TypedLocalObjectReference{
-							APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+						PoolRef: ipamv1.IPPoolReference{
+							APIGroup: "ipam.cluster.x-k8s.io",
 							Kind:     "InfobloxIPPool",
 							Name:     poolName,
 						},
@@ -788,6 +788,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						Annotations: map[string]string{
 							clusterv1.PausedAnnotation: "",
 						},
+					},
+					Spec: clusterv1.ClusterSpec{
+						Paused: ptr.To(false),
 					},
 				}
 				Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
@@ -809,8 +812,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						},
 					},
 					Spec: ipamv1.IPAddressClaimSpec{
-						PoolRef: corev1.TypedLocalObjectReference{
-							APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+						PoolRef: ipamv1.IPPoolReference{
+							APIGroup: "ipam.cluster.x-k8s.io",
 							Kind:     "InfobloxIPPool",
 							Name:     poolName,
 						},
@@ -825,7 +828,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						Namespace: namespace,
 					},
 					Spec: clusterv1.ClusterSpec{
-						Paused: true,
+						Paused: ptr.To(true),
 					},
 				}
 
@@ -845,7 +848,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						Namespace: namespace,
 					},
 					Spec: clusterv1.ClusterSpec{
-						Paused: true,
+						Paused: ptr.To(true),
 					},
 				}
 
@@ -861,8 +864,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						},
 					},
 					Spec: ipamv1.IPAddressClaimSpec{
-						PoolRef: corev1.TypedLocalObjectReference{
-							APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+						PoolRef: ipamv1.IPPoolReference{
+							APIGroup: "ipam.cluster.x-k8s.io",
 							Kind:     "InfobloxIPPool",
 							Name:     poolName,
 						},
@@ -890,6 +893,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 							clusterv1.PausedAnnotation: "",
 						},
 					},
+					Spec: clusterv1.ClusterSpec{
+						Paused: ptr.To(false),
+					},
 				}
 
 				Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
@@ -904,8 +910,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						},
 					},
 					Spec: ipamv1.IPAddressClaimSpec{
-						PoolRef: corev1.TypedLocalObjectReference{
-							APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+						PoolRef: ipamv1.IPPoolReference{
+							APIGroup: "ipam.cluster.x-k8s.io",
 							Kind:     "InfobloxIPPool",
 							Name:     poolName,
 						},
@@ -936,7 +942,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						Namespace: namespace,
 					},
 					Spec: clusterv1.ClusterSpec{
-						Paused: true,
+						Paused: ptr.To(true),
 					},
 				}
 
@@ -955,7 +961,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					HaveField("Items", HaveLen(0)))
 
 				// update the cluster
-				cluster.Spec.Paused = false
+				cluster.Spec.Paused = ptr.To(false)
 				Expect(k8sClient.Update(context.Background(), &cluster)).To(Succeed())
 
 				Eventually(ObjectList(&addresses)).
@@ -977,6 +983,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 							clusterv1.PausedAnnotation: "",
 						},
 					},
+					Spec: clusterv1.ClusterSpec{
+						Paused: ptr.To(false),
+					},
 				}
 
 				Expect(k8sClient.Create(context.Background(), &cluster)).To(Succeed())
@@ -991,8 +1000,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						},
 					},
 					Spec: ipamv1.IPAddressClaimSpec{
-						PoolRef: corev1.TypedLocalObjectReference{
-							APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+						PoolRef: ipamv1.IPPoolReference{
+							APIGroup: "ipam.cluster.x-k8s.io",
 							Kind:     "InfobloxIPPool",
 							Name:     poolName,
 						},
@@ -1118,16 +1127,16 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					},
 				},
 				Spec: ipamv1.IPAddressSpec{
-					ClaimRef: corev1.LocalObjectReference{
+					ClaimRef: ipamv1.IPAddressClaimReference{
 						Name: "test",
 					},
-					PoolRef: corev1.TypedLocalObjectReference{
-						APIGroup: ptr.To("ipam.cluster.x-k8s.io"),
+					PoolRef: ipamv1.IPPoolReference{
+						APIGroup: "ipam.cluster.x-k8s.io",
 						Kind:     "InfobloxIPPool",
 						Name:     poolName,
 					},
 					Address: "10.0.0.2",
-					Prefix:  24,
+					Prefix:  ptr.To[int32](24),
 					Gateway: "10.0.0.1",
 				},
 			}

@@ -3,7 +3,6 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 // InfobloxIPPoolSpec defines the desired state of InfobloxIPPool.
@@ -26,7 +25,7 @@ type InfobloxIPPoolSpec struct {
 
 // InfobloxIPPoolStatus defines the observed state of InfobloxIPPool.
 type InfobloxIPPoolStatus struct {
-	Conditions clusterv1.Conditions `json:"conditions"`
+	Conditions []metav1.Condition `json:"conditions"`
 }
 
 // Subnet defines the CIDR and Gateway.
@@ -62,12 +61,12 @@ type InfobloxIPPoolList struct {
 }
 
 // GetConditions returns pool conditions.
-func (i *InfobloxIPPool) GetConditions() clusterv1.Conditions {
+func (i *InfobloxIPPool) GetConditions() []metav1.Condition {
 	return i.Status.Conditions
 }
 
 // SetConditions sets pool conditions.
-func (i *InfobloxIPPool) SetConditions(conditions clusterv1.Conditions) {
+func (i *InfobloxIPPool) SetConditions(conditions []metav1.Condition) {
 	i.Status.Conditions = conditions
 }
 

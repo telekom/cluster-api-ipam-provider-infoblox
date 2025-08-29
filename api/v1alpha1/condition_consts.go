@@ -17,6 +17,16 @@ limitations under the License.
 package v1alpha1
 
 const (
+	// ReadyReason is a generic Reason for the Ready condition to be true.
+	ReadyReason = "Ready"
+
+	// PoolNotReadyReason indicates that the InfobloxIPPool referenced by a claim is not ready.
+	PoolNotReadyReason = "PoolNotReady"
+	// AddressAllocatedReason indicates that an IP address has been successfully allocated from the InfobloxIPPool.
+	AddressAllocatedReason = "AddressAllocated"
+	// AllocationFailedReason indicates that the allocation of an IP address from the InfobloxIPPool has failed.
+	AllocationFailedReason = "AllocationFailed"
+
 	// AuthenticationFailedReason indicates that the credentials provided to Infoblox were invalid.
 	AuthenticationFailedReason = "AuthenticationFailed"
 	// NetworkViewNotFoundReason indicates that the specified network view could not be found on the Infoblox instance.
@@ -25,4 +35,6 @@ const (
 	DNSViewNotFoundReason = "DNSViewNotFound"
 	// NetworkNotFoundReason indicates that the specified network could not be found on the Infoblox instance.
 	NetworkNotFoundReason = "NetworkNotFound"
+	// ConfigurationValidReason indicates that the configuration of the InfobloxInstance has been validated successfully.
+	ConfigurationValidReason = "ConfigurationValid"
 )

@@ -31,14 +31,12 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
 	"go.uber.org/mock/gomock"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -166,8 +164,8 @@ func newClaim(name, namespace, poolKind, poolName string) ipamv1.IPAddressClaim 
 			Namespace: namespace,
 		},
 		Spec: ipamv1.IPAddressClaimSpec{
-			PoolRef: corev1.TypedLocalObjectReference{
-				APIGroup: ptr.To[string]("ipam.cluster.x-k8s.io"),
+			PoolRef: ipamv1.IPPoolReference{
+				APIGroup: "ipam.cluster.x-k8s.io",
 				Kind:     poolKind,
 				Name:     poolName,
 			},
