@@ -87,3 +87,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.2 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
+
+// fix messed up v1.0.0 tag
+retract [v1.0.0, v1.0.1]
