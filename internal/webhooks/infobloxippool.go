@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/api/v1alpha2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -44,16 +43,8 @@ const (
 )
 
 func (webhook *InfobloxIPPool) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	err := ctrl.NewWebhookManagedBy(mgr).
-		For(&v1alpha1.InfobloxIPPool{}).
-		WithDefaulter(webhook).
-		WithValidator(webhook).
-		Complete()
-	if err != nil {
-		return err
-	}
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(&v1alpha2.GlobalInClusterIPPool{}).
+		For(&v1alpha1.InfobloxIPPool{}).
 		WithDefaulter(webhook).
 		WithValidator(webhook).
 		Complete()
@@ -135,7 +126,7 @@ func (webhook *InfobloxIPPool) validate(newPool *v1alpha1.InfobloxIPPool) (reter
 	var allErrs field.ErrorList
 	defer func() {
 		if len(allErrs) > 0 {
-			reterr = apierrors.NewInvalid(v1alpha2.GroupVersion.WithKind(newPool.GetObjectKind().GroupVersionKind().Kind).GroupKind(), newPool.GetName(), allErrs)
+			reterr = apierrors.NewInvalid(v1alpha1.GroupVersion.WithKind(newPool.GetObjectKind().GroupVersionKind().Kind).GroupKind(), newPool.GetName(), allErrs)
 		}
 	}()
 

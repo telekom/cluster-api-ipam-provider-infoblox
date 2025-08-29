@@ -188,7 +188,7 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 // determineDNSView determines the DNS view to use based on the priority order:
 // 1. Pool.spec.dnsView (if set)
 // 2. Instance.spec.defaultDnsView (if not set on pool but set on instance)
-// 3. Derived from networkView (if neither is set)
+// 3. Derived from networkView (if neither is set).
 func determineDNSView(poolDNSView, instanceDefaultDNSView, networkView string) string {
 	if poolDNSView != "" {
 		return poolDNSView
