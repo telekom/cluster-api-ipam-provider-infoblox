@@ -24,12 +24,12 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/poolutil"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/utils/ptr"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -97,8 +97,8 @@ func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// remove finalizer if no claims point to this pool anymore
 	if isMarkedForDeletion {
-		poolTypeRef := corev1.TypedLocalObjectReference{
-			APIGroup: ptr.To(pool.GetObjectKind().GroupVersionKind().Group),
+		poolTypeRef := ipamv1.IPPoolReference{
+			APIGroup: pool.GetObjectKind().GroupVersionKind().Group,
 			Kind:     pool.GetObjectKind().GroupVersionKind().Kind,
 			Name:     pool.GetName(),
 		}
@@ -126,10 +126,12 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 
 	ibclient, err := getInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, r.OperatorNamespace, r.NewInfobloxClientFunc)
 	if err != nil {
-		conditions.MarkFalse(pool,
-			clusterv1.ReadyCondition,
-			v1alpha1.AuthenticationFailedReason,
-			clusterv1.ConditionSeverityError, "client creation failed for instance %s", pool.Spec.InstanceRef.Name)
+		conditions.Set(pool, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.AuthenticationFailedReason,
+			Message: fmt.Sprintf("client creation failed for instance %q: %s", pool.Spec.InstanceRef.Name, err),
+		})
 		return err
 	}
 
@@ -142,11 +144,12 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	// TODO: handle this in a better way
 	if ok, err := ibclient.CheckNetworkViewExists(pool.Spec.NetworkView); err != nil || !ok {
 		logger.Error(err, "could not find network view", "networkView", pool.Spec.NetworkView)
-		conditions.MarkFalse(pool,
-			clusterv1.ReadyCondition,
-			v1alpha1.NetworkViewNotFoundReason,
-			clusterv1.ConditionSeverityError,
-			"could not find network view: %s", err)
+		conditions.Set(pool, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.NetworkViewNotFoundReason,
+			Message: fmt.Sprintf("could not find network view %q", pool.Spec.NetworkView),
+		})
 		return nil
 	}
 
@@ -154,11 +157,12 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	if dnsView != "" {
 		if ok, err := ibclient.CheckDNSViewExists(dnsView); err != nil || !ok {
 			logger.Error(err, "could not find DNS view", "dnsView", dnsView)
-			conditions.MarkFalse(pool,
-				clusterv1.ReadyCondition,
-				v1alpha1.DNSViewNotFoundReason,
-				clusterv1.ConditionSeverityError,
-				"could not find DNS view: %s", err)
+			conditions.Set(pool, metav1.Condition{
+				Type:    clusterv1.ReadyCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1alpha1.DNSViewNotFoundReason,
+				Message: fmt.Sprintf("could not find DNS view %q", dnsView),
+			})
 			return nil
 		}
 	}
@@ -171,17 +175,22 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		}
 		if ok, err := ibclient.CheckNetworkExists(pool.Spec.NetworkView, subnet); err != nil || !ok {
 			logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
-			conditions.MarkFalse(pool,
-				clusterv1.ReadyCondition,
-				v1alpha1.NetworkNotFoundReason,
-				clusterv1.ConditionSeverityError,
-				"could not find network: %s", err)
+			conditions.Set(pool, metav1.Condition{
+				Type:    clusterv1.ReadyCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1alpha1.NetworkNotFoundReason,
+				Message: fmt.Sprintf("could not find network %q in view %q", subnet, pool.Spec.NetworkView),
+			})
 			return nil
 		}
 	}
 
-	conditions.MarkTrue(pool, clusterv1.ReadyCondition)
-
+	conditions.Set(pool, metav1.Condition{
+		Type:    clusterv1.ReadyCondition,
+		Status:  metav1.ConditionTrue,
+		Reason:  v1alpha1.ReadyReason,
+		Message: "pool is ready",
+	})
 	return nil
 }
 

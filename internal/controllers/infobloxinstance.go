@@ -18,15 +18,17 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -86,23 +88,25 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 			return ctrl.Result{}, err
 		}
 
-		conditions.MarkFalse(instance,
-			clusterv1.ReadyCondition,
-			v1alpha1.AuthenticationFailedReason,
-			clusterv1.ConditionSeverityError,
-			"the referenced settings secret '%s' could not be found in namespace '%s'",
-			instance.Spec.CredentialsSecretRef.Name, r.OperatorNamespace)
+		conditions.Set(instance, metav1.Condition{
+			Type:   clusterv1.ReadyCondition,
+			Status: metav1.ConditionFalse,
+			Reason: v1alpha1.AuthenticationFailedReason,
+			Message: fmt.Sprintf("the referenced settings secret %q could not be found in namespace %q",
+				instance.Spec.CredentialsSecretRef.Name, r.OperatorNamespace),
+		})
 		return ctrl.Result{}, nil
 	}
 
 	authConfig, err := infoblox.AuthConfigFromSecretData(authSecret.Data)
 	_ = authConfig
 	if err != nil {
-		conditions.MarkFalse(instance,
-			clusterv1.ReadyCondition,
-			v1alpha1.AuthenticationFailedReason,
-			clusterv1.ConditionSeverityError,
-			"referenced credentials secret is invalid: %s", err)
+		conditions.Set(instance, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.AuthenticationFailedReason,
+			Message: fmt.Sprintf("the referenced settings secret is invalid: %s", err),
+		})
 		return ctrl.Result{}, nil
 	}
 
@@ -117,22 +121,24 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 
 	ibcl, err := r.NewInfobloxClientFunc(infoblox.Config{HostConfig: hc, AuthConfig: authConfig})
 	if err != nil {
-		conditions.MarkFalse(instance,
-			clusterv1.ReadyCondition,
-			v1alpha1.AuthenticationFailedReason,
-			clusterv1.ConditionSeverityError,
-			"could not create infoblox client: %s", err)
+		conditions.Set(instance, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.AuthenticationFailedReason,
+			Message: fmt.Sprintf("could not create infoblox client: %s", err),
+		})
 		return ctrl.Result{}, nil
 	}
 
 	// TODO: handle this in a better way
 	if ok, err := ibcl.CheckNetworkViewExists(instance.Spec.DefaultNetworkView); err != nil || !ok {
 		logger.Error(err, "could not find default network view", "networkView")
-		conditions.MarkFalse(instance,
-			clusterv1.ReadyCondition,
-			v1alpha1.NetworkViewNotFoundReason,
-			clusterv1.ConditionSeverityError,
-			"could not find default network view: %s", err)
+		conditions.Set(instance, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.NetworkViewNotFoundReason,
+			Message: fmt.Sprintf("could not find default network view: %s", err),
+		})
 		return ctrl.Result{}, nil
 	}
 
@@ -140,17 +146,21 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 	if instance.Spec.DefaultDNSView != "" {
 		if ok, err := ibcl.CheckDNSViewExists(instance.Spec.DefaultDNSView); err != nil || !ok {
 			logger.Error(err, "could not find default DNS view", "dnsView", instance.Spec.DefaultDNSView)
-			conditions.MarkFalse(instance,
-				clusterv1.ReadyCondition,
-				v1alpha1.DNSViewNotFoundReason,
-				clusterv1.ConditionSeverityError,
-				"could not find default DNS view: %s", err)
+			conditions.Set(instance, metav1.Condition{
+				Type:    clusterv1.ReadyCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1alpha1.DNSViewNotFoundReason,
+				Message: fmt.Sprintf("could not find default DNS view: %s", err),
+			})
 			return ctrl.Result{}, nil
 		}
 	}
 
-	conditions.MarkTrue(instance,
-		clusterv1.ReadyCondition)
-
+	conditions.Set(instance, metav1.Condition{
+		Type:    clusterv1.ReadyCondition,
+		Status:  metav1.ConditionTrue,
+		Reason:  v1alpha1.ConfigurationValidReason,
+		Message: "Successfully connected to Infoblox instance and validated configuration",
+	})
 	return ctrl.Result{}, nil
 }

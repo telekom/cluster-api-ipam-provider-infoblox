@@ -32,9 +32,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	ipamv1 "sigs.k8s.io/cluster-api/exp/ipam/api/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -129,11 +130,12 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (client.Object, *c
 
 	// TODO: ensure pool is ready
 	if conditions.IsFalse(h.pool, clusterv1.ReadyCondition) {
-		conditions.MarkFalse(h.claim,
-			clusterv1.ReadyCondition,
-			ipamv1.PoolNotReadyReason,
-			clusterv1.ConditionSeverityError,
-			"the referenced pool is not ready")
+		conditions.Set(h.claim, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.PoolNotReadyReason,
+			Message: "the referenced pool is not ready",
+		})
 		return h.pool, nil, fmt.Errorf("pool not ready")
 	}
 
@@ -186,24 +188,30 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 
 		address.Spec.Address = ipaddr.String()
 
-		if address.Spec.Prefix, err = strconv.Atoi(strings.Split(subnet.String(), "/")[1]); err != nil {
+		prefix, err := strconv.ParseInt(strings.Split(subnet.String(), "/")[1], 10, 32)
+		if err != nil {
 			logger.Error(err, "could determine prefix length", "subnet", subnet.String())
 			continue
 		}
+		address.Spec.Prefix = ptr.To(int32(prefix))
 
 		address.Spec.Gateway = sub.Gateway
 
-		conditions.MarkTrue(h.claim, clusterv1.ReadyCondition)
+		conditions.Set(h.claim, metav1.Condition{
+			Type:   clusterv1.ReadyCondition,
+			Status: metav1.ConditionTrue,
+			Reason: v1alpha1.AddressAllocatedReason,
+		})
 
 		return nil, nil
 	}
 
 	if err != nil {
-		conditions.MarkFalse(h.claim,
-			clusterv1.ReadyCondition,
-			ipamv1.AllocationFailedReason,
-			clusterv1.ConditionSeverityError,
-			"could not allocate address: %s", err)
+		conditions.Set(h.claim, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.AllocationFailedReason,
+			Message: fmt.Sprintf("could not allocate address: %s", err)})
 		return &ctrl.Result{}, fmt.Errorf("unable to ensure address: %w", err)
 	}
 

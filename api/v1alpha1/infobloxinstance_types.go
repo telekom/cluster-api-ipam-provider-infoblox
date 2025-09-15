@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 // InfobloxInstanceSpec defines the desired state of InfobloxInstance.
@@ -53,7 +52,7 @@ type InfobloxInstanceSpec struct {
 
 // InfobloxInstanceStatus defines the observed state of InfobloxInstance.
 type InfobloxInstanceStatus struct {
-	Conditions clusterv1.Conditions `json:"conditions"`
+	Conditions []metav1.Condition `json:"conditions"`
 }
 
 //+kubebuilder:object:root=true
@@ -82,12 +81,12 @@ type InfobloxInstanceList struct {
 }
 
 // GetConditions gets cluster conditions.
-func (i *InfobloxInstance) GetConditions() clusterv1.Conditions {
+func (i *InfobloxInstance) GetConditions() []metav1.Condition {
 	return i.Status.Conditions
 }
 
 // SetConditions sets cluster conditions.
-func (i *InfobloxInstance) SetConditions(conditions clusterv1.Conditions) {
+func (i *InfobloxInstance) SetConditions(conditions []metav1.Condition) {
 	i.Status.Conditions = conditions
 }
 
