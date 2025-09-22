@@ -24,7 +24,7 @@ require (
 // required for testing only
 require (
 	github.com/metal3-io/cluster-api-provider-metal3/api v1.10.1-0.20250717111712-cfa950fa6d47
-	sigs.k8s.io/cluster-api-provider-vsphere v1.14.0-rc.1
+	sigs.k8s.io/cluster-api-provider-vsphere v1.14.0
 )
 
 require (
