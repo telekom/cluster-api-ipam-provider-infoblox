@@ -32,6 +32,7 @@ func getInfobloxClientForInstance(ctx context.Context, client client.Reader, nam
 			Version:                instance.Spec.WAPIVersion,
 			DisableTLSVerification: instance.Spec.DisableTLSVerification,
 			DefaultNetworkView:     instance.Spec.DefaultNetworkView,
+			DefaultDNSView:         instance.Spec.DefaultDNSView,
 		},
 		AuthConfig: ac,
 	}
