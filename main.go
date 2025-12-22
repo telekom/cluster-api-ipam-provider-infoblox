@@ -43,17 +43,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
-
-	managerOptions = flags.ManagerOptions{}
-	webhookPort    int
-	webhookCertDir string
 )
 
 func init() {
@@ -74,6 +69,10 @@ func main() {
 		probeAddr            string
 		watchNamespace       string
 		watchFilter          string
+
+		managerOptions = flags.ManagerOptions{}
+		webhookPort    int
+		webhookCertDir string
 	)
 	// CAPI operator assumes some flags are present so we need to comply. Without this the operator crashes
 	// https://github.com/kubernetes-sigs/cluster-api-operator/pull/871
@@ -86,23 +85,21 @@ func main() {
 	flag.StringVar(&watchNamespace, "namespace", "",
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.")
 	flag.StringVar(&watchFilter, "watch-filter", "", "")
-	pflag.IntVar(&webhookPort, "webhook-port", 9443,
+	flag.IntVar(&webhookPort, "webhook-port", 9443,
 		"Webhook Server port")
-
-	pflag.StringVar(&webhookCertDir, "webhook-cert-dir", "/tmp/k8s-webhook-server/serving-certs/",
+	flag.StringVar(&webhookCertDir, "webhook-cert-dir", "/tmp/k8s-webhook-server/serving-certs/",
 		"Webhook cert dir, only used when webhook-port is specified.")
+
+	goFlagSet := flag.CommandLine
+	pflag.CommandLine.AddGoFlagSet(goFlagSet)
+
+	pflag.Parse()
 
 	tlsOpts, metricsOpts, err := flags.GetManagerOptions(managerOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to get manager options")
 		os.Exit(1)
 	}
-
-	zapOpts := zap.Options{
-		Development: true,
-	}
-	zapOpts.BindFlags(flag.CommandLine)
-	flag.Parse()
 
 	// suppress logs from Infoblox client library
 	log.SetOutput(io.Discard)
