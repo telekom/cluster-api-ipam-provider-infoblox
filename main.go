@@ -23,6 +23,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/spf13/pflag"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/controllers"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
@@ -38,11 +39,11 @@ import (
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
+	"sigs.k8s.io/cluster-api/util/flags"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
@@ -65,13 +66,22 @@ func init() {
 
 func main() {
 	var (
-		metricsAddr          string
 		enableLeaderElection bool
 		probeAddr            string
 		watchNamespace       string
 		watchFilter          string
+
+		managerOptions = flags.ManagerOptions{}
+
+		webhookPort     int
+		webhookCertDir  string
+		webhookCertName string
+		webhookKeyName  string
 	)
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	// CAPI operator assumes some flags are present so we need to comply. Without this the operator crashes
+	// https://github.com/kubernetes-sigs/cluster-api-operator/pull/871
+	flags.AddManagerOptions(pflag.CommandLine, &managerOptions)
+
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -79,11 +89,28 @@ func main() {
 	flag.StringVar(&watchNamespace, "namespace", "",
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.")
 	flag.StringVar(&watchFilter, "watch-filter", "", "")
+	flag.IntVar(&webhookPort, "webhook-port", webhook.DefaultPort,
+		"Webhook Server port")
+	flag.StringVar(&webhookCertDir, "webhook-cert-dir", "",
+		"Webhook cert dir, only used when webhook-port is specified.")
+	flag.StringVar(&webhookCertName, "webhook-cert-name", "", "Webhook cert name.")
+	flag.StringVar(&webhookKeyName, "webhook-key-name", "", "Webhook key name.")
+
 	zapOpts := zap.Options{
 		Development: true,
 	}
 	zapOpts.BindFlags(flag.CommandLine)
-	flag.Parse()
+
+	goFlagSet := flag.CommandLine
+	pflag.CommandLine.AddGoFlagSet(goFlagSet)
+
+	pflag.Parse()
+
+	tlsOpts, metricsOpts, err := flags.GetManagerOptions(managerOptions)
+	if err != nil {
+		setupLog.Error(err, "unable to get manager options")
+		os.Exit(1)
+	}
 
 	// suppress logs from Infoblox client library
 	log.SetOutput(io.Discard)
@@ -94,9 +121,15 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	opts := ctrl.Options{
-		Scheme:                 scheme,
-		Metrics:                server.Options{BindAddress: metricsAddr},
-		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
+		Scheme:  scheme,
+		Metrics: *metricsOpts,
+		WebhookServer: webhook.NewServer(
+			webhook.Options{
+				Port:    webhookPort,
+				CertDir: webhookCertDir,
+				TLSOpts: tlsOpts,
+			},
+		),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7bb7acb4.ipam.cluster.x-k8s.io",
