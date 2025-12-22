@@ -71,8 +71,11 @@ func main() {
 		watchFilter          string
 
 		managerOptions = flags.ManagerOptions{}
-		webhookPort    int
-		webhookCertDir string
+
+		webhookPort     int
+		webhookCertDir  string
+		webhookCertName string
+		webhookKeyName  string
 	)
 	// CAPI operator assumes some flags are present so we need to comply. Without this the operator crashes
 	// https://github.com/kubernetes-sigs/cluster-api-operator/pull/871
@@ -89,6 +92,8 @@ func main() {
 		"Webhook Server port")
 	flag.StringVar(&webhookCertDir, "webhook-cert-dir", "/tmp/k8s-webhook-server/serving-certs/",
 		"Webhook cert dir, only used when webhook-port is specified.")
+	flag.StringVar(&webhookCertName, "webhook-cert-name", "tls.crt", "Webhook cert name.")
+	flag.StringVar(&webhookKeyName, "webhook-key-name", "tls.key", "Webhook key name.")
 
 	goFlagSet := flag.CommandLine
 	pflag.CommandLine.AddGoFlagSet(goFlagSet)
