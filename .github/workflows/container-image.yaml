@@ -8,7 +8,7 @@ on:
 jobs:
   main-image:
     permissions:
-      contents: write
+      packages: write
     uses: ./.github/workflows/build-image.yaml
     with:
       image_tags: ghcr.io/telekom/cluster-api-ipam-provider-infoblox:main
