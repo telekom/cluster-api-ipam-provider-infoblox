@@ -6,7 +6,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/infobloxopen/infoblox-go-client/v2 v2.11.0
 	github.com/onsi/ginkgo/v2 v2.25.3
-	github.com/onsi/gomega v1.38.2
+	github.com/onsi/gomega v1.38.3
 	github.com/pkg/errors v0.9.1
 	go.uber.org/mock v0.6.0
 	k8s.io/api v0.33.3
