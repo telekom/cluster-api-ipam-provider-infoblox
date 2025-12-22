@@ -3,8 +3,8 @@ IMG ?= ghcr.io/telekom/cluster-api-ipam-provider-infoblox
 TARGETPLATFORM ?= linux/amd64
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.27
-CONTROLLER_GEN_VERSION= 0.16.3
+ENVTEST_K8S_VERSION = 1.31
+CONTROLLER_GEN_VERSION= 0.20.0
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
