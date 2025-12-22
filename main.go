@@ -89,12 +89,12 @@ func main() {
 	flag.StringVar(&watchNamespace, "namespace", "",
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.")
 	flag.StringVar(&watchFilter, "watch-filter", "", "")
-	flag.IntVar(&webhookPort, "webhook-port", 9443,
+	flag.IntVar(&webhookPort, "webhook-port", webhook.DefaultPort,
 		"Webhook Server port")
-	flag.StringVar(&webhookCertDir, "webhook-cert-dir", "/tmp/k8s-webhook-server/serving-certs/",
+	flag.StringVar(&webhookCertDir, "webhook-cert-dir", "",
 		"Webhook cert dir, only used when webhook-port is specified.")
-	flag.StringVar(&webhookCertName, "webhook-cert-name", "tls.crt", "Webhook cert name.")
-	flag.StringVar(&webhookKeyName, "webhook-key-name", "tls.key", "Webhook key name.")
+	flag.StringVar(&webhookCertName, "webhook-cert-name", "", "Webhook cert name.")
+	flag.StringVar(&webhookKeyName, "webhook-key-name", "", "Webhook key name.")
 
 	zapOpts := zap.Options{
 		Development: true,
