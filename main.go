@@ -43,6 +43,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
@@ -94,6 +95,11 @@ func main() {
 		"Webhook cert dir, only used when webhook-port is specified.")
 	flag.StringVar(&webhookCertName, "webhook-cert-name", "tls.crt", "Webhook cert name.")
 	flag.StringVar(&webhookKeyName, "webhook-key-name", "tls.key", "Webhook key name.")
+
+	zapOpts := zap.Options{
+		Development: true,
+	}
+	zapOpts.BindFlags(flag.CommandLine)
 
 	goFlagSet := flag.CommandLine
 	pflag.CommandLine.AddGoFlagSet(goFlagSet)
