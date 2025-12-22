@@ -23,6 +23,8 @@ jobs:
           echo "tag=$SANITIZED" >> $GITHUB_OUTPUT
 
   build-image:
+    permissions:
+      packages: write
     needs: sanitize-tag
     uses: ./.github/workflows/build-image.yaml
     with:

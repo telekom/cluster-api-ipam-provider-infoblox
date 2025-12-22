@@ -40,6 +40,8 @@ jobs:
         run: echo "LDFLAGS=$(hack/version.sh)" >> $GITHUB_OUTPUT
 
   release_image:
+    permissions:
+      packages: write
     needs: extract-meta
     uses: ./.github/workflows/build-image.yaml
     with:
