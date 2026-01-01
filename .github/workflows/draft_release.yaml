@@ -34,7 +34,7 @@ jobs:
       ldflags: ${{ steps.version_info.outputs.LDFLAGS }}
     steps:
       - uses: actions/checkout@v6
-      - uses: docker/metadata-action@v5.9.0
+      - uses: docker/metadata-action@v5.10.0
         id: meta
         with:
           images: ghcr.io/telekom/cluster-api-ipam-provider-infoblox
