@@ -2,7 +2,9 @@
 package infoblox
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/netip"
 	"strings"
 	"time"
@@ -25,7 +27,7 @@ const (
 // Client is a wrapper around the infoblox client that can allocate and release addresses indempotently.
 type Client interface {
 	// GetOrAllocateAddress allocates an address for a given hostname if none exists, and returns the new or existing address.
-	GetOrAllocateAddress(networkView, dnsView string, subnet netip.Prefix, hostname, zone string, logger logr.Logger) (netip.Addr, error)
+	GetOrAllocateAddress(networkView, dnsView string, subnet netip.Prefix, address netip.Addr, hostname, zone string, logger logr.Logger) (netip.Addr, error)
 	// ReleaseAddress releases an address for a given hostname.
 	ReleaseAddress(networkView, dnsView string, subnet netip.Prefix, hostname string, logger logr.Logger) error
 	// CheckNetworkViewExists checks if Infoblox network view exists
@@ -170,4 +172,28 @@ func isNotFound(err error) bool {
 		return false
 	}
 	return strings.HasSuffix(err.Error(), "not found")
+}
+
+// tryParseWapiError tries to parse a wapi error as good as possible to extract the actual error message from the infoblox API response.
+// If parsing fails for any reason, the original error is returned.
+func tryParseWapiError(in error) error {
+	if in == nil {
+		return nil
+	}
+	raw := in.Error()
+	_, content, ok := strings.Cut(raw, "Contents:")
+	if !ok {
+		return in
+	}
+	type wapiErrorContent struct {
+		Error string `json:"Error"`
+		Code  string `json:"code"`
+		Text  string `json:"text"`
+	}
+	var wapiErr wapiErrorContent
+	err := json.Unmarshal([]byte(content), &wapiErr)
+	if err != nil {
+		return in
+	}
+	return fmt.Errorf("%s (%s)", wapiErr.Text, wapiErr.Code)
 }

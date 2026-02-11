@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
@@ -45,7 +44,7 @@ func TestCreatingPool(t *testing.T) {
 			Namespace: "test-namespace",
 		},
 		Spec: v1alpha1.InfobloxIPPoolSpec{
-			InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
+			InstanceRef: v1alpha1.InstanceReference{Name: "test-instance"},
 			Subnets:     []v1alpha1.Subnet{{CIDR: "192.168.1.0/24", Gateway: "192.168.1.1"}},
 		},
 	}
@@ -84,7 +83,7 @@ func TestPoolDeletionWithExistingIPAddresses(t *testing.T) {
 			Namespace: "test-namespace",
 		},
 		Spec: v1alpha1.InfobloxIPPoolSpec{
-			InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
+			InstanceRef: v1alpha1.InstanceReference{Name: "test-instance"},
 			Subnets:     []v1alpha1.Subnet{{CIDR: "192.168.1.0/24", Gateway: "192.168.1.1"}},
 		},
 	}
@@ -128,7 +127,7 @@ func TestPoolDeletionWithExistingIPAddressesAndDeletionSkipAnnotation(t *testing
 			},
 		},
 		Spec: v1alpha1.InfobloxIPPoolSpec{
-			InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
+			InstanceRef: v1alpha1.InstanceReference{Name: "test-instance"},
 			Subnets:     []v1alpha1.Subnet{{CIDR: "192.168.1.0/24", Gateway: "192.168.1.1"}},
 		},
 	}
@@ -166,7 +165,7 @@ func TestUpdatingPool(t *testing.T) {
 			Namespace: "test-namespace",
 		},
 		Spec: v1alpha1.InfobloxIPPoolSpec{
-			InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
+			InstanceRef: v1alpha1.InstanceReference{Name: "test-instance"},
 			Subnets:     []v1alpha1.Subnet{{CIDR: "192.168.1.0/24", Gateway: "192.168.1.1"}},
 		},
 	}
@@ -205,7 +204,7 @@ func TestInvalidScenarios(t *testing.T) {
 			testcase: "addresses must be set",
 			spec: v1alpha1.InfobloxIPPoolSpec{
 				Subnets:     []v1alpha1.Subnet{},
-				InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
+				InstanceRef: v1alpha1.InstanceReference{Name: "test-instance"},
 			},
 			expectedError: "subnets is required",
 		},
@@ -213,7 +212,7 @@ func TestInvalidScenarios(t *testing.T) {
 			testcase: "InstanceRef must be set",
 			spec: v1alpha1.InfobloxIPPoolSpec{
 				Subnets:     []v1alpha1.Subnet{{CIDR: "10.0.0.0/30", Gateway: "10.0.0.1"}},
-				InstanceRef: corev1.LocalObjectReference{},
+				InstanceRef: v1alpha1.InstanceReference{},
 			},
 			expectedError: "InstanceRef.Name is required",
 		},
@@ -221,7 +220,7 @@ func TestInvalidScenarios(t *testing.T) {
 			testcase: "invalid subnet should not be allowed",
 			spec: v1alpha1.InfobloxIPPoolSpec{
 				Subnets:     []v1alpha1.Subnet{{CIDR: "10.0.0.3/30", Gateway: "10.0.0.1"}},
-				InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
+				InstanceRef: v1alpha1.InstanceReference{Name: "test-instance"},
 			},
 			expectedError: "is not a valid CIDR",
 		},
@@ -229,7 +228,7 @@ func TestInvalidScenarios(t *testing.T) {
 			testcase: "invalid gateway should not be allowed",
 			spec: v1alpha1.InfobloxIPPoolSpec{
 				Subnets:     []v1alpha1.Subnet{{CIDR: "10.0.0.3/30", Gateway: "10.0.0.999"}},
-				InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
+				InstanceRef: v1alpha1.InstanceReference{Name: "test-instance"},
 			},
 			expectedError: "is not a valid IP address",
 		},
@@ -237,7 +236,7 @@ func TestInvalidScenarios(t *testing.T) {
 			testcase: "IPv4 subnet and IPv6 gateway should not be allowed",
 			spec: v1alpha1.InfobloxIPPoolSpec{
 				Subnets:     []v1alpha1.Subnet{{CIDR: "10.0.0.3/30", Gateway: "2001:db8::1"}},
-				InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
+				InstanceRef: v1alpha1.InstanceReference{Name: "test-instance"},
 			},
 			expectedError: "CIDR and gateway are mixed IPv4 and IPv6 addresses",
 		},
@@ -245,7 +244,7 @@ func TestInvalidScenarios(t *testing.T) {
 			testcase: "IPv6 subnet and IPv4 gateway should not be allowed",
 			spec: v1alpha1.InfobloxIPPoolSpec{
 				Subnets:     []v1alpha1.Subnet{{CIDR: "2001:db8::0/64", Gateway: "10.0.0.1"}},
-				InstanceRef: corev1.LocalObjectReference{Name: "test-instance"},
+				InstanceRef: v1alpha1.InstanceReference{Name: "test-instance"},
 			},
 			expectedError: "CIDR and gateway are mixed IPv4 and IPv6 addresses",
 		},
