@@ -167,8 +167,8 @@ var _ = Describe("IP Address Management", func() {
 				hostRecord.View = toDNSView(testView)
 				hostRecord.EnableDns = &dnsEnabled
 				hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{
-					*ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(v4subnet1, testView), "", false, ""),
-					*ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(v4subnet2, testView), "", false, ""),
+					*ibclient.NewHostRecordIpv4Addr(nextAvailableIPInfobloxFunc(v4subnet1, testView), "", false, ""),
+					*ibclient.NewHostRecordIpv4Addr(nextAvailableIPInfobloxFunc(v4subnet2, testView), "", false, ""),
 				}
 				hostRecord.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{}
 				ref, err := testClient.connector.CreateObject(hostRecord)
@@ -200,8 +200,8 @@ var _ = Describe("IP Address Management", func() {
 				hostRecord.EnableDns = &dnsEnabled
 				hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{}
 				hostRecord.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{
-					*ibclient.NewHostRecordIpv6Addr(nextAvailableIBFunc(v6subnet1, testView), "", false, ""),
-					*ibclient.NewHostRecordIpv6Addr(nextAvailableIBFunc(v6subnet2, testView), "", false, ""),
+					*ibclient.NewHostRecordIpv6Addr(nextAvailableIPInfobloxFunc(v6subnet1, testView), "", false, ""),
+					*ibclient.NewHostRecordIpv6Addr(nextAvailableIPInfobloxFunc(v6subnet2, testView), "", false, ""),
 				}
 				ref, err := testClient.connector.CreateObject(hostRecord)
 				Expect(err).NotTo(HaveOccurred())
@@ -231,10 +231,10 @@ var _ = Describe("IP Address Management", func() {
 				hostRecord.View = toDNSView(testView)
 				hostRecord.EnableDns = &dnsEnabled
 				hostRecord.Ipv4Addrs = []ibclient.HostRecordIpv4Addr{
-					*ibclient.NewHostRecordIpv4Addr(nextAvailableIBFunc(v4subnet1, testView), "", false, ""),
+					*ibclient.NewHostRecordIpv4Addr(nextAvailableIPInfobloxFunc(v4subnet1, testView), "", false, ""),
 				}
 				hostRecord.Ipv6Addrs = []ibclient.HostRecordIpv6Addr{
-					*ibclient.NewHostRecordIpv6Addr(nextAvailableIBFunc(v6subnet1, testView), "", false, ""),
+					*ibclient.NewHostRecordIpv6Addr(nextAvailableIPInfobloxFunc(v6subnet1, testView), "", false, ""),
 				}
 				ref, err := testClient.connector.CreateObject(hostRecord)
 				Expect(err).NotTo(HaveOccurred())

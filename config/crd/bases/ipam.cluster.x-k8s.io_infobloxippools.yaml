@@ -23,6 +23,17 @@ spec:
       jsonPath: .spec.subnets
       name: Subnets
       type: string
+    - description: The DNS zone within which hostnames will be allocated
+      jsonPath: .spec.dnsZone
+      name: DNSZone
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .metadata.deletionTimestamp
+      name: Deleted
+      priority: 1
+      type: date
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -59,16 +70,12 @@ spec:
                 description: Instance is the Infoblox instance to use.
                 properties:
                   name:
-                    default: ""
-                    description: |-
-                      Name of the referent.
-                      This field is effectively required, but due to backwards compatibility is
-                      allowed to be empty. Instances of this type with an empty value here are
-                      almost certainly wrong.
-                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    description: Name of the referenced Infoblox Instance resource.
+                    minLength: 1
                     type: string
+                required:
+                - name
                 type: object
-                x-kubernetes-map-type: atomic
               networkView:
                 description: NetworkView defines Infoblox netwok view to be used with
                   pool.
@@ -153,8 +160,6 @@ spec:
                   - type
                   type: object
                 type: array
-            required:
-            - conditions
             type: object
         type: object
     served: true
