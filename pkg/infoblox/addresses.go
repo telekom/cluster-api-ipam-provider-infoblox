@@ -84,6 +84,31 @@ func (c *client) createOrUpdateHostRecord(hr *ibclient.HostRecord, logger logr.L
 	return c.connector.GetObject(hr, ref, ibclient.NewQueryParams(false, params), hr)
 }
 
+// getHostRecordsByAddr returns all host records that have the given IP address assigned.
+func (c *client) getHostRecordsByAddr(addr netip.Addr, networkView string) ([]ibclient.HostRecord, error) {
+	params := map[string]string{
+		"_return_fields": strings.Join(hostRecordReturnFields, ","),
+	}
+	if addr.Is4() {
+		params["ipv4addr"] = addr.String()
+	} else {
+		params["ipv6addr"] = addr.String()
+	}
+	if networkView != "" {
+		params["network_view"] = networkView
+	}
+
+	var results []ibclient.HostRecord
+	err := c.connector.GetObject(ibclient.NewEmptyHostRecord(), "", ibclient.NewQueryParams(false, params), &results)
+	if err != nil {
+		if _, ok := err.(*ibclient.NotFoundError); ok {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to search host records by address %s: %w", addr, tryParseWapiError(err))
+	}
+	return results, nil
+}
+
 // getAllocatedHostRecordAddrInSubnet returns the first IP address in a host record that is in the given subnet.
 func getAllocatedHostRecordAddrInSubnet(hr *ibclient.HostRecord, subnet netip.Prefix) netip.Addr {
 	if subnet.Addr().Is4() {
@@ -119,7 +144,9 @@ func getAllocatedHostRecordAddrInSubnet(hr *ibclient.HostRecord, subnet netip.Pr
 // GetOrAllocateAddress returns the IP address of the given hostname in the given subnet.
 //
 // If the hostname does not have an IP address in the subnet, it will allocate one.
-func (c *client) GetOrAllocateAddress(networkView, dnsView string, subnet netip.Prefix, hostname, dnsZone string, logger logr.Logger) (netip.Addr, error) {
+//
+// If the 'desiredAddr' parameter is specified this exact address will be allocated for the host if possible. If not, an error is returned.
+func (c *client) GetOrAllocateAddress(networkView, dnsView string, subnet netip.Prefix, desiredAddr netip.Addr, hostname, dnsZone string, logger logr.Logger) (netip.Addr, error) {
 	hr, err := c.getOrEmptyHostRecord(networkView, dnsView, dnsZone, hostname)
 	if err != nil {
 		return netip.Addr{}, fmt.Errorf("failed to get or create Infoblox host record: %w", err)
@@ -127,10 +154,25 @@ func (c *client) GetOrAllocateAddress(networkView, dnsView string, subnet netip.
 
 	allocatedAddr := getAllocatedHostRecordAddrInSubnet(hr, subnet)
 	if allocatedAddr.IsValid() {
+		if desiredAddr.IsValid() && desiredAddr != allocatedAddr {
+			return allocatedAddr, fmt.Errorf("allocated address %q does not match desired address %q", allocatedAddr, desiredAddr)
+		}
 		return allocatedAddr, nil
 	}
 
-	addrRequest := nextAvailableIPInfobloxFunc(subnet, networkView)
+	var addrRequest string
+	if desiredAddr.IsValid() {
+		existingHRs, err := c.getHostRecordsByAddr(desiredAddr, networkView)
+		if err != nil {
+			return netip.Addr{}, fmt.Errorf("failed to check if desired address %q is already allocated: %w", desiredAddr, err)
+		}
+		if len(existingHRs) > 0 {
+			return netip.Addr{}, fmt.Errorf("desired address %q is already allocated by %d other host record(s)", desiredAddr, len(existingHRs))
+		}
+		addrRequest = desiredAddr.String()
+	} else {
+		addrRequest = nextAvailableIPInfobloxFunc(subnet, networkView)
+	}
 
 	if subnet.Addr().Is4() {
 		ipr := ibclient.NewHostRecordIpv4Addr(addrRequest, "", false, "")

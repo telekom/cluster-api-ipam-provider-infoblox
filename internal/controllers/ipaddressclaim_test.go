@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"net/netip"
 	"time"
 
@@ -140,7 +141,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			It("should allocate an Address from the Pool", func() {
 				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 				claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
@@ -196,8 +197,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				Expect(err).NotTo(HaveOccurred())
 				addr, err := netip.ParseAddr("10.0.1.2")
 				Expect(err).NotTo(HaveOccurred())
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), subnet0, gomock.Any(), gomock.Any(), gomock.Any()).Return(netip.Addr{}, errors.New("no available addresses")).AnyTimes()
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), subnet1, gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), subnet0, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(netip.Addr{}, errors.New("no available addresses")).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), subnet1, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 				claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
@@ -286,7 +287,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			It("should allocate an Address from the Pool", func() {
 				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 				claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
@@ -414,7 +415,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				It("should not create an IPAddress for claims until the pool is unpaused", func() {
 					addr, err := netip.ParseAddr("10.0.0.2")
 					Expect(err).NotTo(HaveOccurred())
-					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 					localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 					tmpPool := &v1alpha1.InfobloxIPPool{}
@@ -477,7 +478,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				It("should prevent deletion of claims", func() {
 					addr, err := netip.ParseAddr("10.0.0.2")
 					Expect(err).NotTo(HaveOccurred())
-					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+					localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 					localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 					claim := newClaim("paused-pool-delete-claim-test", namespace, "InfobloxIPPool", poolName)
@@ -551,7 +552,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		It("should add the owner references and finalizer", func() {
 			addr, err := netip.ParseAddr("10.0.0.2")
 			Expect(err).NotTo(HaveOccurred())
-			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			addressSpec := ipamv1.IPAddressSpec{
@@ -646,7 +647,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		It("should add the owner references and finalizer", func() {
 			addr, err := netip.ParseAddr("10.0.0.2")
 			Expect(err).NotTo(HaveOccurred())
-			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			addressSpec := ipamv1.IPAddressSpec{
@@ -933,7 +934,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			It("allocates an ipaddress upon updating a cluster when removing spec.paused", func() {
 				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 				cluster = clusterv1.Cluster{
@@ -972,7 +973,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			It("allocates an ipaddress upon updating a cluster when removing the paused annotation", func() {
 				addr, err := netip.ParseAddr("10.0.0.2")
 				Expect(err).NotTo(HaveOccurred())
-				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+				localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 				localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 				cluster = clusterv1.Cluster{
@@ -1083,7 +1084,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		It("does not allocate an ipaddress for the claim until the ip address claim is unpaused", func() {
 			addr, err := netip.ParseAddr("10.0.0.2")
 			Expect(err).NotTo(HaveOccurred())
-			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(addr, nil).AnyTimes()
 			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			claim := newClaim("test", namespace, "InfobloxIPPool", poolName)
@@ -1182,7 +1183,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		})
 
 		It("should not allocate an Address if there are no addresses available", func() {
-			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(netip.Addr{}, errors.New("no available addresses")).AnyTimes()
+			localInfobloxClientMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(netip.Addr{}, errors.New("no available addresses")).AnyTimes()
 
 			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
 
@@ -1190,6 +1191,203 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 			_, err := findAddress(claimName, namespace)()
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	When("a claim has the desired-address annotation", func() {
+		const poolName = "desired-addr-pool"
+
+		BeforeEach(func() {
+			localInfobloxClientMock = ibmock.NewMockClient(mockCtrl)
+			localInfobloxClientMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
+			getInfobloxClientForInstanceFunc = mockGetInfobloxClientForInstance
+			pool := v1alpha1.InfobloxIPPool{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      poolName,
+					Namespace: namespace,
+				},
+				Spec: v1alpha1.InfobloxIPPoolSpec{
+					InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
+					Subnets: []v1alpha1.Subnet{
+						{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+						{CIDR: "10.0.1.0/24", Gateway: "10.0.1.1"},
+					},
+					NetworkView: "default",
+					DNSZone:     "",
+				},
+			}
+			Expect(k8sClient.Create(context.Background(), &pool)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			deleteNamespacedPool(poolName, namespace)
+			getInfobloxClientForInstanceFunc = getInfobloxClientForInstance
+		})
+
+		It("should allocate the desired address from the matching subnet", func() {
+			const claimName = "desired-addr-claim"
+			desiredAddr := netip.MustParseAddr("10.0.0.42")
+			subnet0 := netip.MustParsePrefix("10.0.0.0/24")
+
+			localInfobloxClientMock.EXPECT().
+				GetOrAllocateAddress(gomock.Any(), gomock.Any(), subnet0, desiredAddr, gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(desiredAddr, nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
+			claim.Annotations = map[string]string{
+				"ipam.cluster.x-k8s.io/desired-address": "10.0.0.42",
+			}
+			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+
+			// Wait for the claim to be reconciled and marked as ready
+			Eventually(Object(&claim)).
+				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+				HaveField("Status.Conditions", ContainElement(And(
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+					HaveField("Status", BeEquivalentTo(metav1.ConditionTrue)),
+					HaveField("Reason", BeEquivalentTo(v1alpha1.AddressAllocatedReason)),
+				))))
+
+			// Verify the created IPAddress has the desired address
+			address := ipamv1.IPAddress{}
+			Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: claimName, Namespace: namespace}, &address)).To(Succeed())
+			Expect(address.Spec.Address).To(Equal("10.0.0.42"))
+			Expect(address.Spec.Prefix).To(Equal(ptr.To[int32](24)))
+			Expect(address.Spec.Gateway).To(Equal("10.0.0.1"))
+
+			deleteClaim(claimName, namespace)
+		})
+
+		It("should allocate the desired address from the second subnet when the address is only in the second subnet", func() {
+			const claimName = "desired-addr-second-subnet"
+			desiredAddr := netip.MustParseAddr("10.0.1.42")
+			subnet1 := netip.MustParsePrefix("10.0.1.0/24")
+
+			// The mock should only be called with subnet1 since subnet0 doesn't contain the desired address.
+			localInfobloxClientMock.EXPECT().
+				GetOrAllocateAddress(gomock.Any(), gomock.Any(), subnet1, desiredAddr, gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(desiredAddr, nil).AnyTimes()
+			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
+			claim.Annotations = map[string]string{
+				"ipam.cluster.x-k8s.io/desired-address": "10.0.1.42",
+			}
+			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+
+			// Wait for the claim to be reconciled and marked as ready
+			Eventually(Object(&claim)).
+				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+				HaveField("Status.Conditions", ContainElement(And(
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+					HaveField("Status", BeEquivalentTo(metav1.ConditionTrue)),
+					HaveField("Reason", BeEquivalentTo(v1alpha1.AddressAllocatedReason)),
+				))))
+
+			// Verify the created IPAddress has the desired address from the second subnet
+			address := ipamv1.IPAddress{}
+			Expect(k8sClient.Get(context.Background(), client.ObjectKey{Name: claimName, Namespace: namespace}, &address)).To(Succeed())
+			Expect(address.Spec.Address).To(Equal("10.0.1.42"))
+			Expect(address.Spec.Prefix).To(Equal(ptr.To[int32](24)))
+			Expect(address.Spec.Gateway).To(Equal("10.0.1.1"))
+
+			deleteClaim(claimName, namespace)
+		})
+
+		It("should not allocate an address if the desired address is not in any subnet", func() {
+			const claimName = "desired-addr-no-subnet"
+
+			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
+			claim.Annotations = map[string]string{
+				"ipam.cluster.x-k8s.io/desired-address": "11.0.0.42",
+			}
+			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+
+			fmt.Println(k8sClient.Get(ctx, client.ObjectKeyFromObject(&claim), &claim))
+			fmt.Println(claim.Status.Conditions)
+
+			// The claim should be marked as allocation failed because no subnet contains the desired address
+			Eventually(Object(&claim)).
+				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+				HaveField("Status.Conditions", ContainElement(And(
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+					HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
+					HaveField("Reason", BeEquivalentTo(v1alpha1.AllocationFailedReason)),
+				))))
+
+			// Verify no IPAddress was created
+			address := ipamv1.IPAddress{}
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: claimName, Namespace: namespace}, &address)
+			Expect(err).To(HaveOccurred())
+
+			deleteClaim(claimName, namespace)
+		})
+
+		It("should not allocate an address if the desired address annotation is invalid", func() {
+			const claimName = "desired-addr-invalid"
+
+			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
+			claim.Annotations = map[string]string{
+				"ipam.cluster.x-k8s.io/desired-address": "not-an-ip",
+			}
+			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+
+			// The claim should be marked as allocation failed due to invalid annotation
+			Eventually(Object(&claim)).
+				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+				HaveField("Status.Conditions", ContainElement(And(
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+					HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
+					HaveField("Reason", BeEquivalentTo(v1alpha1.AllocationFailedReason)),
+				))))
+
+			fmt.Println(k8sClient.Get(ctx, client.ObjectKeyFromObject(&claim), &claim))
+			fmt.Println(claim.Status.Conditions)
+
+			// Verify no IPAddress was created
+			address := ipamv1.IPAddress{}
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: claimName, Namespace: namespace}, &address)
+			Expect(err).To(HaveOccurred())
+
+			deleteClaim(claimName, namespace)
+		})
+
+		It("should not allocate an address if the desired address is already taken", func() {
+			const claimName = "desired-addr-taken"
+			desiredAddr := netip.MustParseAddr("10.0.0.42")
+			subnet0 := netip.MustParsePrefix("10.0.0.0/24")
+
+			localInfobloxClientMock.EXPECT().
+				GetOrAllocateAddress(gomock.Any(), gomock.Any(), subnet0, desiredAddr, gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(netip.Addr{}, errors.New("desired address \"10.0.0.42\" is already allocated by 1 other host record(s)")).AnyTimes()
+			localInfobloxClientMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
+			claim.Annotations = map[string]string{
+				"ipam.cluster.x-k8s.io/desired-address": "10.0.0.42",
+			}
+			Expect(k8sClient.Create(context.Background(), &claim)).To(Succeed())
+
+			// The claim should be marked as allocation failed because the address is already taken
+			Eventually(Object(&claim)).
+				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+				HaveField("Status.Conditions", ContainElement(And(
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+					HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
+					HaveField("Reason", BeEquivalentTo(v1alpha1.AllocationFailedReason)),
+				))))
+
+			// Verify no IPAddress was created
+			address := ipamv1.IPAddress{}
+			err := k8sClient.Get(context.Background(), client.ObjectKey{Name: claimName, Namespace: namespace}, &address)
+			Expect(err).To(HaveOccurred())
+
+			deleteClaim(claimName, namespace)
 		})
 	})
 })

@@ -27,7 +27,7 @@ const (
 // Client is a wrapper around the infoblox client that can allocate and release addresses indempotently.
 type Client interface {
 	// GetOrAllocateAddress allocates an address for a given hostname if none exists, and returns the new or existing address.
-	GetOrAllocateAddress(networkView, dnsView string, subnet netip.Prefix, hostname, zone string, logger logr.Logger) (netip.Addr, error)
+	GetOrAllocateAddress(networkView, dnsView string, subnet netip.Prefix, address netip.Addr, hostname, zone string, logger logr.Logger) (netip.Addr, error)
 	// ReleaseAddress releases an address for a given hostname.
 	ReleaseAddress(networkView, dnsView string, subnet netip.Prefix, hostname string, logger logr.Logger) error
 	// CheckNetworkViewExists checks if Infoblox network view exists

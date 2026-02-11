@@ -46,6 +46,7 @@ var (
 	getInfobloxClientForInstanceFunc = getInfobloxClientForInstance
 	newHostnameHandlerFunc           = getHostnameResolver
 	hostnameAnnotation               = "ipam.cluster.x-k8s.io/hostname"
+	desiredAddressAnnotation         = "ipam.cluster.x-k8s.io/desired-address"
 )
 
 // InfobloxProviderAdapter reconciles a InfobloxIPPool object.
@@ -166,6 +167,25 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		h.claim.Annotations[hostnameAnnotation] = hostName
 	}
 
+	// check if the claim has a desired address it wants to get assigned
+	var desiredAddr netip.Addr
+	if addrValue, ok := h.claim.Annotations[desiredAddressAnnotation]; ok {
+		desiredAddr, err = netip.ParseAddr(addrValue)
+		if err != nil {
+			// set status and log error
+			conditions.Set(h.claim, metav1.Condition{
+				Type:    clusterv1.ReadyCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1alpha1.AllocationFailedReason,
+				Message: fmt.Sprintf("%s value %q must be a valid IP-Address", desiredAddressAnnotation, addrValue),
+			})
+			logger.Error(err, "failed to parse desired address annotation", "annotation", desiredAddressAnnotation, "value", addrValue)
+			// return no error cause the parsing won't work without user input hence no retries needed
+			return nil, nil
+		}
+		logger = logger.WithValues(desiredAddressAnnotation, desiredAddr)
+	}
+
 	logger = logger.WithValues("hostname", hostName)
 
 	var errs []error
@@ -177,8 +197,13 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 			continue
 		}
 
+		// skip if target IP is set but is not part of the subnet
+		if desiredAddr.IsValid() && !subnet.Contains(desiredAddr) {
+			continue
+		}
+
 		dnsView := determineDNSView(h.pool.Spec.DNSView, h.ibclient.GetHostConfig().DefaultDNSView, h.pool.Spec.NetworkView)
-		allocatedAddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, dnsView, subnet, hostName, h.pool.Spec.DNSZone, logger)
+		allocatedAddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, dnsView, subnet, desiredAddr, hostName, h.pool.Spec.DNSZone, logger)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -202,6 +227,8 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 	case len(errs) > 0:
 		err = errors.Join(errs...)
 		msg = err.Error()
+	case desiredAddr.IsValid():
+		msg = fmt.Sprintf("desired address %q is not part of any of the IPPool's subnets", desiredAddr)
 	default:
 		msg = "no (valid) subnets in IPPool"
 	}
