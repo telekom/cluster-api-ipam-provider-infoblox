@@ -73,10 +73,7 @@ func main() {
 
 		managerOptions = flags.ManagerOptions{}
 
-		webhookPort     int
-		webhookCertDir  string
-		webhookCertName string
-		webhookKeyName  string
+		webhookOpts = webhook.Options{}
 	)
 	// CAPI operator assumes some flags are present so we need to comply. Without this the operator crashes
 	// https://github.com/kubernetes-sigs/cluster-api-operator/pull/871
@@ -89,12 +86,12 @@ func main() {
 	flag.StringVar(&watchNamespace, "namespace", "",
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.")
 	flag.StringVar(&watchFilter, "watch-filter", "", "")
-	flag.IntVar(&webhookPort, "webhook-port", webhook.DefaultPort,
+	flag.IntVar(&webhookOpts.Port, "webhook-port", webhook.DefaultPort,
 		"Webhook Server port")
-	flag.StringVar(&webhookCertDir, "webhook-cert-dir", "",
+	flag.StringVar(&webhookOpts.CertDir, "webhook-cert-dir", "",
 		"Webhook cert dir, only used when webhook-port is specified.")
-	flag.StringVar(&webhookCertName, "webhook-cert-name", "", "Webhook cert name.")
-	flag.StringVar(&webhookKeyName, "webhook-key-name", "", "Webhook key name.")
+	flag.StringVar(&webhookOpts.CertName, "webhook-cert-name", "", "Webhook cert name.")
+	flag.StringVar(&webhookOpts.KeyName, "webhook-key-name", "", "Webhook key name.")
 
 	zapOpts := zap.Options{
 		Development: true,
@@ -111,6 +108,7 @@ func main() {
 		setupLog.Error(err, "unable to get manager options")
 		os.Exit(1)
 	}
+	webhookOpts.TLSOpts = tlsOpts
 
 	// suppress logs from Infoblox client library
 	log.SetOutput(io.Discard)
@@ -121,15 +119,9 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	opts := ctrl.Options{
-		Scheme:  scheme,
-		Metrics: *metricsOpts,
-		WebhookServer: webhook.NewServer(
-			webhook.Options{
-				Port:    webhookPort,
-				CertDir: webhookCertDir,
-				TLSOpts: tlsOpts,
-			},
-		),
+		Scheme:                 scheme,
+		Metrics:                *metricsOpts,
+		WebhookServer:          webhook.NewServer(webhookOpts),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7bb7acb4.ipam.cluster.x-k8s.io",
