@@ -21,7 +21,7 @@ func (c *client) getOrNewHostRecord(networkView, dnsView, hostname, zone string)
 	if err != nil {
 		// since ibclient.NotFoundError has a pointer receiver on it's Error() method, we can't use errors.As() here.
 		if _, ok := err.(*ibclient.NotFoundError); !ok {
-			return nil, err
+			return nil, tryParseWapiError(err)
 		}
 	}
 
@@ -55,11 +55,11 @@ func (c *client) createOrUpdateHostRecord(hr *ibclient.HostRecord, logger logr.L
 	}
 
 	if err != nil {
-		return err
+		return tryParseWapiError(err)
 	}
 
 	logger.Info("Fetching Infoblox host record", "hostname", *hr.Name)
-	return c.connector.GetObject(hr, ref, ibclient.NewQueryParams(false, nil), hr)
+	return tryParseWapiError(c.connector.GetObject(hr, ref, ibclient.NewQueryParams(false, nil), hr))
 }
 
 // getHostRecordAddrInSubnet returns the first IP address in a host record that is in the given subnet.
@@ -182,14 +182,14 @@ func (c *client) ReleaseAddress(networkView, dnsView string, subnet netip.Prefix
 	if len(hr.Ipv4Addrs) == 0 && len(hr.Ipv6Addrs) == 0 {
 		logger.Info("Deleting Infoblox host record", "hostname", hostname)
 		if _, err := c.connector.DeleteObject(hr.Ref); err != nil {
-			return fmt.Errorf("failed to delete Infoblox host record: %w", err)
+			return fmt.Errorf("failed to delete Infoblox host record: %w", tryParseWapiError(err))
 		}
 		return nil
 	}
 	prepareHostRecordForUpdate(hr)
 	logger.Info("Updating Infoblox host record", "hostname", hostname)
 	if _, err = c.connector.UpdateObject(hr, hr.Ref); err != nil {
-		return fmt.Errorf("failed to update Infoblox host record: %w", err)
+		return fmt.Errorf("failed to update Infoblox host record: %w", tryParseWapiError(err))
 	}
 	return nil
 }

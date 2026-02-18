@@ -21,8 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
-	"strconv"
-	"strings"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
@@ -170,31 +168,24 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 
 	logger = logger.WithValues("hostname", hostName)
 
+	var errs []error
 	for _, sub := range h.pool.Spec.Subnets {
-		var subnet netip.Prefix
-		subnet, err = netip.ParsePrefix(sub.CIDR)
+		subnet, err := netip.ParsePrefix(sub.CIDR)
 		if err != nil {
 			// We won't set a condition here since this should be caught by validation
 			logger.Error(err, "failed to parse subnet", "subnet", subnet)
 			continue
 		}
 
-		var ipaddr netip.Addr
 		dnsView := determineDNSView(h.pool.Spec.DNSView, h.ibclient.GetHostConfig().DefaultDNSView, h.pool.Spec.NetworkView)
-		ipaddr, err = h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, dnsView, subnet, hostName, h.pool.Spec.DNSZone, logger)
+		allocatedAddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, dnsView, subnet, hostName, h.pool.Spec.DNSZone, logger)
 		if err != nil {
+			errs = append(errs, err)
 			continue
 		}
 
-		address.Spec.Address = ipaddr.String()
-
-		prefix, err := strconv.ParseInt(strings.Split(subnet.String(), "/")[1], 10, 32)
-		if err != nil {
-			logger.Error(err, "could determine prefix length", "subnet", subnet.String())
-			continue
-		}
-		address.Spec.Prefix = ptr.To(int32(prefix))
-
+		address.Spec.Address = allocatedAddr.String()
+		address.Spec.Prefix = ptr.To(int32(subnet.Bits())) //nolint:gosec // subnet prefix bits are always 0-128
 		address.Spec.Gateway = sub.Gateway
 
 		conditions.Set(h.claim, metav1.Condition{
@@ -206,16 +197,20 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		return nil, nil
 	}
 
-	if err != nil {
-		conditions.Set(h.claim, metav1.Condition{
-			Type:    clusterv1.ReadyCondition,
-			Status:  metav1.ConditionFalse,
-			Reason:  v1alpha1.AllocationFailedReason,
-			Message: fmt.Sprintf("could not allocate address: %s", err)})
-		return &ctrl.Result{}, fmt.Errorf("unable to ensure address: %w", err)
+	switch {
+	case len(errs) > 0:
+		err = errors.Join(errs...)
+	default:
+		err = errors.New("no (valid) subnets in IPPool")
 	}
-
-	return nil, nil
+	conditions.Set(h.claim, metav1.Condition{
+		Type:    clusterv1.ReadyCondition,
+		Status:  metav1.ConditionFalse,
+		Reason:  v1alpha1.AllocationFailedReason,
+		Message: err.Error(),
+	})
+	logger.Error(err, "unable to ensure address allocated")
+	return nil, err
 }
 
 // ReleaseAddress releases address.

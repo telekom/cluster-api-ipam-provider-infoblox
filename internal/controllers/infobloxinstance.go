@@ -99,13 +99,12 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 	}
 
 	authConfig, err := infoblox.AuthConfigFromSecretData(authSecret.Data)
-	_ = authConfig
 	if err != nil {
 		conditions.Set(instance, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  v1alpha1.AuthenticationFailedReason,
-			Message: fmt.Sprintf("the referenced settings secret is invalid: %s", err),
+			Message: fmt.Sprintf("the referenced settings secret is invalid: %v", err),
 		})
 		return ctrl.Result{}, nil
 	}
@@ -125,32 +124,32 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  v1alpha1.AuthenticationFailedReason,
-			Message: fmt.Sprintf("could not create infoblox client: %s", err),
+			Message: fmt.Sprintf("could not create infoblox client: %v", err),
 		})
 		return ctrl.Result{}, nil
 	}
 
 	// TODO: handle this in a better way
 	if ok, err := ibcl.CheckNetworkViewExists(instance.Spec.DefaultNetworkView); err != nil || !ok {
-		logger.Error(err, "could not find default network view", "networkView")
+		logger.Error(err, "could not find default network view", "defaultNetworkView", instance.Spec.DefaultNetworkView)
 		conditions.Set(instance, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  v1alpha1.NetworkViewNotFoundReason,
-			Message: fmt.Sprintf("could not find default network view: %s", err),
+			Message: fmt.Sprintf("could not find default network view %q", instance.Spec.DefaultNetworkView),
 		})
 		return ctrl.Result{}, nil
 	}
 
-	// Check DNS view if specified
+	// Check default DNS view if specified
 	if instance.Spec.DefaultDNSView != "" {
 		if ok, err := ibcl.CheckDNSViewExists(instance.Spec.DefaultDNSView); err != nil || !ok {
-			logger.Error(err, "could not find default DNS view", "dnsView", instance.Spec.DefaultDNSView)
+			logger.Error(err, "could not find default DNS view", "defaultDnsView", instance.Spec.DefaultDNSView)
 			conditions.Set(instance, metav1.Condition{
 				Type:    clusterv1.ReadyCondition,
 				Status:  metav1.ConditionFalse,
 				Reason:  v1alpha1.DNSViewNotFoundReason,
-				Message: fmt.Sprintf("could not find default DNS view: %s", err),
+				Message: fmt.Sprintf("could not find default DNS view %q", instance.Spec.DefaultDNSView),
 			})
 			return ctrl.Result{}, nil
 		}
