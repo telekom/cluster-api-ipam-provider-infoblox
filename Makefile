@@ -93,7 +93,7 @@ docker-push: ## Push docker image with the manager.
 
 RELEASE_TAG ?= $(shell git describe --tags --abbrev=0 2>/dev/null)
 
-RELEASE_DIR ?= out
+RELEASE_DIR ?= out/ipam-infoblox/$(RELEASE_TAG)
 
 $(RELEASE_DIR):
 	mkdir -p $(RELEASE_DIR)/
@@ -130,7 +130,7 @@ licenses-report: go-licenses
 	rm -rf $(RELEASE_DIR)/licenses
 	$(GO_LICENSES) save --save_path $(RELEASE_DIR)/licenses ./...
 	$(GO_LICENSES) report --template hack/licenses.md.tpl ./... > $(RELEASE_DIR)/licenses/licenses.md
-	(cd out/licenses && tar -czf ../licenses.tar.gz *)
+	(cd $(RELEASE_DIR)/licenses && tar -czf ../licenses.tar.gz *)
 
 ##@ Release Utils
 
