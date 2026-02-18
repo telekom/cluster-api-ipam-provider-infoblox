@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"strings"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
@@ -151,19 +152,9 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 
 	logger := log.FromContext(ctx)
 
-	hostName, err := h.getHostname(ctx)
+	hostName, err := h.ensureHostname(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	// Since we can't guarantee that resolving the hostname during machine deletion will succeed, we store it as an annotation
-	// on the claim, and retrieve it during deletion to delete the infoblox record.
-	// We only need to do so when
-	if h.pool.Spec.DNSZone != "" {
-		if h.claim.Annotations == nil {
-			h.claim.Annotations = map[string]string{}
-		}
-		h.claim.Annotations[hostnameAnnotation] = hostName
 	}
 
 	logger = logger.WithValues("hostname", hostName)
@@ -219,7 +210,7 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 
 	hostName, err := h.getHostname(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get hostname: %w", err)
 	}
 
 	logger = logger.WithValues("hostname", hostName)
@@ -258,7 +249,31 @@ func (h *InfobloxClaimHandler) GetPool() client.Object {
 	return h.pool
 }
 
+// ensureHostname gets the hostname from the claim and
+// ensures it's compatible with the DNS setting of the references IPPool.
+func (h *InfobloxClaimHandler) ensureHostname(ctx context.Context) (string, error) {
+	hostname, err := h.getHostname(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get hostname: %w", err)
+	}
+
+	// Since we can't guarantee that resolving the hostname during machine deletion will succeed, we store it as an annotation
+	// on the claim, and retrieve it during deletion to delete the infoblox record.
+	if h.claim.Annotations == nil {
+		h.claim.Annotations = map[string]string{}
+	}
+	h.claim.Annotations[hostnameAnnotation] = hostname
+
+	// ensure that the hostnames suffix matches the given zone
+	if !strings.HasSuffix(hostname, h.pool.Spec.DNSZone) {
+		return "", fmt.Errorf("hostname %q must have DNS zone %q as suffix", hostname, h.pool.Spec.DNSZone)
+	}
+
+	return hostname, nil
+}
+
 func (h *InfobloxClaimHandler) getHostname(ctx context.Context) (string, error) {
+	// always prefer the annotation if set
 	hostName := h.claim.Annotations[hostnameAnnotation]
 	if hostName != "" {
 		return hostName, nil
@@ -273,16 +288,16 @@ func (h *InfobloxClaimHandler) getHostname(ctx context.Context) (string, error) 
 		return "", fmt.Errorf("failed to create hostname handler: %w", err)
 	}
 
-	hn, err := hostnameHandler.GetHostname(ctx, h.claim)
+	hostName, err = hostnameHandler.GetHostname(ctx, h.claim)
 	if err != nil {
-		return "", fmt.Errorf("failed to get hostname: %w", err)
+		return "", err
 	}
 
 	if h.pool.Spec.DNSZone != "" {
-		hn += "." + h.pool.Spec.DNSZone
+		hostName += "." + h.pool.Spec.DNSZone
 	}
 
-	return hn, nil
+	return hostName, nil
 }
 
 func getHostnameResolver(cl client.Client, _ *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
