@@ -72,7 +72,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						Namespace: namespace,
 					},
 					Spec: v1alpha1.InfobloxIPPoolSpec{
-						InstanceRef: corev1.LocalObjectReference{},
+						InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 						Subnets: []v1alpha1.Subnet{
 							{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 						},
@@ -119,7 +119,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						Namespace: namespace,
 					},
 					Spec: v1alpha1.InfobloxIPPoolSpec{
-						InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+						InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 						Subnets: []v1alpha1.Subnet{
 							{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 							{CIDR: "10.0.1.0/24", Gateway: "10.0.1.1"},
@@ -265,7 +265,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						Namespace: namespace,
 					},
 					Spec: v1alpha1.InfobloxIPPoolSpec{
-						InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+						InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 						Subnets: []v1alpha1.Subnet{
 							{CIDR: "10.0.0.0/24"},
 							{CIDR: "10.0.1.0/24"},
@@ -346,7 +346,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 						Namespace: namespace,
 					},
 					Spec: v1alpha1.InfobloxIPPoolSpec{
-						InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+						InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 						Subnets: []v1alpha1.Subnet{
 							{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 						},
@@ -393,7 +393,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 							},
 						},
 						Spec: v1alpha1.InfobloxIPPoolSpec{
-							InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+							InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 							Subnets: []v1alpha1.Subnet{
 								{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 							},
@@ -457,7 +457,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 							Namespace: namespace,
 						},
 						Spec: v1alpha1.InfobloxIPPoolSpec{
-							InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+							InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 							Subnets: []v1alpha1.Subnet{
 								{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 							},
@@ -530,7 +530,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					Namespace: namespace,
 				},
 				Spec: v1alpha1.InfobloxIPPoolSpec{
-					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+					InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 					Subnets: []v1alpha1.Subnet{
 						{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 					},
@@ -625,7 +625,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					Namespace: namespace,
 				},
 				Spec: v1alpha1.InfobloxIPPoolSpec{
-					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+					InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 					Subnets: []v1alpha1.Subnet{
 						{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 					},
@@ -741,7 +741,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					Namespace: namespace,
 				},
 				Spec: v1alpha1.InfobloxIPPoolSpec{
-					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+					InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 					Subnets: []v1alpha1.Subnet{
 						{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 					},
@@ -1062,7 +1062,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					Namespace: namespace,
 				},
 				Spec: v1alpha1.InfobloxIPPoolSpec{
-					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+					InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 					Subnets: []v1alpha1.Subnet{
 						{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 					},
@@ -1163,7 +1163,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 					Namespace: namespace,
 				},
 				Spec: v1alpha1.InfobloxIPPoolSpec{
-					InstanceRef: corev1.LocalObjectReference{Name: instanceName},
+					InstanceRef: v1alpha1.InstanceReference{Name: instanceName},
 					Subnets: []v1alpha1.Subnet{
 						{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
 						{CIDR: "10.0.1.0/24", Gateway: "10.0.1.1"},

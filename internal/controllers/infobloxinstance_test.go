@@ -22,9 +22,14 @@ var _ = Describe("InfobloxInstance controller", func() {
 				Name:      "test",
 				Namespace: "default",
 			},
-			Spec: v1alpha1.InfobloxInstanceSpec{},
+			Spec: v1alpha1.InfobloxInstanceSpec{
+				Host:        "somehost",
+				WAPIVersion: "1.2.3",
+				CredentialsSecretRef: v1alpha1.CredentialsReferece{
+					Name: "creds",
+				},
+			},
 		}
-
 	})
 
 	When("the referenced secret is not found", func() {
@@ -55,7 +60,7 @@ var _ = Describe("InfobloxInstance controller", func() {
 		var secret *corev1.Secret
 
 		BeforeEach(func() {
-			instance.Spec.CredentialsSecretRef = corev1.LocalObjectReference{
+			instance.Spec.CredentialsSecretRef = v1alpha1.CredentialsReferece{
 				Name: "test",
 			}
 			createObj(instance)
@@ -93,7 +98,7 @@ var _ = Describe("InfobloxInstance controller", func() {
 	When("the provided credentials are invalid", func() {
 		var secret *corev1.Secret
 		BeforeEach(func() {
-			instance.Spec.CredentialsSecretRef = corev1.LocalObjectReference{
+			instance.Spec.CredentialsSecretRef = v1alpha1.CredentialsReferece{
 				Name: "test",
 			}
 			createObj(instance)
