@@ -129,16 +129,19 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		return ctrl.Result{}, nil
 	}
 
-	// TODO: handle this in a better way
-	if ok, err := ibcl.CheckNetworkViewExists(instance.Spec.DefaultNetworkView); err != nil || !ok {
-		logger.Error(err, "could not find default network view", "defaultNetworkView", instance.Spec.DefaultNetworkView)
-		conditions.Set(instance, metav1.Condition{
-			Type:    clusterv1.ReadyCondition,
-			Status:  metav1.ConditionFalse,
-			Reason:  v1alpha1.NetworkViewNotFoundReason,
-			Message: fmt.Sprintf("could not find default network view %q", instance.Spec.DefaultNetworkView),
-		})
-		return ctrl.Result{}, nil
+	// Check default network view if specified
+	if instance.Spec.DefaultNetworkView != "" {
+		ok, err := ibcl.CheckNetworkViewExists(instance.Spec.DefaultNetworkView)
+		if err != nil || !ok {
+			logger.Error(err, "could not find default network view", "defaultNetworkView", instance.Spec.DefaultNetworkView)
+			conditions.Set(instance, metav1.Condition{
+				Type:    clusterv1.ReadyCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1alpha1.NetworkViewNotFoundReason,
+				Message: fmt.Sprintf("could not find default network view %q", instance.Spec.DefaultNetworkView),
+			})
+			return ctrl.Result{}, nil
+		}
 	}
 
 	// Check default DNS view if specified
