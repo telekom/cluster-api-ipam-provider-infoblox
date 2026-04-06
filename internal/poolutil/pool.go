@@ -40,12 +40,12 @@ func ListAddressesInUse(ctx context.Context, c client.Client, namespace string, 
 
 // ListClaimsReferencingPool fetches all IPAddressClaims belonging to the specified pool.
 func ListClaimsReferencingPool(ctx context.Context, c client.Client, namespace string, poolRef ipamv1.IPPoolReference) ([]ipamv1.IPAddressClaim, error) {
-	addresses := &ipamv1.IPAddressClaimList{}
-	err := c.List(ctx, addresses,
+	claims := &ipamv1.IPAddressClaimList{}
+	err := c.List(ctx, claims,
 		client.MatchingFields{
 			index.IPAddressClaimPoolRefCombinedField: index.IPPoolRefValue(poolRef),
 		},
 		client.InNamespace(namespace),
 	)
-	return addresses.Items, err
+	return claims.Items, err
 }
