@@ -100,13 +100,21 @@ var _ = Describe("InfobloxIPPool controller", func() {
 
 	Describe("Pool not found", func() {
 		It("should handle a deleted pool gracefully", func() {
-			// Create and immediately delete — reconciler must not panic on missing object.
 			pool := newPool("notfound-pool", "default")
 			createObj(pool)
-			deleteObj(&v1alpha1.InfobloxIPPool{}, pool.Name, pool.Namespace)
 
-			// Assert the pool is fully removed, confirming the reconciler processed the
-			// deletion without error or panic.
+			Eventually(Object(&v1alpha1.InfobloxIPPool{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pool.Name,
+					Namespace: pool.Namespace,
+				},
+			})).WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(
+				HaveField("Status.Conditions", ContainElement(
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+				)),
+			)
+
+			deleteObj(&v1alpha1.InfobloxIPPool{}, pool.Name, pool.Namespace)
 			Eventually(Get(pool)).
 				WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).ShouldNot(Succeed())
 		})
