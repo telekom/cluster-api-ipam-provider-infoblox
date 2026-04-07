@@ -98,8 +98,8 @@ var _ = Describe("InfobloxIPPool controller", func() {
 		mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
 	}
 
-	Describe("Pool not found", func() {
-		It("should handle a deleted pool gracefully", func() {
+	Describe("Deletion without claims — no instance configured", func() {
+		It("should allow pool deletion when no claims and no blocking finalizer path", func() {
 			pool := newPool("notfound-pool", "default")
 			createObj(pool)
 

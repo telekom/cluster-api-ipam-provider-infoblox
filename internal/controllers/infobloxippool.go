@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -97,9 +98,16 @@ func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// remove finalizer if no claims point to this pool anymore
 	if isMarkedForDeletion {
+		// controller-runtime strips TypeMeta from objects fetched via Get/List, so
+		// pool.GetObjectKind().GroupVersionKind() returns an empty GVK. Use
+		// apiutil.GVKForObject to resolve the GVK from the runtime scheme instead.
+		gvk, err := apiutil.GVKForObject(pool, r.Scheme)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to get GVK for pool: %w", err)
+		}
 		poolTypeRef := ipamv1.IPPoolReference{
-			APIGroup: pool.GetObjectKind().GroupVersionKind().Group,
-			Kind:     pool.GetObjectKind().GroupVersionKind().Kind,
+			APIGroup: gvk.Group,
+			Kind:     gvk.Kind,
 			Name:     pool.GetName(),
 		}
 		inUseClaims, err := poolutil.ListClaimsReferencingPool(ctx, r.Client, pool.GetNamespace(), poolTypeRef)
@@ -135,24 +143,25 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		return err
 	}
 
-	if pool.Spec.NetworkView == "" {
-		pool.Spec.NetworkView = ibclient.GetHostConfig().DefaultNetworkView
+	poolCopy := pool.DeepCopy()
+	if poolCopy.Spec.NetworkView == "" {
+		poolCopy.Spec.NetworkView = ibclient.GetHostConfig().DefaultNetworkView
 	}
 
+	dnsView := determineDNSView(poolCopy.Spec.DNSView, ibclient.GetHostConfig().DefaultDNSView, poolCopy.Spec.NetworkView)
+
 	// TODO: handle this in a better way
-	if ok, err := ibclient.CheckNetworkViewExists(pool.Spec.NetworkView); err != nil || !ok {
-		logger.Error(err, "could not find network view", "networkView", pool.Spec.NetworkView)
+	if ok, err := ibclient.CheckNetworkViewExists(poolCopy.Spec.NetworkView); err != nil || !ok {
+		logger.Error(err, "could not find network view", "networkView", poolCopy.Spec.NetworkView)
 		conditions.Set(pool, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  v1alpha1.NetworkViewNotFoundReason,
-			Message: fmt.Sprintf("could not find network view %q", pool.Spec.NetworkView),
+			Message: fmt.Sprintf("could not find network view %q", poolCopy.Spec.NetworkView),
 		})
 		return nil
 	}
 
-	// Check DNS view if specified
-	dnsView := determineDNSView(pool.Spec.DNSView, ibclient.GetHostConfig().DefaultDNSView, pool.Spec.NetworkView)
 	if dnsView != "" {
 		if ok, err := ibclient.CheckDNSViewExists(dnsView); err != nil || !ok {
 			logger.Error(err, "could not find DNS view", "dnsView", dnsView)
@@ -166,24 +175,25 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		}
 	}
 
-	for _, sub := range pool.Spec.Subnets {
+	for _, sub := range poolCopy.Spec.Subnets {
 		subnet, err := netip.ParsePrefix(sub.CIDR)
 		if err != nil {
 			// We won't set a condition here since this should be caught by validation
 			return fmt.Errorf("failed to parse subnet: %w", err)
 		}
-		if ok, err := ibclient.CheckNetworkExists(pool.Spec.NetworkView, subnet); err != nil || !ok {
-			logger.Error(err, "could not find network", "networkView", pool.Spec.NetworkView, "subnet", subnet)
+		if ok, err := ibclient.CheckNetworkExists(poolCopy.Spec.NetworkView, subnet); err != nil || !ok {
+			logger.Error(err, "could not find network", "networkView", poolCopy.Spec.NetworkView, "subnet", subnet)
 			conditions.Set(pool, metav1.Condition{
 				Type:    clusterv1.ReadyCondition,
 				Status:  metav1.ConditionFalse,
 				Reason:  v1alpha1.NetworkNotFoundReason,
-				Message: fmt.Sprintf("could not find network %q in view %q", subnet, pool.Spec.NetworkView),
+				Message: fmt.Sprintf("could not find network %q in view %q", subnet, poolCopy.Spec.NetworkView),
 			})
 			return nil
 		}
 	}
 
+	pool.Spec.NetworkView = poolCopy.Spec.NetworkView
 	conditions.Set(pool, metav1.Condition{
 		Type:    clusterv1.ReadyCondition,
 		Status:  metav1.ConditionTrue,
