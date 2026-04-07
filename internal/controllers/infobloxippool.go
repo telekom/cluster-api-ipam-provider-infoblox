@@ -139,14 +139,22 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		pool.Spec.NetworkView = ibclient.GetHostConfig().DefaultNetworkView
 	}
 
-	// TODO: handle this in a better way
-	if ok, err := ibclient.CheckNetworkViewExists(pool.Spec.NetworkView); err != nil || !ok {
-		logger.Error(err, "could not find network view", "networkView", pool.Spec.NetworkView)
+	if ok, err := ibclient.CheckNetworkViewExists(pool.Spec.NetworkView); err != nil {
+		logger.Error(err, "error checking network view", "networkView", pool.Spec.NetworkView)
 		conditions.Set(pool, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  v1alpha1.NetworkViewNotFoundReason,
-			Message: fmt.Sprintf("could not find network view %q", pool.Spec.NetworkView),
+			Message: fmt.Sprintf("error checking network view %q: %s", pool.Spec.NetworkView, err),
+		})
+		return nil
+	} else if !ok {
+		logger.Info("network view not found", "networkView", pool.Spec.NetworkView)
+		conditions.Set(pool, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.NetworkViewNotFoundReason,
+			Message: fmt.Sprintf("network view %q does not exist", pool.Spec.NetworkView),
 		})
 		return nil
 	}
@@ -154,13 +162,22 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 	// Check DNS view if specified
 	dnsView := determineDNSView(pool.Spec.DNSView, ibclient.GetHostConfig().DefaultDNSView, pool.Spec.NetworkView)
 	if dnsView != "" {
-		if ok, err := ibclient.CheckDNSViewExists(dnsView); err != nil || !ok {
-			logger.Error(err, "could not find DNS view", "dnsView", dnsView)
+		if ok, err := ibclient.CheckDNSViewExists(dnsView); err != nil {
+			logger.Error(err, "error checking DNS view", "dnsView", dnsView)
 			conditions.Set(pool, metav1.Condition{
 				Type:    clusterv1.ReadyCondition,
 				Status:  metav1.ConditionFalse,
 				Reason:  v1alpha1.DNSViewNotFoundReason,
-				Message: fmt.Sprintf("could not find DNS view %q", dnsView),
+				Message: fmt.Sprintf("error checking DNS view %q: %s", dnsView, err),
+			})
+			return nil
+		} else if !ok {
+			logger.Info("DNS view not found", "dnsView", dnsView)
+			conditions.Set(pool, metav1.Condition{
+				Type:    clusterv1.ReadyCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1alpha1.DNSViewNotFoundReason,
+				Message: fmt.Sprintf("DNS view %q does not exist", dnsView),
 			})
 			return nil
 		}

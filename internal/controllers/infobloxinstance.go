@@ -79,7 +79,10 @@ func (r *InfobloxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return r.reconcile(ctx, instance)
 }
 
-func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1alpha1.InfobloxInstance) (ctrl.Result, error) { //nolint:unparam
+// reconcile performs the core reconciliation for an InfobloxInstance. The ctrl.Result return value is always
+// empty (no requeue) since this controller relies on watch-triggered reconciliation rather than polling;
+// the signature matches the pattern expected by the calling Reconcile method.
+func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1alpha1.InfobloxInstance) (ctrl.Result, error) { //nolint:unparam // ctrl.Result is always empty by design; see comment above
 	logger := log.FromContext(ctx)
 
 	authSecret := &corev1.Secret{}
@@ -129,30 +132,44 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		return ctrl.Result{}, nil
 	}
 
-	// Check default network view if specified
-	if instance.Spec.DefaultNetworkView != "" {
-		ok, err := ibcl.CheckNetworkViewExists(instance.Spec.DefaultNetworkView)
-		if err != nil || !ok {
-			logger.Error(err, "could not find default network view", "defaultNetworkView", instance.Spec.DefaultNetworkView)
-			conditions.Set(instance, metav1.Condition{
-				Type:    clusterv1.ReadyCondition,
-				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1.NetworkViewNotFoundReason,
-				Message: fmt.Sprintf("could not find default network view %q", instance.Spec.DefaultNetworkView),
-			})
-			return ctrl.Result{}, nil
-		}
+	if ok, err := ibcl.CheckNetworkViewExists(instance.Spec.DefaultNetworkView); err != nil {
+		logger.Error(err, "error checking default network view", "networkView", instance.Spec.DefaultNetworkView)
+		conditions.Set(instance, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.NetworkViewNotFoundReason,
+			Message: fmt.Sprintf("error checking default network view: %s", err),
+		})
+		return ctrl.Result{}, nil
+	} else if !ok {
+		logger.Info("default network view not found", "networkView", instance.Spec.DefaultNetworkView)
+		conditions.Set(instance, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.NetworkViewNotFoundReason,
+			Message: fmt.Sprintf("default network view %q does not exist", instance.Spec.DefaultNetworkView),
+		})
+		return ctrl.Result{}, nil
 	}
 
 	// Check default DNS view if specified
 	if instance.Spec.DefaultDNSView != "" {
-		if ok, err := ibcl.CheckDNSViewExists(instance.Spec.DefaultDNSView); err != nil || !ok {
-			logger.Error(err, "could not find default DNS view", "defaultDnsView", instance.Spec.DefaultDNSView)
+		if ok, err := ibcl.CheckDNSViewExists(instance.Spec.DefaultDNSView); err != nil {
+			logger.Error(err, "error checking default DNS view", "dnsView", instance.Spec.DefaultDNSView)
 			conditions.Set(instance, metav1.Condition{
 				Type:    clusterv1.ReadyCondition,
 				Status:  metav1.ConditionFalse,
 				Reason:  v1alpha1.DNSViewNotFoundReason,
-				Message: fmt.Sprintf("could not find default DNS view %q", instance.Spec.DefaultDNSView),
+				Message: fmt.Sprintf("error checking default DNS view: %s", err),
+			})
+			return ctrl.Result{}, nil
+		} else if !ok {
+			logger.Info("default DNS view not found", "dnsView", instance.Spec.DefaultDNSView)
+			conditions.Set(instance, metav1.Condition{
+				Type:    clusterv1.ReadyCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1alpha1.DNSViewNotFoundReason,
+				Message: fmt.Sprintf("default DNS view %q does not exist", instance.Spec.DefaultDNSView),
 			})
 			return ctrl.Result{}, nil
 		}
