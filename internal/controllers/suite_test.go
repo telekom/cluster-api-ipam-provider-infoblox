@@ -74,7 +74,6 @@ var (
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
-	mockCtrl = gomock.NewController(t)
 	RunSpecs(t, "Controller Suite")
 }
 
@@ -85,7 +84,6 @@ var _ = BeforeSuite(func() {
 	// add logger to context
 	ctx = logf.IntoContext(ctx, logf.Log)
 
-	mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
 	// mockNewInfobloxClientFunc reads mockInfobloxClient under mockMu so that
 	// concurrent reconciler goroutines and test-driven reassignments (resetMock)
 	// do not race on the shared pointer.
@@ -95,11 +93,9 @@ var _ = BeforeSuite(func() {
 		return mockInfobloxClient, nil
 	}
 
-	mockHostnameHandler = hostnamemock.NewMockResolver(mockCtrl)
 	mockNewHostnameResolverFunc = func(_ client.Client, _ *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
 		return mockHostnameHandler, nil
 	}
-	mockHostnameHandler.EXPECT().GetHostname(gomock.Any(), gomock.Any()).Return("hostname", nil).AnyTimes()
 	newHostnameHandlerFunc = mockNewHostnameResolverFunc
 
 	By("bootstrapping test environment")
@@ -143,8 +139,11 @@ var _ = BeforeSuite(func() {
 			Scheme:            mgr.GetScheme(),
 			OperatorNamespace: "default",
 			NewInfobloxClientFunc: func(cfg infoblox.Config) (infoblox.Client, error) {
-				if instanceNewClientOverride != nil {
-					return instanceNewClientOverride(cfg)
+				mockMu.Lock()
+				override := instanceNewClientOverride
+				mockMu.Unlock()
+				if override != nil {
+					return override(cfg)
 				}
 				return mockNewInfobloxClientFunc(cfg)
 			},
@@ -203,6 +202,19 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 	newHostnameHandlerFunc = getHostnameResolver
+})
+
+var _ = BeforeEach(func() {
+	mockCtrl = gomock.NewController(GinkgoT())
+	mockMu.Lock()
+	mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
+	mockMu.Unlock()
+	mockHostnameHandler = hostnamemock.NewMockResolver(mockCtrl)
+	mockHostnameHandler.EXPECT().GetHostname(gomock.Any(), gomock.Any()).Return("hostname", nil).AnyTimes()
+})
+
+var _ = AfterEach(func() {
+	mockCtrl.Finish()
 })
 
 func newClaim(name, namespace, poolKind, poolName string) ipamv1.IPAddressClaim {
