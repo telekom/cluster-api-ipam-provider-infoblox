@@ -127,7 +127,9 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (client.Object, *c
 		return nil, nil, fmt.Errorf("failed to fetch pool: %w", err)
 	}
 
-	// TODO: ensure pool is ready
+	// TODO(preexisting): ensure pool is ready — currently we only check if the Ready condition is explicitly False,
+	// but a pool with no conditions set (e.g. newly created) will pass through. A proper fix would use
+	// conditions.IsTrue() and requeue until the pool becomes ready.
 	if conditions.IsFalse(h.pool, clusterv1.ReadyCondition) {
 		conditions.Set(h.claim, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,

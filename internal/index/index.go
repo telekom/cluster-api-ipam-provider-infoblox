@@ -23,6 +23,7 @@ import (
 
 	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -54,7 +55,8 @@ func SetupIndexes(ctx context.Context, mgr manager.Manager) error {
 func IPAddressByCombinedPoolRef(o client.Object) []string {
 	ip, ok := o.(*ipamv1.IPAddress)
 	if !ok {
-		panic(fmt.Sprintf("Expected an IPAddress but got a %T", o))
+		log.Log.WithName("indexer").Info("unexpected object type in IPAddress indexer", "type", fmt.Sprintf("%T", o))
+		return []string{}
 	}
 	return []string{IPPoolRefValue(ip.Spec.PoolRef)}
 }
@@ -62,7 +64,8 @@ func IPAddressByCombinedPoolRef(o client.Object) []string {
 func ipAddressClaimByCombinedPoolRef(o client.Object) []string {
 	ip, ok := o.(*ipamv1.IPAddressClaim)
 	if !ok {
-		panic(fmt.Sprintf("Expected an IPAddressClaim but got a %T", o))
+		log.Log.WithName("indexer").Info("unexpected object type in IPAddressClaim indexer", "type", fmt.Sprintf("%T", o))
+		return []string{}
 	}
 	return []string{IPPoolRefValue(ip.Spec.PoolRef)}
 }
