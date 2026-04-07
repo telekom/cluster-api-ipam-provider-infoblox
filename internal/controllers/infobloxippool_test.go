@@ -94,8 +94,11 @@ var _ = Describe("InfobloxIPPool controller", func() {
 	// Since mockNewInfobloxClientFunc closes over the mockInfobloxClient *variable* (not its
 	// value at creation time), reassigning it here causes the reconcilers to receive the new
 	// mock on their next call — isolating expectations between tests.
+	// mockMu is held during the write to avoid a data race with the reconciler goroutine.
 	resetMock := func() {
+		mockMu.Lock()
 		mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
+		mockMu.Unlock()
 	}
 
 	Describe("Deletion without claims — no instance configured", func() {

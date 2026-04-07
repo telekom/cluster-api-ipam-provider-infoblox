@@ -86,7 +86,12 @@ var _ = BeforeSuite(func() {
 	ctx = logf.IntoContext(ctx, logf.Log)
 
 	mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
+	// mockNewInfobloxClientFunc reads mockInfobloxClient under mockMu so that
+	// concurrent reconciler goroutines and test-driven reassignments (resetMock)
+	// do not race on the shared pointer.
 	mockNewInfobloxClientFunc = func(infoblox.Config) (infoblox.Client, error) {
+		mockMu.Lock()
+		defer mockMu.Unlock()
 		return mockInfobloxClient, nil
 	}
 
