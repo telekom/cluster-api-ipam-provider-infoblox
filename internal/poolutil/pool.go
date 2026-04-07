@@ -21,7 +21,6 @@ import (
 	"context"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -36,15 +35,7 @@ func ListAddressesInUse(ctx context.Context, c client.Client, namespace string, 
 		},
 		client.InNamespace(namespace),
 	)
-	addr := []ipamv1.IPAddress{}
-	for _, a := range addresses.Items {
-		gv, _ := schema.ParseGroupVersion(a.APIVersion)
-		if gv.Group != "ipam.cluster.x-k8s.io" {
-			continue
-		}
-		addr = append(addr, a)
-	}
-	return addr, err
+	return addresses.Items, err
 }
 
 // ListClaimsReferencingPool fetches all IPAddressClaims belonging to the specified pool.
@@ -56,13 +47,5 @@ func ListClaimsReferencingPool(ctx context.Context, c client.Client, namespace s
 		},
 		client.InNamespace(namespace),
 	)
-	addr := []ipamv1.IPAddressClaim{}
-	for _, a := range addresses.Items {
-		gv, _ := schema.ParseGroupVersion(a.APIVersion)
-		if gv.Group != "ipam.cluster.x-k8s.io" {
-			continue
-		}
-		addr = append(addr, a)
-	}
-	return addr, err
+	return addresses.Items, err
 }
