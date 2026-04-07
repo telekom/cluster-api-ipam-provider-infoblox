@@ -100,9 +100,11 @@ var _ = Describe("InfobloxInstance controller", func() {
 	When("the provided credentials are invalid", func() {
 		var secret *corev1.Secret
 		BeforeEach(func() {
+			mockMu.Lock()
 			instanceNewClientOverride = func(infoblox.Config) (infoblox.Client, error) {
 				return nil, fmt.Errorf("authentication failed: invalid credentials")
 			}
+			mockMu.Unlock()
 			instance.Spec.CredentialsSecretRef = v1alpha1.CredentialsReferece{
 				Name: "test",
 			}
@@ -120,7 +122,9 @@ var _ = Describe("InfobloxInstance controller", func() {
 			createObj(secret)
 		})
 		AfterEach(func() {
+			mockMu.Lock()
 			instanceNewClientOverride = nil
+			mockMu.Unlock()
 			deleteObj(&v1alpha1.InfobloxInstance{}, instance.Name, instance.Namespace)
 			deleteObj(&corev1.Secret{}, secret.Name, secret.Namespace)
 		})
