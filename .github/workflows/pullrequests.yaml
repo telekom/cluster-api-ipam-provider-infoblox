@@ -31,6 +31,8 @@ jobs:
           go-version: 1.25
       - name: Run Tests
         run: make test
+      - name: Check Coverage Threshold
+        run: make coverage-check
 
   validate-generated:
     name: validate generated files
