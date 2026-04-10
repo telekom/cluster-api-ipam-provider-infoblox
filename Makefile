@@ -4,7 +4,12 @@ TARGETPLATFORM ?= linux/amd64
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.31
-CONTROLLER_GEN_VERSION= 0.20.0
+
+## Tool Versions
+CONTROLLER_GEN_VERSION ?= $(shell sed -n 's/.*sigs.k8s.io\/controller-tools \(.*\)/\1/p' go.mod)
+KUSTOMIZE_VERSION ?= v4.5.7
+ENVTEST_VERSION ?= $(shell sed -n 's/.*sigs.k8s.io\/controller-runtime\/tools\/setup-envtest \(.*\)/\1/p' go.mod)
+GO_LICENSES_VERSION ?= v1.6.0
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -93,7 +98,7 @@ docker-push: ## Push docker image with the manager.
 
 RELEASE_TAG ?= $(shell git describe --tags --abbrev=0 2>/dev/null)
 
-RELEASE_DIR ?= out
+RELEASE_DIR ?= out/ipam-infoblox/$(RELEASE_TAG)
 
 $(RELEASE_DIR):
 	mkdir -p $(RELEASE_DIR)/
@@ -130,7 +135,7 @@ licenses-report: go-licenses
 	rm -rf $(RELEASE_DIR)/licenses
 	$(GO_LICENSES) save --save_path $(RELEASE_DIR)/licenses ./...
 	$(GO_LICENSES) report --template hack/licenses.md.tpl ./... > $(RELEASE_DIR)/licenses/licenses.md
-	(cd out/licenses && tar -czf ../licenses.tar.gz *)
+	(cd $(RELEASE_DIR)/licenses && tar -czf ../licenses.tar.gz *)
 
 ##@ Release Utils
 
@@ -169,20 +174,43 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 
 CONTROLLER_GEN = $(HACK_BIN)/controller-gen
 .PHONY: controller-gen
-controller-gen: ## Download controller-gen locally if necessary.
-	env GOBIN=$(HACK_BIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@v$(CONTROLLER_GEN_VERSION)
+controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
+$(CONTROLLER_GEN): $(HACK_BIN)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_GEN_VERSION))
 
 KUSTOMIZE = $(HACK_BIN)/kustomize
 .PHONY: kustomize
-kustomize: ## Download kustomize locally if necessary.
-	env GOBIN=$(HACK_BIN) go install sigs.k8s.io/kustomize/kustomize/v4@v4.5.7
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+$(KUSTOMIZE): $(HACK_BIN)
+	$(call go-install-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4,$(KUSTOMIZE_VERSION))
 
 ENVTEST = $(HACK_BIN)/setup-envtest
 .PHONY: envtest
-envtest: ## Download envtest-setup locally if necessary.
-	env GOBIN=$(HACK_BIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
+$(ENVTEST): $(HACK_BIN)
+	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest,$(ENVTEST_VERSION))
 
 GO_LICENSES = $(HACK_BIN)/go-licenses
 .PHONY: go-licenses
-go-licenses:
-	env GOBIN=$(HACK_BIN) go install github.com/google/go-licenses@latest
+go-licenses: $(GO_LICENSES) ## Download go-licenses locally if necessary.
+$(GO_LICENSES): $(HACK_BIN)
+	$(call go-install-tool,$(GO_LICENSES),github.com/google/go-licenses,$(GO_LICENSES_VERSION))
+
+$(HACK_BIN):
+	mkdir -p $(HACK_BIN)
+
+# go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
+# $1 - target path with name of binary (ideally with version)
+# $2 - package url which can be installed
+# $3 - specific version of package
+define go-install-tool
+@([ -f "$(1)-$(3)" ] || { \
+set -e; \
+package=$(2)@$(3) ;\
+echo "Downloading $${package}" ;\
+rm -f $(1) || true ;\
+GOBIN=$(HACK_BIN) go install $${package} ;\
+mv $(1) $(1)-$(3) ;\
+}) ;\
+ln -sf $(1)-$(3) $(1)
+endef

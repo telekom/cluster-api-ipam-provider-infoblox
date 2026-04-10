@@ -10,7 +10,7 @@ This provider can be installed using `clusterctl install`. Since it's not yet ad
 ```
 providers:
   - name: "infoblox"
-    url: "${HOME}/projects/cluster-api-ipam-provider-infoblox/out/ipam-components.yaml"
+    url: "${HOME}/projects/cluster-api-ipam-provider-infoblox/out/ipam-infoblox/v<release-version>/ipam-components.yaml"
     type: "IPAMProvider"
 ```
 
