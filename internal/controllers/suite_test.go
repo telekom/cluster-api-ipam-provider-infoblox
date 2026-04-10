@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -58,6 +59,7 @@ var (
 
 	mockInfobloxClient          *ibmock.MockClient
 	localInfobloxClientMock     *ibmock.MockClient
+	mockMu                      sync.Mutex
 	mockHostnameHandler         *hostnamemock.MockResolver
 	mockNewInfobloxClientFunc   func(infoblox.Config) (infoblox.Client, error)
 	mockNewHostnameResolverFunc func(c client.Client, claim *ipamv1.IPAddressClaim) (hostname.Resolver, error)
