@@ -70,7 +70,18 @@ test-infoblox: manifests generate fmt vet envtest ## Run infoblox instance tests
 
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run default tests (all but infoblox instance specific).
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test $(shell go list ./... | grep -v /infoblox) -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -covermode=atomic $(shell go list ./... | grep -v /infoblox) -coverprofile cover.out
+
+# Tune this threshold as coverage improves.
+# Baseline established at initial PR merge (~30%); raise as coverage improves.
+# To bypass enforcement (e.g. in draft PRs): COVERAGE_THRESHOLD=0 make coverage-check
+COVERAGE_THRESHOLD ?= 30.0
+
+.PHONY: coverage-check
+coverage-check: test ## Run tests and enforce minimum coverage threshold.
+	@coverage="$$(go tool cover -func=cover.out | awk '/^total:/ {gsub(/%/, "", $$3); print $$3}')"; \
+	if [ -z "$$coverage" ]; then echo "failed to determine total coverage"; exit 1; fi; \
+	awk -v coverage="$$coverage" -v threshold="$(COVERAGE_THRESHOLD)" 'BEGIN { if (coverage + 0 < threshold + 0) { printf "coverage %.2f%% is below threshold %.2f%%\n", coverage, threshold; exit 1 } else { printf "coverage %.2f%% meets threshold %.2f%%\n", coverage, threshold } }'
 
 .PHONY: test-all
 test-all: manifests generate fmt vet envtest ## Run all tests.
