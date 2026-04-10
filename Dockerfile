@@ -32,6 +32,6 @@ COPY --from=builder /workspace/manager .
 USER 65532
 
 # Add directory containing the licenses of all dependencies
-COPY out/licenses /licenses
+COPY out/ipam-infoblox/licenses /licenses
 
 ENTRYPOINT ["/manager"]
