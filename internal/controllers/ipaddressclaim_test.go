@@ -67,7 +67,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		ibInstance := v1alpha1.InfobloxInstance{
 			ObjectMeta: metav1.ObjectMeta{Name: instanceName},
 			Spec: v1alpha1.InfobloxInstanceSpec{
-				CredentialsSecretRef: corev1.LocalObjectReference{Name: instanceName + "-secret"},
+				CredentialsSecretRef: v1alpha1.CredentialsReferece{Name: instanceName + "-secret"},
 			},
 		}
 		Expect(k8sClient.Create(context.Background(), &ibInstance)).To(Succeed())
