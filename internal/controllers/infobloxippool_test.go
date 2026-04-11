@@ -50,7 +50,7 @@ var _ = Describe("InfobloxIPPool controller", func() {
 				Namespace: poolNamespace,
 			},
 			Spec: v1alpha1.InfobloxIPPoolSpec{
-				InstanceRef: corev1.LocalObjectReference{Name: poolInstance},
+				InstanceRef: v1alpha1.InstanceReference{Name: poolInstance},
 				Subnets: []v1alpha1.Subnet{
 					{CIDR: "192.168.100.0/24", Gateway: "192.168.100.1"},
 				},
@@ -69,7 +69,7 @@ var _ = Describe("InfobloxIPPool controller", func() {
 				Host:        "infoblox.example.com",
 				Port:        "443",
 				WAPIVersion: "2.5",
-				CredentialsSecretRef: corev1.LocalObjectReference{
+				CredentialsSecretRef: v1alpha1.CredentialsReferece{
 					Name: poolSecret,
 				},
 			},
