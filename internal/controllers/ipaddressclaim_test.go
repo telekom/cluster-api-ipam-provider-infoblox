@@ -67,6 +67,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		ibInstance := v1alpha1.InfobloxInstance{
 			ObjectMeta: metav1.ObjectMeta{Name: instanceName},
 			Spec: v1alpha1.InfobloxInstanceSpec{
+				Host:                 "infoblox.example.com",
+				Port:                 "443",
+				WAPIVersion:          "2.5",
 				CredentialsSecretRef: v1alpha1.CredentialsReferece{Name: instanceName + "-secret"},
 			},
 		}
