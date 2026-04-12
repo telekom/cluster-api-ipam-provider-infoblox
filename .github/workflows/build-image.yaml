@@ -30,7 +30,7 @@ jobs:
           go-version: '^1.25'
 
       - name: Create Licenses Report
-        run: make licenses-report
+        run: make docker-licenses
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3.6.0
