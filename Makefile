@@ -6,7 +6,7 @@ TARGETPLATFORM ?= linux/amd64
 ENVTEST_K8S_VERSION = 1.31
 
 ## Tool Versions
-CONTROLLER_GEN_VERSION ?= $(shell sed -n 's/.*sigs.k8s.io\/controller-tools \(.*\)/\1/p' go.mod)
+CONTROLLER_GEN_VERSION ?= $(shell sed -n 's/.*sigs.k8s.io\/controller-tools \([^ ]*\).*/\1/p' go.mod)
 KUSTOMIZE_VERSION ?= v4.5.7
 ENVTEST_VERSION ?= $(shell sed -n 's/.*sigs.k8s.io\/controller-runtime\/tools\/setup-envtest \([^ ]*\).*/\1/p' go.mod)
 GO_LICENSES_VERSION ?= v1.6.0
