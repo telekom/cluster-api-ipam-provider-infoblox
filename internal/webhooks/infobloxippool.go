@@ -121,13 +121,8 @@ func (webhook *InfobloxIPPool) ValidateDelete(ctx context.Context, obj runtime.O
 	return nil, nil
 }
 
-func (webhook *InfobloxIPPool) validate(newPool *v1alpha1.InfobloxIPPool) (reterr error) {
+func (webhook *InfobloxIPPool) validate(newPool *v1alpha1.InfobloxIPPool) error {
 	var allErrs field.ErrorList
-	defer func() {
-		if len(allErrs) > 0 {
-			reterr = apierrors.NewInvalid(v1alpha1.GroupVersion.WithKind(newPool.GetObjectKind().GroupVersionKind().Kind).GroupKind(), newPool.GetName(), allErrs)
-		}
-	}()
 
 	if len(newPool.Spec.Subnets) == 0 {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "subnets"), newPool.Spec.Subnets, "subnets is required"))
@@ -165,7 +160,10 @@ func (webhook *InfobloxIPPool) validate(newPool *v1alpha1.InfobloxIPPool) (reter
 		}
 	}
 
-	return //nolint:nakedret
+	if len(allErrs) > 0 {
+		return apierrors.NewInvalid(v1alpha1.GroupVersion.WithKind(newPool.GetObjectKind().GroupVersionKind().Kind).GroupKind(), newPool.GetName(), allErrs)
+	}
+	return nil
 }
 
 func subnetPath(i int) string {
