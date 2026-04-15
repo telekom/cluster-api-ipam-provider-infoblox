@@ -132,24 +132,26 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		return ctrl.Result{}, nil
 	}
 
-	if ok, err := ibcl.CheckNetworkViewExists(instance.Spec.DefaultNetworkView); err != nil {
-		logger.Error(err, "error checking default network view", "networkView", instance.Spec.DefaultNetworkView)
-		conditions.Set(instance, metav1.Condition{
-			Type:    clusterv1.ReadyCondition,
-			Status:  metav1.ConditionFalse,
-			Reason:  v1alpha1.NetworkViewNotFoundReason,
-			Message: fmt.Sprintf("error checking default network view: %s", err),
-		})
-		return ctrl.Result{}, nil
-	} else if !ok {
-		logger.Info("default network view not found", "networkView", instance.Spec.DefaultNetworkView)
-		conditions.Set(instance, metav1.Condition{
-			Type:    clusterv1.ReadyCondition,
-			Status:  metav1.ConditionFalse,
-			Reason:  v1alpha1.NetworkViewNotFoundReason,
-			Message: fmt.Sprintf("default network view %q does not exist", instance.Spec.DefaultNetworkView),
-		})
-		return ctrl.Result{}, nil
+	if instance.Spec.DefaultNetworkView != "" {
+		if ok, err := ibcl.CheckNetworkViewExists(instance.Spec.DefaultNetworkView); err != nil {
+			logger.Error(err, "error checking default network view", "networkView", instance.Spec.DefaultNetworkView)
+			conditions.Set(instance, metav1.Condition{
+				Type:    clusterv1.ReadyCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1alpha1.NetworkViewNotFoundReason,
+				Message: fmt.Sprintf("error checking default network view: %s", err),
+			})
+			return ctrl.Result{}, nil
+		} else if !ok {
+			logger.Info("default network view not found", "networkView", instance.Spec.DefaultNetworkView)
+			conditions.Set(instance, metav1.Condition{
+				Type:    clusterv1.ReadyCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  v1alpha1.NetworkViewNotFoundReason,
+				Message: fmt.Sprintf("default network view %q does not exist", instance.Spec.DefaultNetworkView),
+			})
+			return ctrl.Result{}, nil
+		}
 	}
 
 	// Check default DNS view if specified
