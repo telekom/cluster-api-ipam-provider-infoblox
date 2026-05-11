@@ -87,7 +87,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
 .PHONY: docker-build
-docker-build: test licenses-report ## Build docker image with the manager.
+docker-build: test docker-licenses ## Build docker image with the manager.
 	docker build --platform ${TARGETPLATFORM}  -t ${IMG} .
 
 .PHONY: docker-push
@@ -136,6 +136,15 @@ licenses-report: go-licenses
 	$(GO_LICENSES) save --save_path $(RELEASE_DIR)/licenses ./...
 	$(GO_LICENSES) report --template hack/licenses.md.tpl ./... > $(RELEASE_DIR)/licenses/licenses.md
 	(cd $(RELEASE_DIR)/licenses && tar -czf ../licenses.tar.gz *)
+
+# Docker-specific license collection: saves to a stable, non-versioned path
+# that matches the COPY instruction in the Dockerfile.
+DOCKER_LICENSES_DIR = out/ipam-infoblox/licenses
+.PHONY: docker-licenses
+docker-licenses: go-licenses ## Collect dependency licenses for the Docker image build.
+	rm -rf $(DOCKER_LICENSES_DIR)
+	$(GO_LICENSES) save --save_path $(DOCKER_LICENSES_DIR) ./...
+	$(GO_LICENSES) report --template hack/licenses.md.tpl ./... > $(DOCKER_LICENSES_DIR)/licenses.md
 
 ##@ Release Utils
 
