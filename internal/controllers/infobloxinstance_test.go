@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -98,6 +100,11 @@ var _ = Describe("InfobloxInstance controller", func() {
 	When("the provided credentials are invalid", func() {
 		var secret *corev1.Secret
 		BeforeEach(func() {
+			mockMu.Lock()
+			instanceNewClientOverride = func(infoblox.Config) (infoblox.Client, error) {
+				return nil, fmt.Errorf("authentication failed: invalid credentials")
+			}
+			mockMu.Unlock()
 			instance.Spec.CredentialsSecretRef = v1alpha1.CredentialsReferece{
 				Name: "test",
 			}
@@ -115,12 +122,25 @@ var _ = Describe("InfobloxInstance controller", func() {
 			createObj(secret)
 		})
 		AfterEach(func() {
+			mockMu.Lock()
+			instanceNewClientOverride = nil
+			mockMu.Unlock()
 			deleteObj(&v1alpha1.InfobloxInstance{}, instance.Name, instance.Namespace)
 			deleteObj(&corev1.Secret{}, secret.Name, secret.Namespace)
 		})
 
 		It("should set the InfobloxInstance to not ready", func() {
-
+			Eventually(Object(&v1alpha1.InfobloxInstance{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      instance.Name,
+					Namespace: instance.Namespace,
+				},
+			})).WithTimeout(5 * time.Second).WithPolling(100 * time.Millisecond).Should(And(
+				HaveField("Status.Conditions", ContainElement(And(
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+					HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
+					HaveField("Reason", BeEquivalentTo(v1alpha1.AuthenticationFailedReason)),
+				)))))
 		})
 	})
 
@@ -128,12 +148,12 @@ var _ = Describe("InfobloxInstance controller", func() {
 
 func createObj(object client.Object) {
 	Expect(k8sClient.Create(ctx, object)).To(Succeed())
-	Eventually(Get(object)).Should(Succeed())
+	Eventually(Get(object)).WithTimeout(30 * time.Second).WithPolling(200 * time.Millisecond).Should(Succeed())
 }
 
 func deleteObj(object client.Object, name, namespace string) {
 	object.SetName(name)
 	object.SetNamespace(namespace)
 	Expect(k8sClient.Delete(ctx, object)).To(Succeed())
-	Eventually(Get(object)).ShouldNot(Succeed())
+	Eventually(Get(object)).WithTimeout(30 * time.Second).WithPolling(200 * time.Millisecond).ShouldNot(Succeed())
 }

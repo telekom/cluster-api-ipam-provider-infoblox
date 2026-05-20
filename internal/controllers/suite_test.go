@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest/komega"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -58,15 +60,20 @@ var (
 
 	mockInfobloxClient          *ibmock.MockClient
 	localInfobloxClientMock     *ibmock.MockClient
+	mockMu                      sync.Mutex
 	mockHostnameHandler         *hostnamemock.MockResolver
 	mockNewInfobloxClientFunc   func(infoblox.Config) (infoblox.Client, error)
 	mockNewHostnameResolverFunc func(c client.Client, claim *ipamv1.IPAddressClaim) (hostname.Resolver, error)
 	mockCtrl                    *gomock.Controller
+
+	// instanceNewClientOverride, when non-nil, replaces the real NewInfobloxClientFunc
+	// for the InfobloxInstanceReconciler. Tests that need to simulate a client-creation
+	// failure (e.g. bad credentials) set this in BeforeEach and clear it in AfterEach.
+	instanceNewClientOverride func(infoblox.Config) (infoblox.Client, error)
 )
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
-	mockCtrl = gomock.NewController(t)
 	RunSpecs(t, "Controller Suite")
 }
 
@@ -77,16 +84,18 @@ var _ = BeforeSuite(func() {
 	// add logger to context
 	ctx = logf.IntoContext(ctx, logf.Log)
 
-	mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
+	// mockNewInfobloxClientFunc reads mockInfobloxClient under mockMu so that
+	// concurrent reconciler goroutines and test-driven reassignments (resetMock)
+	// do not race on the shared pointer.
 	mockNewInfobloxClientFunc = func(infoblox.Config) (infoblox.Client, error) {
+		mockMu.Lock()
+		defer mockMu.Unlock()
 		return mockInfobloxClient, nil
 	}
 
-	mockHostnameHandler = hostnamemock.NewMockResolver(mockCtrl)
 	mockNewHostnameResolverFunc = func(_ client.Client, _ *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
 		return mockHostnameHandler, nil
 	}
-	mockHostnameHandler.EXPECT().GetHostname(gomock.Any(), gomock.Any()).Return("hostname", nil).AnyTimes()
 	newHostnameHandlerFunc = mockNewHostnameResolverFunc
 
 	By("bootstrapping test environment")
@@ -113,8 +122,9 @@ var _ = BeforeSuite(func() {
 
 	syncDur := 100 * time.Millisecond
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme.Scheme,
-		Cache:  cache.Options{SyncPeriod: &syncDur},
+		Scheme:  scheme.Scheme,
+		Cache:   cache.Options{SyncPeriod: &syncDur},
+		Metrics: metricsserver.Options{BindAddress: "0"},
 	})
 	Expect(err).ToNot(HaveOccurred())
 
@@ -125,9 +135,18 @@ var _ = BeforeSuite(func() {
 
 	Expect(
 		(&InfobloxInstanceReconciler{
-			Client:                mgr.GetClient(),
-			Scheme:                mgr.GetScheme(),
-			NewInfobloxClientFunc: mockNewInfobloxClientFunc,
+			Client:            mgr.GetClient(),
+			Scheme:            mgr.GetScheme(),
+			OperatorNamespace: "default",
+			NewInfobloxClientFunc: func(cfg infoblox.Config) (infoblox.Client, error) {
+				mockMu.Lock()
+				override := instanceNewClientOverride
+				mockMu.Unlock()
+				if override != nil {
+					return override(cfg)
+				}
+				return mockNewInfobloxClientFunc(cfg)
+			},
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())
 
@@ -141,11 +160,39 @@ var _ = BeforeSuite(func() {
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())
 
+	Expect(
+		(&InfobloxIPPoolReconciler{
+			Client:                mgr.GetClient(),
+			Scheme:                mgr.GetScheme(),
+			OperatorNamespace:     "default",
+			NewInfobloxClientFunc: mockNewInfobloxClientFunc,
+		}).SetupWithManager(mgr),
+	).To(Succeed())
+
 	go func() {
 		defer GinkgoRecover()
 		err = mgr.Start(ctx)
 		Expect(err).ToNot(HaveOccurred(), "failed to run manager")
 	}()
+
+	select {
+	case <-mgr.Elected():
+	case <-time.After(30 * time.Second):
+		Fail("timed out waiting for manager to be elected")
+	}
+	syncCtx, syncCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer syncCancel()
+	Expect(mgr.GetCache().WaitForCacheSync(syncCtx)).To(BeTrue(), "cache did not sync in time")
+
+	var informerErr error
+	_, informerErr = mgr.GetCache().GetInformer(syncCtx, &v1alpha1.InfobloxIPPool{})
+	Expect(informerErr).NotTo(HaveOccurred())
+	_, informerErr = mgr.GetCache().GetInformer(syncCtx, &v1alpha1.InfobloxInstance{})
+	Expect(informerErr).NotTo(HaveOccurred())
+	_, informerErr = mgr.GetCache().GetInformer(syncCtx, &ipamv1.IPAddressClaim{})
+	Expect(informerErr).NotTo(HaveOccurred())
+	_, informerErr = mgr.GetCache().GetInformer(syncCtx, &ipamv1.IPAddress{})
+	Expect(informerErr).NotTo(HaveOccurred())
 
 })
 
@@ -155,6 +202,19 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 	newHostnameHandlerFunc = getHostnameResolver
+})
+
+var _ = BeforeEach(func() {
+	mockCtrl = gomock.NewController(GinkgoT())
+	mockMu.Lock()
+	mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
+	mockMu.Unlock()
+	mockHostnameHandler = hostnamemock.NewMockResolver(mockCtrl)
+	mockHostnameHandler.EXPECT().GetHostname(gomock.Any(), gomock.Any()).Return("hostname", nil).AnyTimes()
+})
+
+var _ = AfterEach(func() {
+	mockCtrl.Finish()
 })
 
 func newClaim(name, namespace, poolKind, poolName string) ipamv1.IPAddressClaim {
