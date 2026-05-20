@@ -1,6 +1,6 @@
 module github.com/telekom/cluster-api-ipam-provider-infoblox
 
-go 1.24.7
+go 1.25
 
 require (
 	github.com/golang/mock v1.6.0
