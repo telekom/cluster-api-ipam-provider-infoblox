@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-const ipamAPIVersion = "ipam.cluster.x-k8s.io/v1beta1"
+const ipamAPIVersion = "ipam.cluster.x-k8s.io/v1beta2"
 
 func TestCreatingPool(t *testing.T) {
 	g := NewWithT(t)
@@ -64,7 +64,7 @@ func TestCreatingPool(t *testing.T) {
 		Client: fakeClient,
 	}
 
-	oldNamespacedPool := namespacedPool.DeepCopyObject()
+	oldNamespacedPool := namespacedPool.DeepCopy()
 	namespacedPool.Spec.Subnets = []v1alpha1.Subnet{{CIDR: "192.168.2.0/24", Gateway: "192.168.2.1"}}
 
 	_, err := webhook.ValidateUpdate(ctx, oldNamespacedPool, namespacedPool)
@@ -185,7 +185,7 @@ func TestUpdatingPool(t *testing.T) {
 		Client: fakeClient,
 	}
 
-	oldNamespacedPool := namespacedPool.DeepCopyObject()
+	oldNamespacedPool := namespacedPool.DeepCopy()
 	namespacedPool.Spec.Subnets = []v1alpha1.Subnet{{CIDR: "192.168.2.0/24", Gateway: "192.168.2.1"}}
 
 	_, err := webhook.ValidateUpdate(ctx, oldNamespacedPool, namespacedPool)
@@ -293,8 +293,8 @@ func runInvalidScenarioTests(t *testing.T, tt invalidScenarioTest, pool *v1alpha
 	})
 }
 
-func testCreate(ctx context.Context, obj runtime.Object, webhook customDefaulterValidator) error {
-	createCopy := obj.DeepCopyObject()
+func testCreate(ctx context.Context, obj *v1alpha1.InfobloxIPPool, webhook customDefaulterValidator[*v1alpha1.InfobloxIPPool]) error {
+	createCopy := obj.DeepCopy()
 	if err := webhook.Default(ctx, createCopy); err != nil {
 		return err
 	}
@@ -302,8 +302,8 @@ func testCreate(ctx context.Context, obj runtime.Object, webhook customDefaulter
 	return err
 }
 
-func testDelete(ctx context.Context, obj runtime.Object, webhook customDefaulterValidator) error {
-	deleteCopy := obj.DeepCopyObject()
+func testDelete(ctx context.Context, obj *v1alpha1.InfobloxIPPool, webhook customDefaulterValidator[*v1alpha1.InfobloxIPPool]) error {
+	deleteCopy := obj.DeepCopy()
 	if err := webhook.Default(ctx, deleteCopy); err != nil {
 		return err
 	}
@@ -311,9 +311,9 @@ func testDelete(ctx context.Context, obj runtime.Object, webhook customDefaulter
 	return err
 }
 
-func testUpdate(ctx context.Context, obj runtime.Object, webhook customDefaulterValidator) error {
-	updateCopy := obj.DeepCopyObject()
-	updatedCopy := obj.DeepCopyObject()
+func testUpdate(ctx context.Context, obj *v1alpha1.InfobloxIPPool, webhook customDefaulterValidator[*v1alpha1.InfobloxIPPool]) error {
+	updateCopy := obj.DeepCopy()
+	updatedCopy := obj.DeepCopy()
 	err := webhook.Default(ctx, updateCopy)
 	if err != nil {
 		return err

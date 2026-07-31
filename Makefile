@@ -3,7 +3,7 @@ IMG ?= ghcr.io/telekom/cluster-api-ipam-provider-infoblox
 TARGETPLATFORM ?= linux/amd64
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.31
+ENVTEST_K8S_VERSION = 1.36
 
 ## Tool Versions
 CONTROLLER_GEN_VERSION ?= $(shell sed -n 's/.*sigs.k8s.io\/controller-tools \(.*\)/\1/p' go.mod)

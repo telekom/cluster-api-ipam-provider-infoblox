@@ -121,7 +121,3 @@ func (i *InfobloxInstance) GetConditions() []metav1.Condition {
 func (i *InfobloxInstance) SetConditions(conditions []metav1.Condition) {
 	i.Status.Conditions = conditions
 }
-
-func init() {
-	SchemeBuilder.Register(&InfobloxInstance{}, &InfobloxInstanceList{})
-}

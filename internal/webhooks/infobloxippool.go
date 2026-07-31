@@ -25,12 +25,10 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/poolutil"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -42,8 +40,7 @@ const (
 )
 
 func (webhook *InfobloxIPPool) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&v1alpha1.InfobloxIPPool{}).
+	return ctrl.NewWebhookManagedBy(mgr, &v1alpha1.InfobloxIPPool{}).
 		WithDefaulter(webhook).
 		WithValidator(webhook).
 		Complete()
@@ -57,33 +54,21 @@ type InfobloxIPPool struct {
 	Client client.Client
 }
 
-var _ webhook.CustomDefaulter = &InfobloxIPPool{}
-var _ webhook.CustomValidator = &InfobloxIPPool{}
+var _ admission.Defaulter[*v1alpha1.InfobloxIPPool] = &InfobloxIPPool{}
+var _ admission.Validator[*v1alpha1.InfobloxIPPool] = &InfobloxIPPool{}
 
 // Default satisfies the defaulting webhook interface.
-func (webhook *InfobloxIPPool) Default(_ context.Context, _ runtime.Object) error {
+func (webhook *InfobloxIPPool) Default(_ context.Context, _ *v1alpha1.InfobloxIPPool) error {
 	return nil
 }
 
-// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (webhook *InfobloxIPPool) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	pool, ok := obj.(*v1alpha1.InfobloxIPPool)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected an InfobloxIPPool but got a %T", obj))
-	}
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type.
+func (webhook *InfobloxIPPool) ValidateCreate(_ context.Context, pool *v1alpha1.InfobloxIPPool) (admission.Warnings, error) {
 	return nil, webhook.validate(pool)
 }
 
-// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type.
-func (webhook *InfobloxIPPool) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	newPool, ok := newObj.(*v1alpha1.InfobloxIPPool)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected an InfbloxIPPool but got a %T", newObj))
-	}
-	if _, ok := oldObj.(*v1alpha1.InfobloxIPPool); !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected an InfbloxIPPool but got a %T", oldObj))
-	}
-
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type.
+func (webhook *InfobloxIPPool) ValidateUpdate(_ context.Context, _, newPool *v1alpha1.InfobloxIPPool) (admission.Warnings, error) {
 	err := webhook.validate(newPool)
 	if err != nil {
 		return nil, err
@@ -92,13 +77,8 @@ func (webhook *InfobloxIPPool) ValidateUpdate(_ context.Context, oldObj, newObj 
 	return nil, nil
 }
 
-// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type.
-func (webhook *InfobloxIPPool) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	pool, ok := obj.(*v1alpha1.InfobloxIPPool)
-	if !ok {
-		return nil, apierrors.NewBadRequest(fmt.Sprintf("expected an InfobloxIPPool but got a %T", obj))
-	}
-
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type.
+func (webhook *InfobloxIPPool) ValidateDelete(ctx context.Context, pool *v1alpha1.InfobloxIPPool) (admission.Warnings, error) {
 	if _, ok := pool.GetAnnotations()[SkipValidateDeleteWebhookAnnotation]; ok {
 		return nil, nil
 	}

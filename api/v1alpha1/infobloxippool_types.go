@@ -99,7 +99,3 @@ func (i *InfobloxIPPool) GetConditions() []metav1.Condition {
 func (i *InfobloxIPPool) SetConditions(conditions []metav1.Condition) {
 	i.Status.Conditions = conditions
 }
-
-func init() {
-	SchemeBuilder.Register(&InfobloxIPPool{}, &InfobloxIPPoolList{})
-}
