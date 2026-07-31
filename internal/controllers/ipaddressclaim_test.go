@@ -1251,6 +1251,6 @@ func findAddress(name, namespace string) func() (client.Object, error) {
 	return Object(&address)
 }
 
-func mockGetInfobloxClientForInstance(_ context.Context, _ client.Reader, _, _ string, _ func(infoblox.Config) (infoblox.Client, error)) (infoblox.Client, error) {
+func mockGetInfobloxClientForInstance(_ context.Context, _ client.Reader, _, _ string, _ infoblox.GetClientFunc) (infoblox.Client, error) {
 	return localInfobloxClientMock, nil
 }

@@ -147,13 +147,14 @@ func main() {
 	}
 
 	podNamespace := os.Getenv("NAMESPACE")
+	infobloxClientCache := infoblox.NewClientCache(infoblox.NewClient)
 
 	if err = (&ipamutil.ClaimReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		WatchFilterValue: watchFilter,
 		Adapter: &controllers.InfobloxProviderAdapter{
-			NewInfobloxClientFunc: infoblox.NewClient,
+			GetInfobloxClientFunc: infobloxClientCache.Get,
 			OperatorNamespace:     podNamespace,
 		},
 	}).SetupWithManager(ctx, mgr); err != nil {
@@ -162,10 +163,11 @@ func main() {
 	}
 
 	if err = (&controllers.InfobloxInstanceReconciler{
-		Client:                mgr.GetClient(),
-		Scheme:                mgr.GetScheme(),
-		NewInfobloxClientFunc: infoblox.NewClient,
-		OperatorNamespace:     podNamespace,
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		GetInfobloxClientFunc:    infobloxClientCache.Get,
+		DeleteInfobloxClientFunc: infobloxClientCache.Delete,
+		OperatorNamespace:        podNamespace,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InfobloxInstance")
 		os.Exit(1)
@@ -173,7 +175,7 @@ func main() {
 	if err = (&controllers.InfobloxIPPoolReconciler{
 		Client:                mgr.GetClient(),
 		Scheme:                mgr.GetScheme(),
-		NewInfobloxClientFunc: infoblox.NewClient,
+		GetInfobloxClientFunc: infobloxClientCache.Get,
 		OperatorNamespace:     podNamespace,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "InfobloxIPPool")
