@@ -41,8 +41,9 @@ type InfobloxInstanceReconciler struct {
 	Client client.Client
 	Scheme *runtime.Scheme
 
-	OperatorNamespace     string
-	NewInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
+	OperatorNamespace        string
+	GetInfobloxClientFunc    infoblox.GetClientFunc
+	DeleteInfobloxClientFunc func(instanceName string)
 }
 
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=infobloxinstances,verbs=get;list;watch;create;update;patch;delete
@@ -61,6 +62,9 @@ func (r *InfobloxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	instance := &v1alpha1.InfobloxInstance{}
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		if apierrors.IsNotFound(err) {
+			if r.DeleteInfobloxClientFunc != nil {
+				r.DeleteInfobloxClientFunc(req.Name)
+			}
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
@@ -98,7 +102,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		return ctrl.Result{}, nil
 	}
 
-	authConfig, err := infoblox.AuthConfigFromSecretData(authSecret.Data)
+	config, err := infobloxConfigForInstance(instance, authSecret)
 	if err != nil {
 		conditions.Set(instance, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
@@ -109,16 +113,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		return ctrl.Result{}, nil
 	}
 
-	hc := infoblox.HostConfig{
-		Host:                   instance.Spec.Host,
-		Version:                instance.Spec.WAPIVersion,
-		DisableTLSVerification: instance.Spec.DisableTLSVerification,
-		CustomCAPath:           instance.Spec.CustomCAPath,
-		DefaultNetworkView:     instance.Spec.DefaultNetworkView,
-		DefaultDNSView:         instance.Spec.DefaultDNSView,
-	}
-
-	ibcl, err := r.NewInfobloxClientFunc(infoblox.Config{HostConfig: hc, AuthConfig: authConfig})
+	ibcl, err := r.GetInfobloxClientFunc(instance.Name, instance.ResourceVersion, authSecret.UID, authSecret.ResourceVersion, config)
 	if err != nil {
 		conditions.Set(instance, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,

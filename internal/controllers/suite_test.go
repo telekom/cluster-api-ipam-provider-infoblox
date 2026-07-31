@@ -32,6 +32,7 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
 	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
@@ -59,7 +60,7 @@ var (
 	mockInfobloxClient          *ibmock.MockClient
 	localInfobloxClientMock     *ibmock.MockClient
 	mockHostnameHandler         *hostnamemock.MockResolver
-	mockNewInfobloxClientFunc   func(infoblox.Config) (infoblox.Client, error)
+	mockGetInfobloxClientFunc   infoblox.GetClientFunc
 	mockNewHostnameResolverFunc func(c client.Client, claim *ipamv1.IPAddressClaim) (hostname.Resolver, error)
 	mockCtrl                    *gomock.Controller
 )
@@ -78,7 +79,7 @@ var _ = BeforeSuite(func() {
 	ctx = logf.IntoContext(ctx, logf.Log)
 
 	mockInfobloxClient = ibmock.NewMockClient(mockCtrl)
-	mockNewInfobloxClientFunc = func(infoblox.Config) (infoblox.Client, error) {
+	mockGetInfobloxClientFunc = func(_, _ string, _ types.UID, _ string, _ infoblox.Config) (infoblox.Client, error) {
 		return mockInfobloxClient, nil
 	}
 
@@ -127,7 +128,7 @@ var _ = BeforeSuite(func() {
 		(&InfobloxInstanceReconciler{
 			Client:                mgr.GetClient(),
 			Scheme:                mgr.GetScheme(),
-			NewInfobloxClientFunc: mockNewInfobloxClientFunc,
+			GetInfobloxClientFunc: mockGetInfobloxClientFunc,
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())
 
@@ -136,7 +137,7 @@ var _ = BeforeSuite(func() {
 			Client: mgr.GetClient(),
 			Scheme: mgr.GetScheme(),
 			Adapter: &InfobloxProviderAdapter{
-				NewInfobloxClientFunc: mockNewInfobloxClientFunc,
+				GetInfobloxClientFunc: mockGetInfobloxClientFunc,
 			},
 		}).SetupWithManager(ctx, mgr),
 	).To(Succeed())

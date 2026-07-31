@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
@@ -11,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func getInfobloxClientForInstance(ctx context.Context, client client.Reader, name, secretNamespace string, newClientFn func(infoblox.Config) (infoblox.Client, error)) (infoblox.Client, error) {
+func getInfobloxClientForInstance(ctx context.Context, client client.Reader, name, secretNamespace string, getClientFunc infoblox.GetClientFunc) (infoblox.Client, error) {
 	instance := &v1alpha1.InfobloxInstance{}
 	if err := client.Get(ctx, types.NamespacedName{Name: name}, instance); err != nil {
 		return nil, fmt.Errorf("failed to fetch instance: %w", err)
@@ -22,21 +23,29 @@ func getInfobloxClientForInstance(ctx context.Context, client client.Reader, nam
 		return nil, fmt.Errorf("failed to fetch secret: %w", err)
 	}
 
-	ac, err := infoblox.AuthConfigFromSecretData(secret.Data)
+	config, err := infobloxConfigForInstance(instance, secret)
 	if err != nil {
 		return nil, fmt.Errorf("credentials secret is invalid: %w", err)
 	}
-	config := infoblox.Config{
+
+	return getClientFunc(instance.Name, instance.ResourceVersion, secret.UID, secret.ResourceVersion, config)
+}
+
+func infobloxConfigForInstance(instance *v1alpha1.InfobloxInstance, secret *corev1.Secret) (infoblox.Config, error) {
+	authConfig, err := infoblox.AuthConfigFromSecretData(secret.Data)
+	if err != nil {
+		return infoblox.Config{}, err
+	}
+
+	return infoblox.Config{
 		HostConfig: infoblox.HostConfig{
-			Host:                   instance.Spec.Host + ":" + instance.Spec.Port,
+			Host:                   net.JoinHostPort(instance.Spec.Host, instance.Spec.Port),
 			Version:                instance.Spec.WAPIVersion,
 			CustomCAPath:           instance.Spec.CustomCAPath,
 			DisableTLSVerification: instance.Spec.DisableTLSVerification,
 			DefaultNetworkView:     instance.Spec.DefaultNetworkView,
 			DefaultDNSView:         instance.Spec.DefaultDNSView,
 		},
-		AuthConfig: ac,
-	}
-
-	return newClientFn(config)
+		AuthConfig: authConfig,
+	}, nil
 }

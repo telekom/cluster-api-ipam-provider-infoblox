@@ -2,6 +2,7 @@ package infoblox
 
 import (
 	"errors"
+	"net"
 	"os"
 	"strings"
 )
@@ -9,9 +10,13 @@ import (
 const infobloxTestEnvPrefix = "CAIP_INFOBLOX_TEST_"
 
 func InfobloxConfigFromEnv() (Config, error) {
+	host := getInfobloxTestEnvVar("host", "")
+	if host == "" {
+		return Config{}, errors.New(infobloxTestEnvPrefix + "HOST is not set")
+	}
 	config := Config{
 		HostConfig: HostConfig{
-			Host:                   getInfobloxTestEnvVar("host", ""),
+			Host:                   net.JoinHostPort(host, getInfobloxTestEnvVar("port", "443")),
 			DisableTLSVerification: strToBool(getInfobloxTestEnvVar("skip_tls_verify", "false")),
 			Version:                getInfobloxTestEnvVar("wapi_version", ""),
 		},
@@ -21,9 +26,6 @@ func InfobloxConfigFromEnv() (Config, error) {
 			ClientCert: byteArrOrNil(getInfobloxTestEnvVar("clientcert", "")),
 			ClientKey:  byteArrOrNil(getInfobloxTestEnvVar("clientkey", "")),
 		},
-	}
-	if config.Host == "" {
-		return Config{}, errors.New(infobloxTestEnvPrefix + "HOST is not set")
 	}
 	return config, nil
 }

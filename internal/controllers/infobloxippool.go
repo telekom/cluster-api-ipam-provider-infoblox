@@ -49,7 +49,7 @@ type InfobloxIPPoolReconciler struct {
 	Scheme *runtime.Scheme
 
 	OperatorNamespace     string
-	NewInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
+	GetInfobloxClientFunc infoblox.GetClientFunc
 }
 
 //+kubebuilder:rbac:groups=ipam.cluster.x-k8s.io,resources=infobloxippools,verbs=get;list;watch;create;update;patch;delete
@@ -124,7 +124,7 @@ func (r *InfobloxIPPoolReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1.InfobloxIPPool) error {
 	logger := log.FromContext(ctx)
 
-	ibclient, err := getInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, r.OperatorNamespace, r.NewInfobloxClientFunc)
+	ibclient, err := getInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, r.OperatorNamespace, r.GetInfobloxClientFunc)
 	if err != nil {
 		conditions.Set(pool, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,

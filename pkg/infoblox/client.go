@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
 	"strings"
 	"time"
@@ -73,15 +74,14 @@ type Config struct {
 
 // NewClient creates a new infoblox client.
 func NewClient(config Config) (Client, error) {
-	hc := ibclient.HostConfig{
-		Version: config.Version,
+	host, port, err := net.SplitHostPort(config.Host)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Infoblox host %q: %w", config.Host, err)
 	}
-	hostParts := strings.SplitN(config.Host, ":", 2)
-	hc.Host = hostParts[0]
-	if len(hostParts) == 2 {
-		hc.Port = hostParts[1]
-	} else {
-		hc.Port = "443"
+	hc := ibclient.HostConfig{
+		Host:    host,
+		Port:    port,
+		Version: config.Version,
 	}
 	ac := ibclient.AuthConfig{
 		Username:   config.Username,

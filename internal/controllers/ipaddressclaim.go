@@ -51,7 +51,7 @@ var (
 
 // InfobloxProviderAdapter reconciles a InfobloxIPPool object.
 type InfobloxProviderAdapter struct {
-	NewInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
+	GetInfobloxClientFunc infoblox.GetClientFunc
 	OperatorNamespace     string
 }
 
@@ -62,7 +62,7 @@ type InfobloxClaimHandler struct {
 	Client                client.Client
 	claim                 *ipamv1.IPAddressClaim
 	pool                  *v1alpha1.InfobloxIPPool
-	newInfobloxClientFunc func(config infoblox.Config) (infoblox.Client, error)
+	getInfobloxClientFunc infoblox.GetClientFunc
 	operatorNamespace     string
 	ibclient              infoblox.Client
 }
@@ -96,7 +96,7 @@ func (r *InfobloxProviderAdapter) ClaimHandlerFor(cl client.Client, claim *ipamv
 	return &InfobloxClaimHandler{
 		Client:                cl,
 		claim:                 claim,
-		newInfobloxClientFunc: r.NewInfobloxClientFunc,
+		getInfobloxClientFunc: r.GetInfobloxClientFunc,
 		operatorNamespace:     r.OperatorNamespace,
 	}
 }
@@ -138,7 +138,7 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (client.Object, *c
 		return h.pool, nil, fmt.Errorf("pool not ready")
 	}
 
-	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.operatorNamespace, h.newInfobloxClientFunc)
+	h.ibclient, err = getInfobloxClientForInstanceFunc(ctx, h.Client, h.pool.Spec.InstanceRef.Name, h.operatorNamespace, h.getInfobloxClientFunc)
 	if err != nil {
 		return h.pool, nil, fmt.Errorf("failed to get infoblox client: %w", err)
 	}
