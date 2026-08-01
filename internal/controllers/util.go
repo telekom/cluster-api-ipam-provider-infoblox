@@ -30,6 +30,7 @@ func getInfobloxClientForInstance(ctx context.Context, client client.Reader, nam
 		HostConfig: infoblox.HostConfig{
 			Host:                   instance.Spec.Host + ":" + instance.Spec.Port,
 			Version:                instance.Spec.WAPIVersion,
+			CustomCAPath:           instance.Spec.CustomCAPath,
 			DisableTLSVerification: instance.Spec.DisableTLSVerification,
 			DefaultNetworkView:     instance.Spec.DefaultNetworkView,
 			DefaultDNSView:         instance.Spec.DefaultDNSView,
