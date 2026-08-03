@@ -51,8 +51,9 @@ var (
 
 // InfobloxProviderAdapter reconciles a InfobloxIPPool object.
 type InfobloxProviderAdapter struct {
-	GetInfobloxClientFunc infoblox.GetClientFunc
-	OperatorNamespace     string
+	GetInfobloxClientFunc   infoblox.GetClientFunc
+	OperatorNamespace       string
+	MaxConcurrentReconciles int
 }
 
 var _ ipamutil.ProviderAdapter = &InfobloxProviderAdapter{}
@@ -79,8 +80,7 @@ func (r *InfobloxProviderAdapter) SetupWithManager(_ context.Context, b *ctrl.Bu
 			}),
 		)).
 		WithOptions(controller.Options{
-			// To avoid race conditions when allocating IP Addresses, we explicitly set this to 1
-			MaxConcurrentReconciles: 1,
+			MaxConcurrentReconciles: r.MaxConcurrentReconciles,
 		}).
 		Owns(&ipamv1.IPAddress{}, builder.WithPredicates(
 			ipampredicates.AddressReferencesPoolKind(metav1.GroupKind{
