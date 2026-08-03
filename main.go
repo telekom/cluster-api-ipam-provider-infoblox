@@ -66,10 +66,11 @@ func init() {
 
 func main() {
 	var (
-		enableLeaderElection bool
-		probeAddr            string
-		watchNamespace       string
-		watchFilter          string
+		enableLeaderElection    bool
+		maxConcurrentReconciles int
+		probeAddr               string
+		watchNamespace          string
+		watchFilter             string
 
 		managerOptions = flags.ManagerOptions{}
 
@@ -83,6 +84,8 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.IntVar(&maxConcurrentReconciles, "max-concurrent-reconciles", 1,
+		"Maximum number of IPAddressClaims reconciled concurrently.")
 	flag.StringVar(&watchNamespace, "namespace", "",
 		"Namespace that the controller watches to reconcile cluster-api objects. If unspecified, the controller watches for cluster-api objects across all namespaces.")
 	flag.StringVar(&watchFilter, "watch-filter", "", "")
@@ -102,6 +105,10 @@ func main() {
 	pflag.CommandLine.AddGoFlagSet(goFlagSet)
 
 	pflag.Parse()
+	if maxConcurrentReconciles < 1 {
+		setupLog.Error(os.ErrInvalid, "max-concurrent-reconciles must be greater than zero", "value", maxConcurrentReconciles)
+		os.Exit(1)
+	}
 
 	tlsOpts, metricsOpts, err := flags.GetManagerOptions(managerOptions)
 	if err != nil {
@@ -154,8 +161,9 @@ func main() {
 		Scheme:           mgr.GetScheme(),
 		WatchFilterValue: watchFilter,
 		Adapter: &controllers.InfobloxProviderAdapter{
-			GetInfobloxClientFunc: infobloxClientCache.Get,
-			OperatorNamespace:     podNamespace,
+			GetInfobloxClientFunc:   infobloxClientCache.Get,
+			OperatorNamespace:       podNamespace,
+			MaxConcurrentReconciles: maxConcurrentReconciles,
 		},
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IPAddressClaim")
