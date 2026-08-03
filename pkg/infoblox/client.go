@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/netip"
 	"strings"
 	"time"
@@ -59,6 +58,7 @@ type AuthConfig struct {
 // HostConfig contains host configuration patameters.
 type HostConfig struct {
 	Host                   string
+	Port                   string
 	Version                string
 	DisableTLSVerification bool
 	CustomCAPath           string
@@ -74,13 +74,9 @@ type Config struct {
 
 // NewClient creates a new infoblox client.
 func NewClient(config Config) (Client, error) {
-	host, port, err := net.SplitHostPort(config.Host)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse Infoblox host %q: %w", config.Host, err)
-	}
 	hc := ibclient.HostConfig{
-		Host:    host,
-		Port:    port,
+		Host:    config.Host,
+		Port:    config.Port,
 		Version: config.Version,
 	}
 	ac := ibclient.AuthConfig{

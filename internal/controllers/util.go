@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"net"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
@@ -39,7 +38,8 @@ func infobloxConfigForInstance(instance *v1alpha1.InfobloxInstance, secret *core
 
 	return infoblox.Config{
 		HostConfig: infoblox.HostConfig{
-			Host:                   net.JoinHostPort(instance.Spec.Host, instance.Spec.Port),
+			Host:                   instance.Spec.Host,
+			Port:                   instance.Spec.Port,
 			Version:                instance.Spec.WAPIVersion,
 			CustomCAPath:           instance.Spec.CustomCAPath,
 			DisableTLSVerification: instance.Spec.DisableTLSVerification,

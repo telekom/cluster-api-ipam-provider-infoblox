@@ -2,7 +2,6 @@ package infoblox
 
 import (
 	"errors"
-	"net"
 	"os"
 	"strings"
 )
@@ -16,7 +15,8 @@ func InfobloxConfigFromEnv() (Config, error) {
 	}
 	config := Config{
 		HostConfig: HostConfig{
-			Host:                   net.JoinHostPort(host, getInfobloxTestEnvVar("port", "443")),
+			Host:                   host,
+			Port:                   getInfobloxTestEnvVar("port", "443"),
 			DisableTLSVerification: strToBool(getInfobloxTestEnvVar("skip_tls_verify", "false")),
 			Version:                getInfobloxTestEnvVar("wapi_version", ""),
 		},

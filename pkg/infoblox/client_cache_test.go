@@ -83,7 +83,7 @@ func TestClientCacheReplacesNewerChangedConfiguration(t *testing.T) {
 			instanceResourceVersion: "2",
 			secretResourceVersion:   "1",
 			changeConfig: func(config infoblox.Config) infoblox.Config {
-				config.Host = "new-infoblox.example.test:443"
+				config.Host = "new-infoblox.example.test"
 				return config
 			},
 		},
@@ -195,7 +195,7 @@ func TestClientCacheRejectsMixedConfigurationSnapshot(t *testing.T) {
 			incomingInstanceVersion: "2",
 			incomingSecretVersion:   "1",
 			changeConfig: func(config infoblox.Config) infoblox.Config {
-				config.Host = "new-infoblox.example.test:443"
+				config.Host = "new-infoblox.example.test"
 				return config
 			},
 		},
@@ -377,7 +377,8 @@ type clientResult struct {
 func cacheTestConfig() infoblox.Config {
 	return infoblox.Config{
 		HostConfig: infoblox.HostConfig{
-			Host:                   "infoblox.example.test:443",
+			Host:                   "infoblox.example.test",
+			Port:                   "443",
 			Version:                "2.12",
 			DisableTLSVerification: true,
 			DefaultNetworkView:     "default",

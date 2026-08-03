@@ -37,7 +37,8 @@ func TestInfobloxConfigForInstance(t *testing.T) {
 
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(config.HostConfig).To(Equal(infoblox.HostConfig{
-		Host:                   "[2001:db8::1]:8443",
+		Host:                   "2001:db8::1",
+		Port:                   "8443",
 		Version:                "2.12",
 		DisableTLSVerification: true,
 		CustomCAPath:           "/etc/infoblox/ca.crt",
