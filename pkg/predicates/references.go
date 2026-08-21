@@ -9,6 +9,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+// ReferencesPoolKind reports whether ref identifies the requested pool kind.
+// Empty APIGroup values are accepted for compatibility with IPAM objects
+// created before the provider group was required in pool references.
+func ReferencesPoolKind(gk metav1.GroupKind, ref ipamv1.IPPoolReference) bool {
+	if ref.Kind != gk.Kind {
+		return false
+	}
+
+	return ref.APIGroup == gk.Group || ref.APIGroup == ""
+}
+
 func processIfClaimReferencesPoolKind(gk metav1.GroupKind, obj client.Object) bool {
 	var claim *ipamv1.IPAddressClaim
 	var ok bool
@@ -16,11 +27,7 @@ func processIfClaimReferencesPoolKind(gk metav1.GroupKind, obj client.Object) bo
 		return false
 	}
 
-	if claim.Spec.PoolRef.Kind != gk.Kind || claim.Spec.PoolRef.APIGroup != gk.Group {
-		return false
-	}
-
-	return true
+	return ReferencesPoolKind(gk, claim.Spec.PoolRef)
 }
 
 // ClaimReferencesPoolKind is a predicate that ensures an ipamv1.IPAddressClaim references a specified pool kind.
@@ -48,11 +55,7 @@ func processIfAddressReferencesPoolKind(gk metav1.GroupKind, obj client.Object) 
 		return false
 	}
 
-	if addr.Spec.PoolRef.Kind != gk.Kind || addr.Spec.PoolRef.APIGroup != gk.Group {
-		return false
-	}
-
-	return true
+	return ReferencesPoolKind(gk, addr.Spec.PoolRef)
 }
 
 // AddressReferencesPoolKind is a predicate that ensures an ipamv1.IPAddress references a specified pool kind.

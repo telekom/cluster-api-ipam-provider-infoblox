@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -55,7 +56,7 @@ func IPAddressByCombinedPoolRef(o client.Object) []string {
 	if !ok {
 		panic(fmt.Sprintf("Expected an IPAddress but got a %T", o))
 	}
-	return []string{IPPoolRefValue(ip.Spec.PoolRef)}
+	return IPPoolRefValues(ip.Spec.PoolRef)
 }
 
 func ipAddressClaimByCombinedPoolRef(o client.Object) []string {
@@ -63,14 +64,30 @@ func ipAddressClaimByCombinedPoolRef(o client.Object) []string {
 	if !ok {
 		panic(fmt.Sprintf("Expected an IPAddressClaim but got a %T", o))
 	}
-	return []string{IPPoolRefValue(ip.Spec.PoolRef)}
+	return IPPoolRefValues(ip.Spec.PoolRef)
 }
 
 // IPPoolRefValue turns an IPPoolReference into an indexable cache key.
 func IPPoolRefValue(ref ipamv1.IPPoolReference) string {
-	group := ref.APIGroup
-	if group == "" {
-		group = ipamv1.GroupVersion.Group
+	return fmt.Sprintf("%s/%s/%s", ref.APIGroup, ref.Kind, ref.Name)
+}
+
+// IPPoolRefValues returns all index keys that can refer to the same provider pool.
+func IPPoolRefValues(ref ipamv1.IPPoolReference) []string {
+	values := []string{IPPoolRefValue(ref)}
+	if ref.Kind != "InfobloxIPPool" ||
+		(ref.APIGroup != "" && ref.APIGroup != v1alpha1.GroupVersion.Group) {
+		return values
 	}
-	return fmt.Sprintf("%s/%s/%s", group, ref.Kind, ref.Name)
+
+	legacyRef := ref
+	legacyRef.APIGroup = ""
+	canonicalRef := ref
+	canonicalRef.APIGroup = v1alpha1.GroupVersion.Group
+	for _, value := range []string{IPPoolRefValue(legacyRef), IPPoolRefValue(canonicalRef)} {
+		if values[0] != value {
+			values = append(values, value)
+		}
+	}
+	return values
 }

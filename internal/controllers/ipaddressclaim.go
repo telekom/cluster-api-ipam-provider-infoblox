@@ -199,8 +199,21 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (_ client.Object, 
 	//
 	// An absent condition counts as not ready: a pool that has never been reconciled has not been
 	// validated against Infoblox, and its network view, DNS view and subnets may not exist.
-	if h.claim.GetDeletionTimestamp().IsZero() &&
-		!conditions.IsTrue(h.pool, clusterv1.ReadyCondition) {
+	// Block new allocations against a pool being deleted, but still allow existing
+	// claims to be cleaned up (ReleaseAddress still needs to run for them).
+	if !h.pool.GetDeletionTimestamp().IsZero() && h.claim.GetDeletionTimestamp().IsZero() {
+		conditions.Set(h.claim, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.PoolNotReadyReason,
+			Message: "the referenced pool is being deleted",
+		})
+		return h.pool, nil, fmt.Errorf("pool is being deleted")
+	}
+
+	// Block new allocations against unready pools, but allow deleting claims to
+	// proceed so ReleaseAddress can clean up allocations during pool deletion.
+	if h.claim.GetDeletionTimestamp().IsZero() && !conditions.IsTrue(h.pool, clusterv1.ReadyCondition) {
 		message := "the referenced pool is not ready"
 		if conditions.Get(h.pool, clusterv1.ReadyCondition) == nil {
 			message = "the referenced pool does not have a Ready condition"
@@ -228,6 +241,10 @@ func (h *InfobloxClaimHandler) ensureIBClient(ctx context.Context, instanceName 
 
 // EnsureAddress ensures address.
 func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv1.IPAddress) (*ctrl.Result, error) {
+	if h.pool == nil {
+		return nil, errors.New("pool not found")
+	}
+
 	hostName, err := h.ensureHostname(ctx)
 	if err != nil {
 		return nil, err
@@ -238,6 +255,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		return nil, err
 	}
 
+	addressWasAllocated := address.Spec.Address != ""
 	var errs []error
 	dnsView := determineDNSView(h.pool.Spec.DNSView, h.ibclient.GetHostConfig().DefaultDNSView, h.pool.Spec.NetworkView)
 	logger := log.FromContext(ctx).WithValues("hostname", hostName)
@@ -283,7 +301,11 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 	case len(errs) > 0:
 		err = errors.Join(errs...)
 	default:
-		err = errors.New("no (valid) subnets in IPPool")
+		if addressWasAllocated {
+			err = fmt.Errorf("allocated address %q is not in any subnet in the referenced pool", address.Spec.Address)
+		} else {
+			err = errors.New("no (valid) subnets in IPPool")
+		}
 	}
 	conditions.Set(h.claim, metav1.Condition{
 		Type:    clusterv1.ReadyCondition,
@@ -295,9 +317,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 	return nil, err
 }
 
-// ReleaseAddress releases the address the claim holds back to Infoblox.
-//
-// What has to be released is described by the IPAddress resource belonging to the claim.
+// ReleaseAddress releases address.
 func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
@@ -340,7 +360,6 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 	if err != nil {
 		return nil, err
 	}
-
 	if err := h.ibclient.ReleaseAddress(networkView, dnsView, subnet, hostName, logger); err != nil {
 		return nil, h.releaseFailed(fmt.Errorf("failed to release address %q: %w", address.Spec.Address, err))
 	}
