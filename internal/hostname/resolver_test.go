@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	metal3v1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
+	metal3v1beta2 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +23,7 @@ func Test(t *testing.T) {
 var _ = Describe("determining hostnames", func() {
 	testScheme := runtime.NewScheme()
 	Expect(ipamv1.AddToScheme(testScheme)).To(Succeed())
-	Expect(metal3v1.AddToScheme(testScheme)).To(Succeed())
+	Expect(metal3v1beta2.AddToScheme(testScheme)).To(Succeed())
 	Expect(capv1.AddToScheme(testScheme)).To(Succeed())
 
 	Context("metal3", func() {
@@ -33,7 +33,7 @@ var _ = Describe("determining hostnames", func() {
 			cl = fake.NewClientBuilder().
 				WithScheme(testScheme).
 				WithObjects(
-					&metal3v1.Metal3Data{
+					&metal3v1beta2.Metal3Data{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "data",
 							Namespace: "default",
@@ -41,12 +41,12 @@ var _ = Describe("determining hostnames", func() {
 								{
 									Name:       "machine",
 									Kind:       "Metal3Machine",
-									APIVersion: metal3v1.GroupVersion.String(),
+									APIVersion: metal3v1beta2.GroupVersion.String(),
 								},
 							},
 						},
 					},
-					&metal3v1.Metal3Machine{
+					&metal3v1beta2.Metal3Machine{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "machine",
 							Namespace: "default",
@@ -61,7 +61,7 @@ var _ = Describe("determining hostnames", func() {
 					},
 				).
 				Build()
-			claim = newClaim("data", "Metal3Data", metal3v1.GroupVersion.String())
+			claim = newClaim("data", "Metal3Data", metal3v1beta2.GroupVersion.String())
 		})
 		Context("OwnerChainResolver", func() {
 			It("finds the capi machine's name", func() {
