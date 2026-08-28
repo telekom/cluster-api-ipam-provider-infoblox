@@ -55,3 +55,30 @@ func TestIPPoolRefValue(t *testing.T) {
 		})
 	}
 }
+
+func TestIPAddressByCombinedPoolRef(t *testing.T) {
+	addr := &ipamv1.IPAddress{}
+	addr.Spec.PoolRef = ipamv1.IPPoolReference{
+		Kind: "InfobloxIPPool",
+		Name: "test-pool",
+	}
+
+	got := IPAddressByCombinedPoolRef(addr)
+	want := ipamv1.GroupVersion.Group + "/InfobloxIPPool/test-pool"
+	if len(got) != 1 || got[0] != want {
+		t.Fatalf("IPAddressByCombinedPoolRef() = %v, want [%q]", got, want)
+	}
+}
+
+// A wrong object type returns an empty slice. It no longer panics.
+func TestIPAddressByCombinedPoolRefWrongType(t *testing.T) {
+	if got := IPAddressByCombinedPoolRef(&ipamv1.IPAddressClaim{}); len(got) != 0 {
+		t.Errorf("IPAddressByCombinedPoolRef() = %v, want empty slice", got)
+	}
+}
+
+func TestIPAddressClaimByCombinedPoolRefWrongType(t *testing.T) {
+	if got := ipAddressClaimByCombinedPoolRef(&ipamv1.IPAddress{}); len(got) != 0 {
+		t.Errorf("ipAddressClaimByCombinedPoolRef() = %v, want empty slice", got)
+	}
+}

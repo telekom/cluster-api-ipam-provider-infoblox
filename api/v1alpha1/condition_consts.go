@@ -37,6 +37,8 @@ const (
 	// InfobloxCheckFailedReason indicates that a check against the Infoblox instance could not be
 	// performed, so whether the checked object exists is unknown.
 	InfobloxCheckFailedReason = "InfobloxCheckFailed"
+	// InfobloxValidationFailedReason indicates that the Infoblox API could not validate the requested object.
+	InfobloxValidationFailedReason = "InfobloxValidationFailed"
 
 	// NetworkViewNotFoundReason indicates that the specified network view could not be found on the Infoblox instance.
 	NetworkViewNotFoundReason = "NetworkViewNotFound"

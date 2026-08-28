@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -100,6 +101,42 @@ func TestGetInfobloxClientForInstancePassesIdentityVersionsAndConfig(t *testing.
 	g.Expect(gotSecretUID).To(Equal(secret.UID))
 	g.Expect(gotSecretVersion).To(Equal(secret.ResourceVersion))
 	g.Expect(gotConfig).To(Equal(expectedConfig))
+}
+
+func TestGetInfobloxClientForInstancePropagatesClientCreationError(t *testing.T) {
+	g := NewWithT(t)
+	scheme := runtime.NewScheme()
+	g.Expect(corev1.AddToScheme(scheme)).To(Succeed())
+	g.Expect(v1alpha1.AddToScheme(scheme)).To(Succeed())
+
+	instance := &v1alpha1.InfobloxInstance{
+		ObjectMeta: metav1.ObjectMeta{Name: "instance-a"},
+		Spec: v1alpha1.InfobloxInstanceSpec{
+			CredentialsSecretRef: v1alpha1.CredentialsReferece{Name: "credentials"},
+		},
+	}
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "credentials", Namespace: "operator"},
+		Data: map[string][]byte{
+			"username":   []byte("user"),
+			"password":   []byte("pass"),
+			"clientCert": []byte("cert-data"),
+			"clientKey":  []byte("key-data"),
+		},
+	}
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(instance, secret).Build()
+	wantErr := errors.New("client config: password=pass cert=cert-data key=key-data")
+
+	_, err := GetInfobloxClientForInstance(context.Background(), k8sClient, instance.Name, secret.Namespace,
+		func(string, string, types.UID, string, infoblox.Config) (infoblox.Client, error) {
+			return nil, wantErr
+		})
+
+	g.Expect(err).To(MatchError("create infoblox client: client config: password=<redacted> cert=<redacted> key=<redacted>"))
+	g.Expect(err.Error()).NotTo(ContainSubstring("password=pass"))
+	g.Expect(err.Error()).NotTo(ContainSubstring("cert-data"))
+	g.Expect(err.Error()).NotTo(ContainSubstring("key-data"))
+	g.Expect(errors.Is(err, wantErr)).To(BeTrue())
 }
 
 func TestInfobloxInstanceReconcilerEvictsMissingInstance(t *testing.T) {
