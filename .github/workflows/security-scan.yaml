@@ -1,0 +1,35 @@
+name: Security Scan
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "30 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    name: Go Vulnerability Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v6.0.2
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # govulncheck -format json exits 0 even when it reports a vulnerability.
+      # hack/govulncheck-gate.sh provides the exit code: a finding in a module
+      # fails the job, a finding in the Go standard library only warns.
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 -format json ./... > govulncheck.json
+
+      - name: Gate on reachable module vulnerabilities
+        run: hack/govulncheck-gate.sh govulncheck.json
