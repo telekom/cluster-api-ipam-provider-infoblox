@@ -210,7 +210,7 @@ func TestWebhookConfigurationIsWiredToAPIServer(t *testing.T) {
 		pool.Spec.Subnets = []v1alpha1.Subnet{{CIDR: "10.20.0.3/24", Gateway: "10.20.0.1"}}
 		err := k8sClient.Update(testCtx, pool)
 		g.Expect(err).To(HaveOccurred(), "API server must reject an invalid update; if this passes the webhook is not wired up")
-		g.Expect(err.Error()).To(ContainSubstring("should match"))
+		g.Expect(err.Error()).To(ContainSubstring("is not a valid CIDR"))
 	})
 
 	t.Run("accepts a subnet without a gateway", func(t *testing.T) {
