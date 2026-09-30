@@ -2,10 +2,13 @@
 package infoblox
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
 	"net/netip"
+	"os"
 
 	"github.com/go-logr/logr"
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
@@ -99,12 +102,25 @@ func NewClient(config Config) (Client, error) {
 	if config.DisableTLSVerification {
 		tlsVerify = "false"
 	} else if config.CustomCAPath != "" {
+		if err := validateCAFile(config.CustomCAPath); err != nil {
+			return nil, err
+		}
 		tlsVerify = config.CustomCAPath
+	}
+	// ibclient calls log.Fatal on an invalid pair, which would crash the whole controller.
+	if config.ClientCert != nil && config.ClientKey != nil {
+		if _, err := tls.X509KeyPair(config.ClientCert, config.ClientKey); err != nil {
+			return nil, fmt.Errorf("invalid client certificate or key: %w", err)
+		}
 	}
 
 	rb := &ibclient.WapiRequestBuilder{}
 	rq := &ibclient.WapiHttpRequestor{}
 	tc := ibclient.NewTransportConfig(tlsVerify, requestTimeoutSeconds, 5)
+	// ibclient silently disables verification if it cannot load the CA file.
+	if !config.DisableTLSVerification && !tc.SslVerify {
+		return nil, fmt.Errorf("failed to enable TLS verification with custom CA file %q", config.CustomCAPath)
+	}
 	con, err := ibclient.NewConnector(hc, ac, tc, rb, rq)
 	if err != nil {
 		// does not happen with the current infoblox-go-client
@@ -118,6 +134,17 @@ func NewClient(config Config) (Client, error) {
 		objMgr:    objMgr,
 		hc:        config.HostConfig,
 	}, nil
+}
+
+func validateCAFile(path string) error {
+	pemData, err := os.ReadFile(path) //nolint:gosec // the admin-configured path is read by ibclient anyway, its content is never exposed
+	if err != nil {
+		return fmt.Errorf("failed to read custom CA file: %w", err)
+	}
+	if !x509.NewCertPool().AppendCertsFromPEM(pemData) {
+		return fmt.Errorf("custom CA file %q contains no valid PEM certificate", path)
+	}
+	return nil
 }
 
 // AuthConfigFromSecretData creates a AuthConfig from the contents of a secret.
