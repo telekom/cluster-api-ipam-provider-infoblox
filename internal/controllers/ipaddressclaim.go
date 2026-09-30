@@ -213,17 +213,32 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (_ client.Object, 
 		})
 		return h.pool, nil, fmt.Errorf("pool not ready: %s", message)
 	}
-	return h.pool, nil, h.ensureIBClient(ctx, h.pool.Spec.InstanceRef.Name)
+	return h.pool, nil, h.ensurePoolIBClient(ctx)
 }
 
-func (h *InfobloxClaimHandler) ensureIBClient(ctx context.Context, instanceName string) (err error) {
+// ensurePoolIBClient creates the Infoblox client for the pool's instance, unless the handler has it already.
+func (h *InfobloxClaimHandler) ensurePoolIBClient(ctx context.Context) (err error) {
 	if h.ibclient != nil {
 		return nil
 	}
-	if h.ibclient, err = h.getInfobloxClientForInstance(ctx, h.Client, instanceName, h.operatorNamespace, h.getInfobloxClientFunc); err != nil {
-		return fmt.Errorf("failed to create Infoblox client for instance %q: %w", instanceName, err)
+	h.ibclient, err = h.newIBClient(ctx, h.pool.Spec.InstanceRef.Name)
+	return err
+}
+
+// ibclientFor returns the Infoblox client for the given instance, reusing the pool's client if it is the same instance.
+func (h *InfobloxClaimHandler) ibclientFor(ctx context.Context, instanceName string) (infoblox.Client, error) {
+	if h.ibclient != nil && h.pool != nil && instanceName == h.pool.Spec.InstanceRef.Name {
+		return h.ibclient, nil
 	}
-	return nil
+	return h.newIBClient(ctx, instanceName)
+}
+
+func (h *InfobloxClaimHandler) newIBClient(ctx context.Context, instanceName string) (infoblox.Client, error) {
+	ibc, err := h.getInfobloxClientForInstance(ctx, h.Client, instanceName, h.operatorNamespace, h.getInfobloxClientFunc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Infoblox client for instance %q: %w", instanceName, err)
+	}
+	return ibc, nil
 }
 
 // EnsureAddress ensures address.
@@ -233,7 +248,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		return nil, err
 	}
 
-	err = h.ensureIBClient(ctx, h.pool.Spec.InstanceRef.Name)
+	err = h.ensurePoolIBClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -336,12 +351,12 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 		"hostname", hostName,
 	)
 
-	err = h.ensureIBClient(ctx, instanceName)
+	ibc, err := h.ibclientFor(ctx, instanceName)
 	if err != nil {
-		return nil, err
+		return nil, h.releaseFailed(err)
 	}
 
-	if err := h.ibclient.ReleaseAddress(networkView, dnsView, subnet, hostName, logger); err != nil {
+	if err := ibc.ReleaseAddress(networkView, dnsView, subnet, hostName, logger); err != nil {
 		return nil, h.releaseFailed(fmt.Errorf("failed to release address %q: %w", address.Spec.Address, err))
 	}
 

@@ -81,6 +81,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		// it before reconciling.
 		resolverErr error
 		reconciler  *ipamutil.ClaimReconciler
+		// requestedInstances records the Infoblox instances the reconciler asked a client for.
+		requestedInstances []string
 	)
 
 	// reconcileClaim runs a single reconciliation for the named claim.
@@ -247,12 +249,14 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		infobloxMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).AnyTimes()
 		resolverMock = hostnamemock.NewMockResolver(mockCtrl)
 		resolverErr = nil
+		requestedInstances = nil
 
 		reconciler = &ipamutil.ClaimReconciler{
 			Client: apiClient,
 			Scheme: apiClient.Scheme(),
 			Adapter: &InfobloxProviderAdapter{
-				GetInfobloxClientForInstanceFunc: func(_ context.Context, _ client.Reader, _, _ string, _ infoblox.GetClientFunc) (infoblox.Client, error) {
+				GetInfobloxClientForInstanceFunc: func(_ context.Context, _ client.Reader, instance, _ string, _ infoblox.GetClientFunc) (infoblox.Client, error) {
+					requestedInstances = append(requestedInstances, instance)
 					return infobloxMock, nil
 				},
 				NewHostnameResolverFunc: func(_ client.Client, _ *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
@@ -922,6 +926,30 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			err = apiClient.Get(ctx, client.ObjectKeyFromObject(&claim), &ipamv1.IPAddressClaim{})
 			Expect(apierrors.IsNotFound(err)).To(BeTrue(), "expected the claim to be gone, got %v", err)
 			expectNoAddress()
+		})
+
+		// The pool's instance may have changed since the allocation, but the reservation stays where it was made.
+		It("should release against the Infoblox instance recorded on the IPAddress", func() {
+			expectAllocationSucceeds("10.0.0.2")
+			expectReleaseSucceeds()
+			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
+			Expect(apiClient.Create(ctx, &claim)).To(Succeed())
+			_, err := reconcileAllocatedClaim(claimName)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Record another instance than the pool's on the IPAddress.
+			address := getAddress(claimName)
+			address.Annotations[infobloxInstanceAnnotation] = "recorded-instance"
+			Expect(apiClient.Update(ctx, address)).To(Succeed())
+
+			Expect(apiClient.Delete(ctx, &claim)).To(Succeed())
+			requestedInstances = nil
+
+			_, err = reconcileClaim(claimName)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(requestedInstances).To(Equal([]string{instanceName, "recorded-instance"}),
+				"expected a client for the pool's instance from FetchPool and one for the recorded instance to release against")
 		})
 	})
 
