@@ -101,22 +101,20 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 	createPool := func() {
 		Expect(apiClient.Create(ctx, pool)).To(Succeed())
 		DeferCleanup(func() {
-			Eventually(func(g Gomega) bool {
-				remaining := &v1alpha1.InfobloxIPPool{}
-				err := apiClient.Get(ctx, poolKey, remaining)
-				if apierrors.IsNotFound(err) {
-					return true
-				}
-				g.Expect(err).NotTo(HaveOccurred())
+			remaining := &v1alpha1.InfobloxIPPool{}
+			err := apiClient.Get(ctx, poolKey, remaining)
+			if apierrors.IsNotFound(err) {
+				return
+			}
+			Expect(err).NotTo(HaveOccurred())
 
-				// Drop the finalizer before deleting. Deleting first would bump the
-				// resourceVersion, making the subsequent update fail with a conflict.
-				if controllerutil.RemoveFinalizer(remaining, ProtectPoolFinalizer) {
-					g.Expect(client.IgnoreNotFound(apiClient.Update(ctx, remaining))).To(Succeed())
-				}
-				g.Expect(client.IgnoreNotFound(apiClient.Delete(ctx, remaining))).To(Succeed())
-				return false
-			}).Should(BeTrue())
+			// Drop the finalizer before deleting. Deleting first would bump the
+			// resourceVersion, making the subsequent update fail with a conflict.
+			if controllerutil.RemoveFinalizer(remaining, ProtectPoolFinalizer) {
+				Expect(apiClient.Update(ctx, remaining)).To(Succeed())
+			}
+			Expect(client.IgnoreNotFound(apiClient.Delete(ctx, remaining))).To(Succeed())
+			expectPoolGone()
 		})
 	}
 

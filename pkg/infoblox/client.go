@@ -14,7 +14,9 @@ import (
 
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
-//go:generate mockgen -destination=ibmock/client.go -package=ibmock . Client
+//go:generate go run go.uber.org/mock/mockgen -destination=ibmock/client.go -package=ibmock . Client
+//go:generate go run go.uber.org/mock/mockgen -source=client.go -exclude_interfaces=Client -destination=ibclientmock/objectmanager.go -package=ibclientmock -mock_names=objectManager=MockObjectManager
+//go:generate go run go.uber.org/mock/mockgen -destination=ibclientmock/connector.go -package=ibclientmock -mock_names=IBConnector=MockConnector github.com/infobloxopen/infoblox-go-client/v2 IBConnector
 
 const (
 	secretKeyUsername   = "username"
@@ -38,9 +40,16 @@ type Client interface {
 	GetHostConfig() *HostConfig
 }
 
+// objectManager is the subset of ibclient.IBObjectManager the client uses.
+type objectManager interface {
+	GetNetworkView(name string) (*ibclient.NetworkView, error)
+	GetDNSView(name string) (*ibclient.View, error)
+	GetNetwork(netview string, cidr string, isIPv6 bool, ea ibclient.EA) (*ibclient.Network, error)
+}
+
 type client struct {
-	connector *ibclient.Connector
-	objMgr    ibclient.IBObjectManager
+	connector ibclient.IBConnector
+	objMgr    objectManager
 	hc        HostConfig
 }
 

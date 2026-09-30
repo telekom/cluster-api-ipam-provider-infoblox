@@ -2,6 +2,7 @@ version: "2"
 run:
   build-tags:
     - e2e
+    - integration
   allow-parallel-runners: true
 linters:
   default: none
