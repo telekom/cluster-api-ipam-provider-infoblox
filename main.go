@@ -157,7 +157,8 @@ func main() {
 		Scheme:           mgr.GetScheme(),
 		WatchFilterValue: watchFilter,
 		Adapter: &controllers.InfobloxProviderAdapter{
-			Client:                           mgr.GetClient(),
+			K8sClient:                        mgr.GetClient(),
+			K8sReader:                        mgr.GetAPIReader(),
 			OperatorNamespace:                podNamespace,
 			MaxConcurrentReconciles:          maxConcurrentReconciles,
 			GetInfobloxClientFunc:            infobloxClientCache.Get,

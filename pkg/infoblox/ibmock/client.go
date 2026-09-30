@@ -116,6 +116,21 @@ func (mr *MockClientMockRecorder) GetOrAllocateAddress(networkView, dnsView, sub
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrAllocateAddress", reflect.TypeOf((*MockClient)(nil).GetOrAllocateAddress), networkView, dnsView, subnet, hostname, zone, logger)
 }
 
+// IsAddressAssigned mocks base method.
+func (m *MockClient) IsAddressAssigned(networkView, hostname string, addr netip.Addr) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsAddressAssigned", networkView, hostname, addr)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsAddressAssigned indicates an expected call of IsAddressAssigned.
+func (mr *MockClientMockRecorder) IsAddressAssigned(networkView, hostname, addr any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsAddressAssigned", reflect.TypeOf((*MockClient)(nil).IsAddressAssigned), networkView, hostname, addr)
+}
+
 // ReleaseAddress mocks base method.
 func (m *MockClient) ReleaseAddress(networkView, dnsView string, subnet netip.Prefix, hostname string, logger logr.Logger) error {
 	m.ctrl.T.Helper()

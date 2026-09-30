@@ -59,6 +59,16 @@ var ipamAPIVersion = ipamv1.GroupVersion.String()
 // defaultSubnets is the subnet layout used by most pool fixtures.
 var defaultSubnets = []v1alpha1.Subnet{{CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"}}
 
+// failingReader fails every Get with err.
+type failingReader struct {
+	client.Reader
+	err error
+}
+
+func (r failingReader) Get(_ context.Context, _ client.ObjectKey, _ client.Object, _ ...client.GetOption) error {
+	return r.err
+}
+
 // The claim reconciler is driven directly, one reconciliation at a time. Everything it depends on
 // is injected through the adapter the spec builds, so there is no shared mock state and no
 // controller running in the background.
@@ -80,9 +90,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		// resolverErr makes building the hostname resolver fail. Specs that exercise that path set
 		// it before reconciling.
 		resolverErr error
-		reconciler  *ipamutil.ClaimReconciler
 		// requestedInstances records the Infoblox instances the reconciler asked a client for.
 		requestedInstances []string
+		reconciler         *ipamutil.ClaimReconciler
 	)
 
 	// reconcileClaim runs a single reconciliation for the named claim.
@@ -132,6 +142,15 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 	expectAllocationSucceeds := func(address string) {
 		infobloxMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(netip.MustParseAddr(address), nil).MinTimes(1)
+	}
+
+	// expectAddressVerified makes the Infoblox mock report whether the given address is still assigned
+	// to the claim's host, and asserts that no replacement is allocated.
+	expectAddressVerified := func(networkView, address string, assigned bool) {
+		infobloxMock.EXPECT().IsAddressAssigned(networkView, claimName, netip.MustParseAddr(address)).
+			Return(assigned, nil).MinTimes(1)
+		infobloxMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(0)
 	}
 
 	// expectReleaseSucceeds asserts that the address of the claim under test is released against
@@ -255,6 +274,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			Client: apiClient,
 			Scheme: apiClient.Scheme(),
 			Adapter: &InfobloxProviderAdapter{
+				K8sReader: apiClient,
 				GetInfobloxClientForInstanceFunc: func(_ context.Context, _ client.Reader, instance, _ string, _ infoblox.GetClientFunc) (infoblox.Client, error) {
 					requestedInstances = append(requestedInstances, instance)
 					return infobloxMock, nil
@@ -390,7 +410,11 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 			_, err := reconcileAllocatedClaim(claimName)
 
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(And(
+				ContainSubstring(`failed to allocate an address for host "test-claim" from InfobloxIPPool "test-pool"`),
+				ContainSubstring("subnet 10.0.0.0/24: no available addresses"),
+				ContainSubstring("subnet 10.0.1.0/24: no available addresses"),
+			)))
 			expectNoAddress()
 			Expect(Object(&claim)()).To(HaveField("Status.Conditions", ContainElement(And(
 				HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
@@ -508,6 +532,55 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			Expect(err).To(MatchError(ContainSubstring("no machine owns this claim")))
 			expectNoAddress()
 		})
+
+		It("should keep the claim when its hostname cannot be resolved for the release", func() {
+			gomock.InOrder(
+				resolverMock.EXPECT().GetHostname(gomock.Any(), gomock.Any()).Return("resolved-host", nil),
+				resolverMock.EXPECT().GetHostname(gomock.Any(), gomock.Any()).
+					Return("", errors.New("no machine owns this claim")).MinTimes(1),
+			)
+			expectAllocationSucceeds("10.0.0.2")
+			infobloxMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
+			Expect(apiClient.Create(ctx, &claim)).To(Succeed())
+			_, err := reconcileAllocatedClaim(claimName)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Removing the cached hostname, as claims allocated by old versions never had it.
+			Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(&claim), &claim)).To(Succeed())
+			delete(claim.Annotations, hostnameAnnotation)
+			Expect(apiClient.Update(ctx, &claim)).To(Succeed())
+
+			Expect(apiClient.Delete(ctx, &claim)).To(Succeed())
+
+			_, err = reconcileClaim(claimName)
+
+			Expect(err).To(MatchError(ContainSubstring("failed to get hostname: no machine owns this claim")))
+			Expect(getAddress(claimName).Spec.Address).To(Equal("10.0.0.2"))
+			Expect(Object(&claim)()).To(And(
+				HaveField("ObjectMeta.Finalizers", ContainElement(ipamutil.ReleaseAddressFinalizer)),
+				HaveField("Status.Conditions", ContainElement(And(
+					HaveField("Reason", BeEquivalentTo(v1alpha1.ReleaseFailedReason)),
+					HaveField("Message", ContainSubstring("failed to get hostname: no machine owns this claim")),
+				))),
+			))
+		})
+	})
+
+	When("the API server cannot be asked whether the claim already has an IPAddress", func() {
+		It("should not allocate an Address", func() {
+			createPool()
+			infobloxMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Times(0)
+			reconciler.Adapter.(*InfobloxProviderAdapter).K8sReader = failingReader{Reader: apiClient, err: errors.New("api server unavailable")}
+			claim := newClaim(claimName, namespace, v1alpha1.InfobloxIPPoolKind, poolName)
+			Expect(apiClient.Create(ctx, &claim)).To(Succeed())
+
+			_, err := reconcileAllocatedClaim(claimName)
+
+			Expect(err).To(MatchError(ContainSubstring(`failed to read IPAddress "test-claim" from the API server: api server unavailable`)))
+			expectNoAddress()
+		})
 	})
 
 	When("the referenced pool does not exist", func() {
@@ -541,7 +614,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 
 			_, err := reconcileAllocatedClaim(claimName)
 
-			Expect(err).To(MatchError(ContainSubstring("pool not ready")))
+			Expect(err).To(MatchError(ContainSubstring(`InfobloxIPPool "test-pool" has no Ready condition`)))
 			expectNoAddress()
 			Expect(Object(&claim)()).To(HaveField("Status.Conditions", ContainElement(And(
 				HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
@@ -773,7 +846,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		})
 
 		It("should add the owner references and finalizer", func() {
-			expectAllocationSucceeds("10.0.0.2")
+			expectAddressVerified("default", "10.0.0.2", true)
 			expected := expectedAddress(claimName, "10.0.0.2", "10.0.0.1")
 			Expect(apiClient.Create(ctx, &ipamv1.IPAddress{
 				ObjectMeta: metav1.ObjectMeta{Name: claimName, Namespace: namespace},
@@ -790,7 +863,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		})
 
 		It("should keep an unrelated owner reference", func() {
-			expectAllocationSucceeds("10.0.0.2")
+			expectAddressVerified("default", "10.0.0.2", true)
 			unrelatedOwnerRef := metav1.OwnerReference{
 				APIVersion: "alpha-dummy",
 				Kind:       "dummy-kind",
@@ -818,6 +891,115 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			// reference rather than a generated one, so assert it separately.
 			By("keeping the UID of the reference it did not create")
 			Expect(getAddress(claimName).OwnerReferences[0].UID).To(BeEquivalentTo("abc-dummy-123"))
+		})
+	})
+
+	// Every reconciliation of a live claim runs EnsureAddress again. For an address that was allocated
+	// before, Infoblox is only asked whether it still holds it; a missing reservation must never be
+	// replaced, as the IPAddress is immutable and the machine most likely still uses the address.
+	When("the claim already has an IPAddress", func() {
+		var existing ipamv1.IPAddress
+
+		BeforeEach(func() {
+			createPool()
+			expected := expectedAddress(claimName, "10.0.0.2", "10.0.0.1")
+			existing = ipamv1.IPAddress{
+				ObjectMeta: metav1.ObjectMeta{Name: claimName, Namespace: namespace},
+				Spec:       expected.Spec,
+			}
+		})
+
+		createClaim := func() ipamv1.IPAddressClaim {
+			Expect(apiClient.Create(ctx, &existing)).To(Succeed())
+			claim := newClaim(claimName, namespace, v1alpha1.InfobloxIPPoolKind, poolName)
+			Expect(apiClient.Create(ctx, &claim)).To(Succeed())
+			return claim
+		}
+
+		It("should keep the address and mark the claim ready when Infoblox still holds it", func() {
+			expectAddressVerified("default", "10.0.0.2", true)
+			claim := createClaim()
+
+			_, err := reconcileAllocatedClaim(claimName)
+
+			Expect(err).NotTo(HaveOccurred())
+			expected := expectedAddress(claimName, "10.0.0.2", "10.0.0.1")
+			Expect(getAddress(claimName)).To(EqualObject(&expected, IgnoreAutogeneratedMetadata, IgnoreUIDsOnIPAddress))
+			Expect(Object(&claim)()).To(HaveField("Status.Conditions", ContainElement(And(
+				HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+				HaveField("Status", BeEquivalentTo(metav1.ConditionTrue)),
+				HaveField("Reason", BeEquivalentTo(v1alpha1.AddressAllocatedReason)),
+			))))
+		})
+
+		It("should not allocate a replacement when Infoblox no longer holds the address", func() {
+			expectAddressVerified("default", "10.0.0.2", false)
+			claim := createClaim()
+
+			_, err := reconcileAllocatedClaim(claimName)
+
+			Expect(err).To(MatchError(ContainSubstring(`address 10.0.0.2 of IPAddress "test-claim" is not assigned to host "test-claim"`)))
+			Expect(getAddress(claimName).Spec.Address).To(Equal("10.0.0.2"))
+			Expect(Object(&claim)()).To(HaveField("Status.Conditions", ContainElement(And(
+				HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+				HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
+				HaveField("Reason", BeEquivalentTo(v1alpha1.AddressDriftedReason)),
+				HaveField("Message", ContainSubstring("not allocating a replacement")),
+			))))
+		})
+
+		It("should report a failed check without allocating", func() {
+			infobloxMock.EXPECT().IsAddressAssigned(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(false, errors.New("infoblox unreachable")).MinTimes(1)
+			infobloxMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Times(0)
+			claim := createClaim()
+
+			_, err := reconcileAllocatedClaim(claimName)
+
+			Expect(err).To(MatchError(ContainSubstring("infoblox unreachable")))
+			Expect(getAddress(claimName).Spec.Address).To(Equal("10.0.0.2"))
+			Expect(Object(&claim)()).To(HaveField("Status.Conditions", ContainElement(And(
+				HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+				HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
+				HaveField("Reason", BeEquivalentTo(v1alpha1.VerificationFailedReason)),
+				HaveField("Message", ContainSubstring(`failed to verify address 10.0.0.2 of IPAddress "test-claim" in Infoblox: infoblox unreachable`)),
+			))))
+		})
+
+		It("should report an invalid address without asking Infoblox", func() {
+			infobloxMock.EXPECT().IsAddressAssigned(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			infobloxMock.EXPECT().GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Times(0)
+			existing.Spec.Address = "not-an-ip"
+			claim := createClaim()
+
+			_, err := reconcileAllocatedClaim(claimName)
+
+			Expect(err).To(MatchError(ContainSubstring(`IPAddress "test-claim" holds an invalid address "not-an-ip"`)))
+			Expect(getAddress(claimName).Spec.Address).To(Equal("not-an-ip"))
+			Expect(Object(&claim)()).To(HaveField("Status.Conditions", ContainElement(And(
+				HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+				HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
+				HaveField("Reason", BeEquivalentTo(v1alpha1.AddressInvalidReason)),
+			))))
+		})
+
+		It("should check the address where it was recorded to be allocated", func() {
+			expectAddressVerified("recorded-view", "10.0.0.2", true)
+			existing.Annotations = map[string]string{
+				infobloxInstanceAnnotation: "recorded-instance",
+				networkViewAnnotation:      "recorded-view",
+				dnsViewAnnotation:          "recorded-dns-view",
+			}
+			createClaim()
+
+			_, err := reconcileAllocatedClaim(claimName)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(requestedInstances).To(ContainElement("recorded-instance"))
+			By("keeping the recorded location instead of overwriting it with the pool's")
+			Expect(getAddress(claimName).Annotations).To(Equal(existing.Annotations))
 		})
 	})
 
@@ -928,6 +1110,32 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			expectNoAddress()
 		})
 
+		It("should keep the claim and its address when Infoblox cannot release it", func() {
+			expectAllocationSucceeds("10.0.0.2")
+			infobloxMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(errors.New("infoblox unavailable")).MinTimes(1)
+			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
+			Expect(apiClient.Create(ctx, &claim)).To(Succeed())
+			_, err := reconcileAllocatedClaim(claimName)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(apiClient.Delete(ctx, &claim)).To(Succeed())
+
+			_, err = reconcileClaim(claimName)
+
+			Expect(err).To(MatchError(ContainSubstring(`failed to release address 10.0.0.2 of host "test-claim": infoblox unavailable`)))
+			Expect(getAddress(claimName).Spec.Address).To(Equal("10.0.0.2"))
+			Expect(Object(&claim)()).To(And(
+				HaveField("ObjectMeta.Finalizers", ContainElement(ipamutil.ReleaseAddressFinalizer)),
+				HaveField("Status.Conditions", ContainElement(And(
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+					HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
+					HaveField("Reason", BeEquivalentTo(v1alpha1.ReleaseFailedReason)),
+					HaveField("Message", ContainSubstring(`failed to release address 10.0.0.2 of host "test-claim": infoblox unavailable`)),
+				))),
+			))
+		})
+
 		// The pool's instance may have changed since the allocation, but the reservation stays where it was made.
 		It("should release against the Infoblox instance recorded on the IPAddress", func() {
 			expectAllocationSucceeds("10.0.0.2")
@@ -963,7 +1171,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		fakeClient := fake.NewClientBuilder().
 			WithScheme(scheme.Scheme).
 			Build()
-		adapter := &InfobloxProviderAdapter{Client: fakeClient}
+		adapter := &InfobloxProviderAdapter{K8sClient: fakeClient}
 
 		requests := adapter.infobloxIPPoolToIPClaims(context.Background(), pool)
 

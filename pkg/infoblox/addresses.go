@@ -150,6 +150,32 @@ func nextAvailableIBFunc(subnet netip.Prefix, view string) string {
 	return fmt.Sprintf("func:nextavailableip:%s,%s", subnet.String(), view)
 }
 
+// IsAddressAssigned reports whether the host record of the given hostname holds the given address.
+func (c *client) IsAddressAssigned(networkView, hostname string, addr netip.Addr) (bool, error) {
+	hr, err := c.getOrNewHostRecord(networkView, "", "", hostname)
+	if err != nil {
+		return false, fmt.Errorf("failed to get Infoblox host record: %w", err)
+	}
+
+	assigned := make([]*string, 0, len(hr.Ipv4Addrs)+len(hr.Ipv6Addrs))
+	for _, ip := range hr.Ipv4Addrs {
+		assigned = append(assigned, ip.Ipv4Addr)
+	}
+	for _, ip := range hr.Ipv6Addrs {
+		assigned = append(assigned, ip.Ipv6Addr)
+	}
+	for _, ip := range assigned {
+		if ip == nil {
+			continue
+		}
+		// Compared parsed, as IPv6 addresses have several valid spellings.
+		if nip, err := netip.ParseAddr(*ip); err == nil && nip == addr {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // ReleaseAddress releases the IP address of the given hostname in the given subnet.
 func (c *client) ReleaseAddress(networkView, dnsView string, subnet netip.Prefix, hostname string, logger logr.Logger) error {
 	hr, err := c.getOrNewHostRecord(networkView, dnsView, "", hostname)

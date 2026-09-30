@@ -119,6 +119,57 @@ func TestNextAvailableIBFunc(t *testing.T) {
 	g.Expect(nextAvailableIBFunc(testSubnetV4, testNetworkView)).To(Equal("func:nextavailableip:10.0.0.0/24,my-view"))
 }
 
+func TestIsAddressAssigned(t *testing.T) {
+	tests := []struct {
+		name      string
+		lookupErr error
+		records   []ibclient.HostRecord
+		addr      string
+		want      bool
+	}{
+		{name: "IPv4 address is assigned", records: []ibclient.HostRecord{newHostRecord("fd00::5", "10.0.0.5")}, addr: "10.0.0.5", want: true},
+		{name: "IPv6 address in another notation is assigned", records: []ibclient.HostRecord{newHostRecord("fd00:0:0::5")}, addr: "fd00::5", want: true},
+		{name: "another address in the same subnet", records: []ibclient.HostRecord{newHostRecord("10.0.0.6")}, addr: "10.0.0.5"},
+		{name: "host record without addresses", records: []ibclient.HostRecord{newHostRecord()}, addr: "10.0.0.5"},
+		{name: "no host record", lookupErr: ibclient.NewNotFoundError("not found"), addr: "10.0.0.5"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			c, connector, _ := newMockedClient(t)
+			expectHostRecordLookup(connector, tt.lookupErr, tt.records...)
+
+			assigned, err := c.IsAddressAssigned(testNetworkView, testHostname, netip.MustParseAddr(tt.addr))
+
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(assigned).To(Equal(tt.want))
+		})
+	}
+}
+
+func TestIsAddressAssignedReportsLookupErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		err     error
+		records []ibclient.HostRecord
+		wantErr string
+	}{
+		{name: "request fails", err: rawWapiError(400, "Bad Request", wapiErrorContents), wantErr: "GetHostRecord"},
+		{name: "multiple host records", records: []ibclient.HostRecord{newHostRecord("10.0.0.5"), newHostRecord("10.0.0.6")}, wantErr: "multiple (2) host records"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			c, connector, _ := newMockedClient(t)
+			expectHostRecordLookup(connector, tt.err, tt.records...)
+
+			_, err := c.IsAddressAssigned(testNetworkView, testHostname, netip.MustParseAddr("10.0.0.5"))
+
+			g.Expect(err).To(MatchError(ContainSubstring(tt.wantErr)))
+		})
+	}
+}
+
 func TestGetOrAllocateAddressReturnsExistingAddress(t *testing.T) {
 	g := NewWithT(t)
 	c, connector, _ := newMockedClient(t)

@@ -76,6 +76,10 @@ func (stubInfobloxClient) GetOrAllocateAddress(_, _ string, _ netip.Prefix, _, _
 	return netip.MustParseAddr("10.0.0.2"), nil
 }
 
+func (stubInfobloxClient) IsAddressAssigned(_, _ string, _ netip.Addr) (bool, error) {
+	return true, nil
+}
+
 func (stubInfobloxClient) ReleaseAddress(_, _ string, _ netip.Prefix, _ string, _ logr.Logger) error {
 	return nil
 }
@@ -149,6 +153,7 @@ var _ = Describe("controllers running under a manager", Ordered, ContinueOnFailu
 			Client: mgr.GetClient(),
 			Scheme: mgr.GetScheme(),
 			Adapter: &InfobloxProviderAdapter{
+				K8sReader:                        mgr.GetAPIReader(),
 				OperatorNamespace:                namespace,
 				GetInfobloxClientFunc:            getInfobloxClient,
 				GetInfobloxClientForInstanceFunc: GetInfobloxClientForInstance,

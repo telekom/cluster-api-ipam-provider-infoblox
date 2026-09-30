@@ -34,6 +34,8 @@ const (
 type Client interface {
 	// GetOrAllocateAddress allocates an address for a given hostname if none exists, and returns the new or existing address.
 	GetOrAllocateAddress(networkView, dnsView string, subnet netip.Prefix, hostname, zone string, logger logr.Logger) (netip.Addr, error)
+	// IsAddressAssigned reports whether the host record of a given hostname holds the given address. It never allocates.
+	IsAddressAssigned(networkView, hostname string, addr netip.Addr) (bool, error)
 	// ReleaseAddress releases an address for a given hostname.
 	ReleaseAddress(networkView, dnsView string, subnet netip.Prefix, hostname string, logger logr.Logger) error
 	// CheckNetworkViewExists checks if Infoblox network view exists

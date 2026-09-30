@@ -112,6 +112,13 @@ var _ = Describe("IP Address Management", func() {
 			_, err := ibObjMgr.GetHostRecord("", "", hostname, "", "")
 			Expect(infoblox.IsNotFoundError(err)).To(BeTrue(), "expected no host record, got %v", err)
 		})
+
+		It("reports an address as not assigned", func() {
+			assigned, err := testClient.IsAddressAssigned(testView, hostname, v4subnet1.Addr().Next())
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(assigned).To(BeFalse())
+		})
 	})
 
 	When("a host record with one address exists", func() {
@@ -156,6 +163,23 @@ var _ = Describe("IP Address Management", func() {
 				func() netip.Prefix { return v6subnet1 }, func() netip.Prefix { return v6subnet2 }, false),
 			Entry("adds an IPv4 address to an IPv6 record",
 				func() netip.Prefix { return v6subnet1 }, func() netip.Prefix { return v4subnet1 }, false),
+		)
+
+		DescribeTable("reports whether an address is assigned to the host record",
+			func(subnet func() netip.Prefix) {
+				hostRecord = createHostRecord(hostname, subnet())
+				addr := addressesOf(hostRecord)[0]
+
+				assigned, err := testClient.IsAddressAssigned(testView, hostname, addr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(assigned).To(BeTrue(), "expected %s to be assigned", addr)
+
+				assigned, err = testClient.IsAddressAssigned(testView, hostname, addr.Next())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(assigned).To(BeFalse(), "expected %s not to be assigned", addr.Next())
+			},
+			Entry("IPv4", func() netip.Prefix { return v4subnet1 }),
+			Entry("IPv6", func() netip.Prefix { return v6subnet1 }),
 		)
 
 		DescribeTable("deletes the host record when releasing its only address",
