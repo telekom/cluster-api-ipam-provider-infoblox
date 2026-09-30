@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
-	"time"
 
 	"github.com/go-logr/logr"
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
@@ -23,6 +22,9 @@ const (
 	secretKeyPassowrd   = "password"
 	secretKeyClientCert = "clientCert"
 	secretKeyClientKey  = "clientKey"
+
+	// requestTimeoutSeconds is in seconds because ibclient multiplies it by time.Second itself.
+	requestTimeoutSeconds = 30
 )
 
 // Client is a wrapper around the infoblox client that can allocate and release addresses indempotently.
@@ -102,7 +104,7 @@ func NewClient(config Config) (Client, error) {
 
 	rb := &ibclient.WapiRequestBuilder{}
 	rq := &ibclient.WapiHttpRequestor{}
-	tc := ibclient.NewTransportConfig(tlsVerify, int(time.Second), 5)
+	tc := ibclient.NewTransportConfig(tlsVerify, requestTimeoutSeconds, 5)
 	con, err := ibclient.NewConnector(hc, ac, tc, rb, rq)
 	if err != nil {
 		// does not happen with the current infoblox-go-client
