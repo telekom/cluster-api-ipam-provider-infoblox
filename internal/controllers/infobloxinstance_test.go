@@ -18,6 +18,8 @@ package controllers
 
 import (
 	"errors"
+	"net"
+	"net/url"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -176,12 +178,12 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 
 	When("the infoblox client cannot be created", func() {
 		It("should set the instance to not ready", func() {
-			clientErr = errors.New("authentication rejected")
-			createCredentialsSecret(map[string]string{"username": "user", "password": "wrong"})
+			clientErr = errors.New("custom CA file contains no valid PEM certificate")
+			createCredentialsSecret(map[string]string{"username": "user", "password": "pass"})
 			createObj(instance)
 
-			expectCondition(metav1.ConditionFalse, v1alpha1.AuthenticationFailedReason,
-				"could not create infoblox client: authentication rejected")
+			expectCondition(metav1.ConditionFalse, v1alpha1.ConfigurationInvalidReason,
+				"could not create infoblox client: custom CA file contains no valid PEM certificate")
 		})
 	})
 
@@ -206,6 +208,20 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 
 			expectFailedCondition("infoblox said no", v1alpha1.InfobloxCheckFailedReason,
 				`could not check default network view "instance-view"`)
+		})
+
+		It("should report a connection failure if Infoblox cannot be reached", func() {
+			instanceMock.EXPECT().CheckNetworkViewExists("instance-view").
+				Return(false, infoblox.RequestError{
+					Endpoint:  "infoblox.example:443",
+					Operation: "GetNetworkView",
+					Params:    map[string]string{"view": "instance-view"},
+					Err:       &url.Error{Op: "Get", URL: "https://infoblox.example:443/wapi", Err: &net.DNSError{Err: "no such host", Name: "infoblox.example"}},
+				}).Times(1)
+			createObj(instance)
+
+			expectFailedCondition("no such host", v1alpha1.InfobloxConnectionFailedReason,
+				`could not check default network view "instance-view": infoblox "infoblox.example:443" GetNetworkView [view="instance-view"]: transport error`)
 		})
 
 		It("should set the instance to ready if the view exists", func() {

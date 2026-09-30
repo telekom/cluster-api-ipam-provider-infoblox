@@ -2,11 +2,10 @@
 package infoblox
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -128,68 +127,50 @@ func AuthConfigFromSecretData(data map[string][]byte) (AuthConfig, error) {
 
 func (c *client) CheckNetworkViewExists(view string) (bool, error) {
 	_, err := c.objMgr.GetNetworkView(view)
-	if err != nil {
-		if isNotFound(err) {
-			return false, nil
-		}
-		return false, err
+	// GetNetworkView returns this untyped error if GetObject yields an empty result without error (e.g. a "null" body).
+	if err != nil && err.Error() == fmt.Sprintf("network view '%s' not found", view) {
+		return false, nil
 	}
-	return true, nil
+	return c.handleExistsResult(err, "GetNetworkView", map[string]string{"view": view})
 }
 
 func (c *client) CheckDNSViewExists(view string) (bool, error) {
 	_, err := c.objMgr.GetDNSView(view)
-	if err != nil {
-		if isNotFound(err) {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
+	return c.handleExistsResult(err, "GetDNSView", map[string]string{"view": view})
 }
 
 func (c *client) CheckNetworkExists(view string, subnet netip.Prefix) (bool, error) {
 	_, err := c.objMgr.GetNetwork(view, subnet.String(), subnet.Addr().Is6(), ibclient.EA{})
-	if err != nil {
-		if isNotFound(err) {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
+	return c.handleExistsResult(err, "GetNetwork", map[string]string{
+		"view":   view,
+		"subnet": subnet.String(),
+	})
 }
 
 func (c *client) GetHostConfig() *HostConfig {
 	return &c.hc
 }
 
-func isNotFound(err error) bool {
+// handleExistsResult returns true if the object exists,
+// false if it does not exist,
+// and an error if there was an error checking for existence.
+func (c *client) handleExistsResult(err error, operation string, params map[string]string) (bool, error) {
 	if err == nil {
-		return false
+		return true, nil
 	}
-	return strings.HasSuffix(err.Error(), "not found")
+	if IsNotFoundError(err) {
+		return false, nil
+	}
+	return false, c.wrapAsRequestError(err, operation, params)
 }
 
-// tryParseWapiError tries to parse a wapi error as good as possible to extract the actual error message from the infoblox API response.
-// If parsing fails for any reason, the original error is returned.
-func tryParseWapiError(in error) error {
-	if in == nil {
+func (c *client) wrapAsRequestError(err error, operation string, params map[string]string) error {
+	if err == nil {
 		return nil
 	}
-	raw := in.Error()
-	_, content, ok := strings.Cut(raw, "Contents:")
-	if !ok {
-		return in
+	port := c.hc.Port
+	if port == "" {
+		port = "443"
 	}
-	type wapiErrorContent struct {
-		Error string `json:"Error"`
-		Code  string `json:"code"`
-		Text  string `json:"text"`
-	}
-	var wapiErr wapiErrorContent
-	err := json.Unmarshal([]byte(content), &wapiErr)
-	if err != nil {
-		return in
-	}
-	return fmt.Errorf("%s (%s)", wapiErr.Text, wapiErr.Code)
+	return newRequestError(err, net.JoinHostPort(c.hc.Host, port), operation, params)
 }

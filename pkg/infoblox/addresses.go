@@ -29,12 +29,11 @@ func (c *client) getOrNewHostRecord(networkView, dnsView, dnsZone, hostname stri
 
 	var records []ibclient.HostRecord
 	err := c.connector.GetObject(ibclient.NewEmptyHostRecord(), "", ibclient.NewQueryParams(false, params), &records)
-	if err != nil {
-		// since ibclient.NotFoundError has a pointer receiver on it's Error() method, we can't use errors.As() here.
-		if _, ok := err.(*ibclient.NotFoundError); !ok {
-			return nil, tryParseWapiError(err)
-		}
-		// not found -> return new preconfigured hostRecord
+	if err != nil && !IsNotFoundError(err) {
+		return nil, c.wrapAsRequestError(err, "GetHostRecord", map[string]string{"name": hostname, "network_view": networkView})
+	}
+	switch {
+	case len(records) == 0:
 		hostRecord := ibclient.NewEmptyHostRecord()
 		hostRecord.Name = ptr.To(hostname)
 		hostRecord.NetworkView = networkView
@@ -44,18 +43,22 @@ func (c *client) getOrNewHostRecord(networkView, dnsView, dnsZone, hostname stri
 			hostRecord.View = toDNSView(dnsView)
 		}
 		return hostRecord, nil
-	}
-	if len(records) == 1 {
+	case len(records) == 1:
 		return &records[0], nil
+	default:
+		return nil, fmt.Errorf(
+			"multiple (%d) host records found for hostname %q in network view %q",
+			len(records), hostname, networkView)
 	}
-	return nil, fmt.Errorf("multiple host records found for hostname %q in network view %q and dns view %q", hostname, networkView, dnsView)
 }
 
 // createOrUpdateHostRecord creates or updates a host record and then fetches the updated record.
 func (c *client) createOrUpdateHostRecord(hr *ibclient.HostRecord, logger logr.Logger) error {
 	ref := ""
 	var err error
+	operation := "UpdateHostRecord"
 	if hr.Ref == "" {
+		operation = "CreateHostRecord"
 		logger.Info("Creating Infoblox host record", "hostname", *hr.Name)
 		ref, err = c.connector.CreateObject(hr)
 	} else {
@@ -65,14 +68,17 @@ func (c *client) createOrUpdateHostRecord(hr *ibclient.HostRecord, logger logr.L
 	}
 
 	if err != nil {
-		return tryParseWapiError(err)
+		return c.wrapAsRequestError(err, operation, map[string]string{"name": *hr.Name, "ref": hr.Ref})
 	}
 
 	logger.Info("Fetching Infoblox host record", "hostname", *hr.Name)
 	params := map[string]string{
 		"_return_fields": strings.Join(hostRecordReturnFields, ","),
 	}
-	return tryParseWapiError(c.connector.GetObject(hr, ref, ibclient.NewQueryParams(false, params), hr))
+	if err := c.connector.GetObject(hr, ref, ibclient.NewQueryParams(false, params), hr); err != nil {
+		return c.wrapAsRequestError(err, "GetHostRecordByRef", map[string]string{"name": *hr.Name, "ref": ref})
+	}
+	return nil
 }
 
 // getAllocatedHostRecordAddrInSubnet returns the first IP address in a host record that is in the given subnet.
@@ -148,7 +154,7 @@ func nextAvailableIBFunc(subnet netip.Prefix, view string) string {
 func (c *client) ReleaseAddress(networkView, dnsView string, subnet netip.Prefix, hostname string, logger logr.Logger) error {
 	hr, err := c.getOrNewHostRecord(networkView, dnsView, "", hostname)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get Infoblox host record: %w", err)
 	}
 
 	removed := false
@@ -190,14 +196,16 @@ func (c *client) ReleaseAddress(networkView, dnsView string, subnet netip.Prefix
 	if len(hr.Ipv4Addrs) == 0 && len(hr.Ipv6Addrs) == 0 {
 		logger.Info("Deleting Infoblox host record", "hostname", hostname)
 		if _, err := c.connector.DeleteObject(hr.Ref); err != nil {
-			return fmt.Errorf("failed to delete Infoblox host record: %w", tryParseWapiError(err))
+			return fmt.Errorf("failed to delete Infoblox host record: %w",
+				c.wrapAsRequestError(err, "DeleteHostRecord", map[string]string{"name": hostname, "ref": hr.Ref}))
 		}
 		return nil
 	}
 	prepareHostRecordForUpdate(hr)
 	logger.Info("Updating Infoblox host record", "hostname", hostname)
 	if _, err = c.connector.UpdateObject(hr, hr.Ref); err != nil {
-		return fmt.Errorf("failed to update Infoblox host record: %w", tryParseWapiError(err))
+		return fmt.Errorf("failed to update Infoblox host record: %w",
+			c.wrapAsRequestError(err, "UpdateHostRecord", map[string]string{"name": hostname, "ref": hr.Ref}))
 	}
 	return nil
 }

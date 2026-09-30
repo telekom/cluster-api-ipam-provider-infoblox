@@ -115,7 +115,7 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		conditions.Set(instance, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
-			Reason:  v1alpha1.AuthenticationFailedReason,
+			Reason:  v1alpha1.ConfigurationInvalidReason,
 			Message: fmt.Sprintf("could not create infoblox client: %v", err),
 		})
 		return ctrl.Result{}, nil

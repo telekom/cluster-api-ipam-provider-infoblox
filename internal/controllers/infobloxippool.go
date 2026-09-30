@@ -154,7 +154,7 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 		conditions.Set(pool, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
-			Reason:  v1alpha1.AuthenticationFailedReason,
+			Reason:  v1alpha1.ConfigurationInvalidReason,
 			Message: fmt.Sprintf("client creation failed for instance %q: %s", pool.Spec.InstanceRef.Name, err),
 		})
 		return err

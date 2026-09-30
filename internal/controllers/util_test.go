@@ -2,6 +2,9 @@ package controllers
 
 import (
 	"context"
+	"errors"
+	"net"
+	"net/url"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -11,6 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -120,4 +125,87 @@ func TestInfobloxInstanceReconcilerEvictsMissingInstance(t *testing.T) {
 
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(deletedInstance).To(Equal(request.Name))
+}
+
+func TestMarkFailedInfobloxRequestClassifiesErrors(t *testing.T) {
+	dnsErr := &url.Error{Op: "Get", URL: "https://infoblox.example:443/wapi", Err: &net.DNSError{Err: "no such host", Name: "infoblox.example"}}
+
+	tests := []struct {
+		name       string
+		err        error
+		wantReason string
+	}{
+		{
+			name: "transport error in a request error",
+			err: infoblox.RequestError{
+				Endpoint:  "infoblox.example:443",
+				Operation: "GetNetworkView",
+				Params:    map[string]string{"view": "TDCN"},
+				Err:       dnsErr,
+			},
+			wantReason: v1alpha1.InfobloxConnectionFailedReason,
+		},
+		{
+			name:       "transport error without a request error",
+			err:        dnsErr,
+			wantReason: v1alpha1.InfobloxConnectionFailedReason,
+		},
+		{
+			name: "WAPI error",
+			err: infoblox.RequestError{
+				Endpoint:  "infoblox.example:443",
+				Operation: "GetNetworkView",
+				Err:       infoblox.WapiError{HTTPError: infoblox.HTTPError{StatusCode: 400}, Message: "Field is not searchable"},
+			},
+			wantReason: v1alpha1.InfobloxCheckFailedReason,
+		},
+		{
+			name: "WAPI 401",
+			err: infoblox.RequestError{
+				Endpoint:  "infoblox.example:443",
+				Operation: "GetNetworkView",
+				Err:       infoblox.WapiError{HTTPError: infoblox.HTTPError{StatusCode: 401}, Message: "Authorization required"},
+			},
+			wantReason: v1alpha1.AuthenticationFailedReason,
+		},
+		{
+			name: "HTTP 403 without WAPI body",
+			err: infoblox.RequestError{
+				Endpoint:  "infoblox.example:443",
+				Operation: "GetNetworkView",
+				Err:       infoblox.HTTPError{StatusCode: 403},
+			},
+			wantReason: v1alpha1.AuthenticationFailedReason,
+		},
+		{
+			name: "HTTP 502 without WAPI body",
+			err: infoblox.RequestError{
+				Endpoint:  "infoblox.example:443",
+				Operation: "GetNetworkView",
+				Err:       infoblox.HTTPError{StatusCode: 502},
+			},
+			wantReason: v1alpha1.InfobloxCheckFailedReason,
+		},
+		{
+			name:       "other error",
+			err:        errors.New("unexpected end of JSON input"),
+			wantReason: v1alpha1.InfobloxCheckFailedReason,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			obj := &v1alpha1.InfobloxInstance{}
+
+			err := markFailedInfobloxRequest(obj, tt.err, v1alpha1.NetworkViewNotFoundReason, `default network view "TDCN"`)
+
+			g.Expect(errors.Unwrap(err)).To(Equal(tt.err))
+			g.Expect(err).To(MatchError(ContainSubstring(`failed to check default network view "TDCN"`)))
+			condition := conditions.Get(obj, clusterv1.ReadyCondition)
+			g.Expect(condition).NotTo(BeNil())
+			g.Expect(condition.Status).To(Equal(metav1.ConditionFalse))
+			g.Expect(condition.Reason).To(Equal(tt.wantReason))
+			g.Expect(condition.Message).To(Equal(`could not check default network view "TDCN": ` + tt.err.Error()))
+		})
+	}
 }

@@ -274,7 +274,7 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 			_, err := reconcileValidatedPool()
 
 			Expect(err).To(HaveOccurred())
-			Expect(getPool()).To(haveReadyCondition(metav1.ConditionFalse, v1alpha1.AuthenticationFailedReason))
+			Expect(getPool()).To(haveReadyCondition(metav1.ConditionFalse, v1alpha1.ConfigurationInvalidReason))
 		})
 	})
 
