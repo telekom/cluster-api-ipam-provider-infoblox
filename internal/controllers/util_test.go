@@ -20,6 +20,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+// wapiRejection is a request that Infoblox itself rejected with a WAPI error.
+var wapiRejection = infoblox.RequestError{
+	Endpoint:  "infoblox.example:443",
+	Operation: "GetNetworkView",
+	Err:       infoblox.WapiError{HTTPError: infoblox.HTTPError{StatusCode: 400}, Message: "infoblox said no"},
+}
+
 func TestInfobloxConfigForInstance(t *testing.T) {
 	g := NewWithT(t)
 	instance := &v1alpha1.InfobloxInstance{
@@ -157,7 +164,7 @@ func TestMarkFailedInfobloxRequestClassifiesErrors(t *testing.T) {
 				Operation: "GetNetworkView",
 				Err:       infoblox.WapiError{HTTPError: infoblox.HTTPError{StatusCode: 400}, Message: "Field is not searchable"},
 			},
-			wantReason: v1alpha1.InfobloxCheckFailedReason,
+			wantReason: v1alpha1.InfobloxRequestFailedReason,
 		},
 		{
 			name: "WAPI 401",
@@ -184,12 +191,12 @@ func TestMarkFailedInfobloxRequestClassifiesErrors(t *testing.T) {
 				Operation: "GetNetworkView",
 				Err:       infoblox.HTTPError{StatusCode: 502},
 			},
-			wantReason: v1alpha1.InfobloxCheckFailedReason,
+			wantReason: v1alpha1.InfobloxConnectionFailedReason,
 		},
 		{
 			name:       "other error",
 			err:        errors.New("unexpected end of JSON input"),
-			wantReason: v1alpha1.InfobloxCheckFailedReason,
+			wantReason: v1alpha1.InfobloxConnectionFailedReason,
 		},
 	}
 	for _, tt := range tests {

@@ -16,25 +16,17 @@ import (
 
 // markFailedInfobloxRequest sets the `Ready` condition to the provided Setter for a failed infoblox request.
 //
-// If an error is provided the condition reason will be `InfobloxConnectionFailedReason` for a transport
-// error, `AuthenticationFailedReason` if Infoblox rejected the credentials, and the generic
-// `InfobloxCheckFailedReason` otherwise. The error will be wrapped with the `subject` and returned.
+// If an error is provided the condition reason comes from infobloxErrorReason. The error will be wrapped
+// with the `subject` and returned.
 //
 // If no error is provided the condition will be set to the provided
 // `notFoundReason` instead and no error (nil) will be returned.
 func markFailedInfobloxRequest(obj conditions.Setter, err error, notFoundReason, subject string) error {
 	if err != nil {
-		reason := v1alpha1.InfobloxCheckFailedReason
-		switch {
-		case infoblox.IsTransportError(err):
-			reason = v1alpha1.InfobloxConnectionFailedReason
-		case infoblox.IsAuthError(err):
-			reason = v1alpha1.AuthenticationFailedReason
-		}
 		conditions.Set(obj, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
-			Reason:  reason,
+			Reason:  infobloxErrorReason(err),
 			Message: fmt.Sprintf("could not check %s: %v", subject, err),
 		})
 		return fmt.Errorf("failed to check %s: %w", subject, err)
@@ -47,6 +39,20 @@ func markFailedInfobloxRequest(obj conditions.Setter, err error, notFoundReason,
 		Message: fmt.Sprintf("could not find %s", subject),
 	})
 	return nil
+}
+
+// infobloxErrorReason returns the condition reason for a failed Infoblox request: AuthenticationFailed for
+// HTTP 401 or 403, InfobloxRequestFailed for any other WAPI error, and InfobloxConnectionFailed for
+// each error without a WAPI response.
+func infobloxErrorReason(err error) string {
+	switch {
+	case infoblox.IsAuthError(err):
+		return v1alpha1.AuthenticationFailedReason
+	case infoblox.IsWapiError(err):
+		return v1alpha1.InfobloxRequestFailedReason
+	default:
+		return v1alpha1.InfobloxConnectionFailedReason
+	}
 }
 
 // GetInfobloxClientForInstance returns an Infoblox client for the named InfobloxInstance, built

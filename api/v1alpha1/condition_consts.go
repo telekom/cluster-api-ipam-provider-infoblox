@@ -42,10 +42,10 @@ const (
 	AuthenticationFailedReason = "AuthenticationFailed"
 	// ConfigurationInvalidReason indicates that no Infoblox client can be created from the configuration, e.g. because of an invalid TLS setting.
 	ConfigurationInvalidReason = "ConfigurationInvalid"
-	// InfobloxCheckFailedReason indicates that a check against the Infoblox instance could not be
-	// performed, so whether the checked object exists is unknown.
-	InfobloxCheckFailedReason = "InfobloxCheckFailed"
-	// InfobloxConnectionFailedReason indicates that a check against the Infoblox instance failed before a WAPI response was received.
+	// InfobloxRequestFailedReason indicates that Infoblox rejected a request with a WAPI error.
+	InfobloxRequestFailedReason = "InfobloxRequestFailed"
+	// InfobloxConnectionFailedReason indicates that an Infoblox request failed without a WAPI response, e.g. because of a
+	// transport error, an HTTP error of a proxy or an unreadable response.
 	InfobloxConnectionFailedReason = "InfobloxConnectionFailed"
 
 	// NetworkViewNotFoundReason indicates that the specified network view could not be found on the Infoblox instance.

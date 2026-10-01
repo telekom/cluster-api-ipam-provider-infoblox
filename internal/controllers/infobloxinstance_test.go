@@ -203,10 +203,10 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 
 		It("should set the instance to not ready and return an error if the view cannot be looked up", func() {
 			instanceMock.EXPECT().CheckNetworkViewExists("instance-view").
-				Return(false, errors.New("infoblox said no")).Times(1)
+				Return(false, wapiRejection).Times(1)
 			createObj(instance)
 
-			expectFailedCondition("infoblox said no", v1alpha1.InfobloxCheckFailedReason,
+			expectFailedCondition("infoblox said no", v1alpha1.InfobloxRequestFailedReason,
 				`could not check default network view "instance-view"`)
 		})
 
@@ -249,10 +249,10 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 
 		It("should set the instance to not ready and return an error if the view cannot be looked up", func() {
 			instanceMock.EXPECT().CheckDNSViewExists("instance-dns-view").
-				Return(false, errors.New("infoblox said no")).Times(1)
+				Return(false, wapiRejection).Times(1)
 			createObj(instance)
 
-			expectFailedCondition("infoblox said no", v1alpha1.InfobloxCheckFailedReason,
+			expectFailedCondition("infoblox said no", v1alpha1.InfobloxRequestFailedReason,
 				`could not check default DNS view "instance-dns-view"`)
 		})
 
