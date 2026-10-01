@@ -3,6 +3,7 @@
 package infoblox_test
 
 import (
+	"fmt"
 	"net/netip"
 
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
@@ -239,6 +240,73 @@ var _ = Describe("IP Address Management", func() {
 				func() []netip.Prefix { return []netip.Prefix{v4subnet1, v6subnet1} }, func() netip.Prefix { return v4subnet1 }),
 			Entry("mixed record, releasing IPv6",
 				func() []netip.Prefix { return []netip.Prefix{v4subnet1, v6subnet1} }, func() netip.Prefix { return v6subnet1 }),
+		)
+	})
+
+	When("the network is full", func() {
+		var (
+			hostnames   []string
+			fullNetwork *ibclient.Network
+		)
+		BeforeEach(func() {
+			hostnames = nil
+			fullNetwork = nil
+		})
+		AfterEach(func() {
+			for _, name := range hostnames {
+				hr, err := ibObjMgr.GetHostRecord("", "", name, "", "")
+				if infoblox.IsNotFoundError(err) || (err == nil && hr == nil) {
+					continue
+				}
+				Expect(err).NotTo(HaveOccurred())
+				_, err = ibObjMgr.DeleteHostRecord(hr.Ref)
+				Expect(err).NotTo(HaveOccurred())
+			}
+			if fullNetwork != nil {
+				_, err := ibObjMgr.DeleteNetwork(fullNetwork.Ref)
+				Expect(err).NotTo(HaveOccurred())
+			}
+		})
+
+		// fillNetwork allocates addresses in a small network until Infoblox has none left, and returns its error.
+		fillNetwork := func(container string, prefix uint, isIPv6 bool) (netip.Prefix, error) {
+			var subnet netip.Prefix
+			fullNetwork, subnet = allocateNetwork(container, prefix, isIPv6)
+			for i := range 5 {
+				name := fmt.Sprintf("full-%d.%s", i, domain)
+				hostnames = append(hostnames, name)
+				if _, err := testClient.GetOrAllocateAddress(testView, testView, subnet, name, "", logger); err != nil {
+					ExpectWithOffset(1, i).To(BeNumerically(">", 0), "expected at least one allocation before the network is full")
+					return subnet, err
+				}
+			}
+			Fail(fmt.Sprintf("network %s was not full after 5 allocations", subnet))
+			return subnet, nil
+		}
+
+		DescribeTable("reports a full network when creating a host record",
+			func(container func() string, prefix uint, isIPv6 bool) {
+				_, err := fillNetwork(container(), prefix, isIPv6)
+
+				Expect(infoblox.IsNoAddressAvailableError(err)).To(BeTrue(), "expected a full network, got %v", err)
+			},
+			Entry("IPv4", func() string { return v4testIBNetwork.Cidr }, uint(30), false),
+			Entry("IPv6", func() string { return v6testIBNetwork.Cidr }, uint(126), true),
+		)
+
+		DescribeTable("reports a full network when adding an address to an existing host record",
+			func(container func() string, prefix uint, isIPv6 bool, otherSubnet func() netip.Prefix) {
+				subnet, _ := fillNetwork(container(), prefix, isIPv6)
+				name := "full-update." + domain
+				hostnames = append(hostnames, name)
+				createHostRecord(name, otherSubnet())
+
+				_, err := testClient.GetOrAllocateAddress(testView, testView, subnet, name, "", logger)
+
+				Expect(infoblox.IsNoAddressAvailableError(err)).To(BeTrue(), "expected a full network, got %v", err)
+			},
+			Entry("IPv4", func() string { return v4testIBNetwork.Cidr }, uint(30), false, func() netip.Prefix { return v4subnet1 }),
+			Entry("IPv6", func() string { return v6testIBNetwork.Cidr }, uint(126), true, func() netip.Prefix { return v6subnet1 }),
 		)
 	})
 })

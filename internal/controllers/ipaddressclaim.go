@@ -292,6 +292,7 @@ func (h *InfobloxClaimHandler) allocateNewAddress(ctx context.Context, logger lo
 	logger = logger.WithValues("networkView", h.pool.Spec.NetworkView, "dnsView", dnsView)
 
 	var errs []error
+	fullSubnets := 0
 	for _, sub := range h.pool.Spec.Subnets {
 		logger := logger.WithValues("subnet", sub.CIDR)
 		subnet, err := netip.ParsePrefix(sub.CIDR)
@@ -304,6 +305,9 @@ func (h *InfobloxClaimHandler) allocateNewAddress(ctx context.Context, logger lo
 		allocatedAddr, err := ibc.GetOrAllocateAddress(h.pool.Spec.NetworkView, dnsView, subnet, hostName, h.pool.Spec.DNSZone, logger)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("subnet %s: %w", subnet, err))
+			if infoblox.IsNoAddressAvailableError(err) {
+				fullSubnets++
+			}
 			continue
 		}
 
@@ -316,16 +320,21 @@ func (h *InfobloxClaimHandler) allocateNewAddress(ctx context.Context, logger lo
 		return nil
 	}
 
+	reason := v1alpha1.AllocationFailedReason
 	switch {
 	case len(errs) > 0:
 		err = fmt.Errorf("failed to allocate an address for host %q from InfobloxIPPool %q: %w", hostName, h.pool.Name, errors.Join(errs...))
+		// With any other error, the pool is not proven to be exhausted, and that error needs attention first.
+		if fullSubnets == len(errs) {
+			reason = v1alpha1.NoAddressAvailableReason
+		}
 	default:
 		err = fmt.Errorf("InfobloxIPPool %q has no valid subnets", h.pool.Name)
 	}
 	conditions.Set(h.claim, metav1.Condition{
 		Type:    clusterv1.ReadyCondition,
 		Status:  metav1.ConditionFalse,
-		Reason:  v1alpha1.AllocationFailedReason,
+		Reason:  reason,
 		Message: err.Error(),
 	})
 	logger.Error(err, "unable to ensure address allocated")

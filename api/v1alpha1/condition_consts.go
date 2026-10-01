@@ -26,6 +26,8 @@ const (
 	AddressAllocatedReason = "AddressAllocated"
 	// AllocationFailedReason indicates that the allocation of an IP address from the InfobloxIPPool has failed.
 	AllocationFailedReason = "AllocationFailed"
+	// NoAddressAvailableReason indicates that no subnet of the InfobloxIPPool has an available IP address.
+	NoAddressAvailableReason = "NoAddressAvailable"
 	// AddressDriftedReason indicates that the address of a claim's IPAddress is no longer assigned to the claim's host in Infoblox.
 	AddressDriftedReason = "AddressDrifted"
 	// AddressInvalidReason indicates that the address of a claim's IPAddress is invalid and cannot be used.

@@ -132,6 +132,17 @@ func IsTransportError(err error) bool {
 	return errors.As(err, &netErr)
 }
 
+// wapiConflictCode is the WAPI error code of a full network, but also of other conflicts such as duplicate names.
+const wapiConflictCode = "Client.Ibap.Data.Conflict"
+
+// IsNoAddressAvailableError reports whether Infoblox rejected an allocation because the network has no available address.
+func IsNoAddressAvailableError(err error) bool {
+	var wapiErr WapiError
+	return errors.As(err, &wapiErr) &&
+		wapiErr.Code == wapiConflictCode &&
+		strings.Contains(wapiErr.Message, "available IP address")
+}
+
 // IsNotFoundError reports whether err indicates that the requested Infoblox object does not exist.
 func IsNotFoundError(err error) bool {
 	// ibclient.NotFoundError has a pointer receiver on its Error() method, so the target must be **NotFoundError.

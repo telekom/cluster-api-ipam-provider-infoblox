@@ -296,3 +296,40 @@ func TestIsAuthError(t *testing.T) {
 		})
 	}
 }
+
+func TestIsNoAddressAvailableError(t *testing.T) {
+	// The response of WAPI 2.11.2 for a full IPv4 and IPv6 network.
+	const networkFull = `{ "Error": "AdmConDataError: None (IBDataConflictError: IB.Data.Conflict:Cannot find 1 available IP address(es) in this network.)",
+  "code": "Client.Ibap.Data.Conflict",
+  "text": "Cannot find 1 available IP address(es) in this network."
+}`
+	const duplicateName = `{ "Error": "AdmConDataError: None (IBDataConflictError: IB.Data.Conflict:The record 'host.example.com' already exists.)",
+  "code": "Client.Ibap.Data.Conflict",
+  "text": "The record 'host.example.com' already exists."
+}`
+	const otherCode = `{ "Error": "AdmConProtoError: Cannot find 1 available IP address(es) in this network.",
+  "code": "Client.Ibap.Proto",
+  "text": "Cannot find 1 available IP address(es) in this network."
+}`
+	fullErr := newRequestError(rawWapiError(400, "Bad Request", networkFull), "host:443", "UpdateHostRecord", nil)
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "nil", err: nil, want: false},
+		{name: "full network", err: fullErr, want: true},
+		{name: "full network, wrapped", err: fmt.Errorf("subnet 10.0.0.0/30: %w", fullErr), want: true},
+		{name: "other conflict", err: newRequestError(rawWapiError(400, "Bad Request", duplicateName), "host:443", "Op", nil), want: false},
+		{name: "same text with another code", err: newRequestError(rawWapiError(400, "Bad Request", otherCode), "host:443", "Op", nil), want: false},
+		{name: "HTTP 400 without WAPI body", err: newRequestError(rawWapiError(400, "Bad Request", "<html>400</html>"), "host:443", "Op", nil), want: false},
+		{name: "plain error with the text", err: errors.New("cannot find 1 available IP address(es) in this network"), want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			g.Expect(IsNoAddressAvailableError(tt.err)).To(Equal(tt.want))
+		})
+	}
+}
