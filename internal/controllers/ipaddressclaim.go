@@ -89,8 +89,6 @@ type InfobloxClaimHandler struct {
 	claim             *ipamv1.IPAddressClaim
 	pool              *v1alpha1.InfobloxIPPool
 	operatorNamespace string
-	// ibclient is the Infoblox client for the pool's instance.
-	ibclient infoblox.Client
 
 	getInfobloxClientFunc        infoblox.GetClientFunc
 	getInfobloxClientForInstance GetInfobloxClientForInstanceFn
@@ -188,9 +186,8 @@ func (r *InfobloxProviderAdapter) ClaimHandlerFor(cl client.Client, claim *ipamv
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas;metal3machines,verbs=get;list;watch
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=vspheremachines;vspherevms,verbs=get;list;watch
 
-// FetchPool fetches the claim's pool and the Infoblox client for it. Unless the claim is being deleted,
-// a paused claim or a pool that is not ready stops the reconciliation here.
-// h.pool stays nil if the pool cannot be fetched.
+// FetchPool fetches the claim's pool. Unless the claim is being deleted, a paused claim or a pool that is not
+// ready stops the reconciliation here. h.pool stays nil if the pool cannot be fetched.
 func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (_ client.Object, _ *ctrl.Result, err error) {
 	pool := &v1alpha1.InfobloxIPPool{}
 	if err = h.k8sClient.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, pool); err != nil {
@@ -228,26 +225,10 @@ func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (_ client.Object, 
 		})
 		return h.pool, nil, errors.New(message)
 	}
-	return h.pool, nil, h.ensurePoolIBClient(ctx)
+	return h.pool, nil, nil
 }
 
-// ensurePoolIBClient creates the Infoblox client for the pool's instance, unless the handler has it already.
-func (h *InfobloxClaimHandler) ensurePoolIBClient(ctx context.Context) (err error) {
-	if h.ibclient != nil {
-		return nil
-	}
-	h.ibclient, err = h.newIBClient(ctx, h.pool.Spec.InstanceRef.Name)
-	return err
-}
-
-// ibclientFor returns the Infoblox client for the given instance, reusing the pool's client if it is the same instance.
-func (h *InfobloxClaimHandler) ibclientFor(ctx context.Context, instanceName string) (infoblox.Client, error) {
-	if h.ibclient != nil && h.pool != nil && instanceName == h.pool.Spec.InstanceRef.Name {
-		return h.ibclient, nil
-	}
-	return h.newIBClient(ctx, instanceName)
-}
-
+// newIBClient returns the Infoblox client for the given instance.
 func (h *InfobloxClaimHandler) newIBClient(ctx context.Context, instanceName string) (infoblox.Client, error) {
 	ibc, err := h.getInfobloxClientForInstance(ctx, h.k8sClient, instanceName, h.operatorNamespace, h.getInfobloxClientFunc)
 	if err != nil {
@@ -263,23 +244,27 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 		return nil, err
 	}
 
-	err = h.ensurePoolIBClient(ctx)
+	// An existing address is checked where it was allocated, which is not necessarily the pool's instance.
+	instanceName := h.pool.Spec.InstanceRef.Name
+	if address.Spec.Address != "" && address.Annotations[infobloxInstanceAnnotation] != "" {
+		instanceName = address.Annotations[infobloxInstanceAnnotation]
+	}
+	ibc, err := h.newIBClient(ctx, instanceName)
 	if err != nil {
+		conditions.Set(h.claim, metav1.Condition{
+			Type:    clusterv1.ReadyCondition,
+			Status:  metav1.ConditionFalse,
+			Reason:  v1alpha1.ConfigurationInvalidReason,
+			Message: err.Error(),
+		})
 		return nil, err
 	}
 
-	dnsView := determineDNSView(h.pool.Spec.DNSView, h.ibclient.GetHostConfig().DefaultDNSView, h.pool.Spec.NetworkView)
-	logger := log.FromContext(ctx).WithValues(
-		"instance", h.pool.Spec.InstanceRef.Name,
-		"networkView", h.pool.Spec.NetworkView,
-		"dnsView", dnsView,
-		"hostname", hostName,
-	)
-
+	logger := log.FromContext(ctx).WithValues("instance", instanceName, "hostname", hostName)
 	if address.Spec.Address == "" {
-		err = h.allocateNewAddress(ctx, logger, address, hostName, dnsView)
+		err = h.allocateNewAddress(ctx, logger, ibc, address, hostName)
 	} else {
-		err = h.verifyAllocatedAddress(ctx, logger, address, hostName, dnsView)
+		err = h.verifyAllocatedAddress(logger, ibc, address, hostName, instanceName)
 	}
 	if err != nil {
 		return nil, err
@@ -293,7 +278,7 @@ func (h *InfobloxClaimHandler) EnsureAddress(ctx context.Context, address *ipamv
 }
 
 // allocateNewAddress reserves an address for the claim's host in the first pool subnet that has one available.
-func (h *InfobloxClaimHandler) allocateNewAddress(ctx context.Context, logger logr.Logger, address *ipamv1.IPAddress, hostName, dnsView string) error {
+func (h *InfobloxClaimHandler) allocateNewAddress(ctx context.Context, logger logr.Logger, ibc infoblox.Client, address *ipamv1.IPAddress, hostName string) error {
 	// The cache may not show an existing IPAddress yet; only an error keeps CreateOrPatch from allocating and creating it again.
 	err := h.k8sReader.Get(ctx, client.ObjectKeyFromObject(address), &ipamv1.IPAddress{})
 	if err == nil {
@@ -302,6 +287,9 @@ func (h *InfobloxClaimHandler) allocateNewAddress(ctx context.Context, logger lo
 	if !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to read IPAddress %q from the API server: %w", address.Name, err)
 	}
+
+	dnsView := determineDNSView(h.pool.Spec.DNSView, ibc.GetHostConfig().DefaultDNSView, h.pool.Spec.NetworkView)
+	logger = logger.WithValues("networkView", h.pool.Spec.NetworkView, "dnsView", dnsView)
 
 	var errs []error
 	for _, sub := range h.pool.Spec.Subnets {
@@ -313,7 +301,7 @@ func (h *InfobloxClaimHandler) allocateNewAddress(ctx context.Context, logger lo
 			continue
 		}
 
-		allocatedAddr, err := h.ibclient.GetOrAllocateAddress(h.pool.Spec.NetworkView, dnsView, subnet, hostName, h.pool.Spec.DNSZone, logger)
+		allocatedAddr, err := ibc.GetOrAllocateAddress(h.pool.Spec.NetworkView, dnsView, subnet, hostName, h.pool.Spec.DNSZone, logger)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("subnet %s: %w", subnet, err))
 			continue
@@ -346,7 +334,7 @@ func (h *InfobloxClaimHandler) allocateNewAddress(ctx context.Context, logger lo
 
 // verifyAllocatedAddress checks that the address of an existing IPAddress is still assigned to the claim's host in Infoblox.
 // A missing reservation is reported, not replaced: the IPAddress is immutable and the address is likely still in use.
-func (h *InfobloxClaimHandler) verifyAllocatedAddress(ctx context.Context, logger logr.Logger, address *ipamv1.IPAddress, hostName, dnsView string) error {
+func (h *InfobloxClaimHandler) verifyAllocatedAddress(logger logr.Logger, ibc infoblox.Client, address *ipamv1.IPAddress, hostName, instanceName string) error {
 	addr, err := netip.ParseAddr(address.Spec.Address)
 	if err != nil {
 		err = fmt.Errorf("IPAddress %q holds an invalid address %q: %w", address.Name, address.Spec.Address, err)
@@ -359,16 +347,10 @@ func (h *InfobloxClaimHandler) verifyAllocatedAddress(ctx context.Context, logge
 		return err
 	}
 
-	// Check where the address was allocated, which is not necessarily what the pool describes now.
-	instanceName, networkView := h.pool.Spec.InstanceRef.Name, h.pool.Spec.NetworkView
+	networkView := h.pool.Spec.NetworkView
 	annotated := address.Annotations[infobloxInstanceAnnotation] != ""
 	if annotated {
-		instanceName, networkView = address.Annotations[infobloxInstanceAnnotation], address.Annotations[networkViewAnnotation]
-	}
-
-	ibc, err := h.ibclientFor(ctx, instanceName)
-	if err != nil {
-		return err
+		networkView = address.Annotations[networkViewAnnotation]
 	}
 
 	assigned, err := ibc.IsAddressAssigned(networkView, hostName, addr)
@@ -394,8 +376,9 @@ func (h *InfobloxClaimHandler) verifyAllocatedAddress(ctx context.Context, logge
 		return err
 	}
 
-	// Addresses allocated before the annotations were introduced get them now.
+	// Addresses allocated before the annotations were introduced get them now. They were checked against the pool's instance.
 	if !annotated {
+		dnsView := determineDNSView(h.pool.Spec.DNSView, ibc.GetHostConfig().DefaultDNSView, h.pool.Spec.NetworkView)
 		setProvenanceAnnotations(address, h.pool.Spec.InstanceRef.Name, h.pool.Spec.NetworkView, dnsView)
 	}
 	logger.V(1).Info("address verification successful", "address", address.Spec.Address)
@@ -433,7 +416,7 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 		return releaseFailed(err)
 	}
 
-	instanceName, networkView, dnsView, err := h.releaseCoordinates(address)
+	instanceName, networkView, dnsView, ibc, err := h.releaseCoordinates(ctx, address)
 	if err != nil {
 		return releaseFailed(err)
 	}
@@ -452,9 +435,11 @@ func (h *InfobloxClaimHandler) ReleaseAddress(ctx context.Context) (*ctrl.Result
 		"hostname", hostName,
 	)
 
-	ibc, err := h.ibclientFor(ctx, instanceName)
-	if err != nil {
-		return releaseFailed(err)
+	if ibc == nil {
+		ibc, err = h.newIBClient(ctx, instanceName)
+		if err != nil {
+			return releaseFailed(err)
+		}
 	}
 
 	err = ibc.ReleaseAddress(networkView, dnsView, subnet, hostName, logger)
@@ -498,25 +483,31 @@ func allocatedSubnet(address *ipamv1.IPAddress) (netip.Prefix, error) {
 }
 
 // releaseCoordinates returns the Infoblox instance, network view and DNS view to release against, as recorded on
-// the IPAddress, falling back to the pool for addresses allocated before these were recorded.
-func (h *InfobloxClaimHandler) releaseCoordinates(address *ipamv1.IPAddress) (instanceName, networkView, dnsView string, err error) {
+// the IPAddress, falling back to the pool for addresses allocated before these were recorded. In the fallback, it
+// also returns the client of the pool's instance, which it needs for the default DNS view.
+func (h *InfobloxClaimHandler) releaseCoordinates(ctx context.Context, address *ipamv1.IPAddress) (instanceName, networkView, dnsView string, ibc infoblox.Client, err error) {
 	instanceName = address.Annotations[infobloxInstanceAnnotation]
 	networkView = address.Annotations[networkViewAnnotation]
 	dnsView = address.Annotations[dnsViewAnnotation]
 	if instanceName != "" && networkView != "" && dnsView != "" {
-		return instanceName, networkView, dnsView, nil
+		return instanceName, networkView, dnsView, nil, nil
 	}
 
-	if h.ibclient == nil || h.pool == nil || h.pool.Spec.NetworkView == "" {
-		return "", "", "", fmt.Errorf(
+	if h.pool == nil || h.pool.Spec.NetworkView == "" {
+		return "", "", "", nil, fmt.Errorf(
 			"cannot determine the Infoblox views this address was allocated from: it predates the annotations "+
 				"recording them, and pool %q is gone or no longer describes an allocation. Restore it to let deletion proceed",
 			h.claim.Spec.PoolRef.Name)
 	}
+	ibc, err = h.newIBClient(ctx, h.pool.Spec.InstanceRef.Name)
+	if err != nil {
+		return "", "", "", nil, err
+	}
 
 	return h.pool.Spec.InstanceRef.Name,
 		h.pool.Spec.NetworkView,
-		determineDNSView(h.pool.Spec.DNSView, h.ibclient.GetHostConfig().DefaultDNSView, h.pool.Spec.NetworkView),
+		determineDNSView(h.pool.Spec.DNSView, ibc.GetHostConfig().DefaultDNSView, h.pool.Spec.NetworkView),
+		ibc,
 		nil
 }
 

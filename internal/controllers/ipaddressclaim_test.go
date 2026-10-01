@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/netip"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -92,7 +93,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		resolverErr error
 		// requestedInstances records the Infoblox instances the reconciler asked a client for.
 		requestedInstances []string
-		reconciler         *ipamutil.ClaimReconciler
+		// clientErr makes creating an Infoblox client fail.
+		clientErr  error
+		reconciler *ipamutil.ClaimReconciler
 	)
 
 	// reconcileClaim runs a single reconciliation for the named claim.
@@ -269,6 +272,7 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		resolverMock = hostnamemock.NewMockResolver(mockCtrl)
 		resolverErr = nil
 		requestedInstances = nil
+		clientErr = nil
 
 		reconciler = &ipamutil.ClaimReconciler{
 			Client: apiClient,
@@ -277,6 +281,9 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 				K8sReader: apiClient,
 				GetInfobloxClientForInstanceFunc: func(_ context.Context, _ client.Reader, instance, _ string, _ infoblox.GetClientFunc) (infoblox.Client, error) {
 					requestedInstances = append(requestedInstances, instance)
+					if clientErr != nil {
+						return nil, clientErr
+					}
 					return infobloxMock, nil
 				},
 				NewHostnameResolverFunc: func(_ client.Client, _ *ipamv1.IPAddressClaim) (hostname.Resolver, error) {
@@ -751,7 +758,79 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 		})
 	})
 
-	// The Claim to IPAddress match is done by resource names as is done upstream, not by any status refs or similar.
+	// A missing instance or credentials Secret must not be taken for a missing pool.
+	When("the pool's Infoblox instance is missing", func() {
+		var claim ipamv1.IPAddressClaim
+
+		missingInstance := func() {
+			clientErr = fmt.Errorf("failed to fetch instance: %w", apierrors.NewNotFound(
+				schema.GroupResource{Group: v1alpha1.GroupVersion.Group, Resource: "infobloxinstances"}, instanceName))
+		}
+
+		// expectReleaseFailed asserts that the claim is kept with a ReleaseFailed condition naming the instance.
+		expectReleaseFailed := func(err error) {
+			ExpectWithOffset(1, err).To(MatchError(ContainSubstring(`failed to create Infoblox client for instance "test-instance"`)))
+			kept, getErr := Object(&claim)()
+			ExpectWithOffset(1, getErr).NotTo(HaveOccurred())
+			ExpectWithOffset(1, kept).To(And(
+				HaveField("ObjectMeta.Finalizers", ContainElement(ipamutil.ReleaseAddressFinalizer)),
+				HaveField("Status.Conditions", ContainElement(And(
+					HaveField("Reason", BeEquivalentTo(v1alpha1.ReleaseFailedReason)),
+					HaveField("Message", And(
+						ContainSubstring(`failed to create Infoblox client for instance "test-instance"`),
+						Not(ContainSubstring("is gone")),
+					)),
+				))),
+			))
+		}
+
+		BeforeEach(func() {
+			createPool()
+			claim = newClaim(claimName, namespace, v1alpha1.InfobloxIPPoolKind, poolName)
+			Expect(apiClient.Create(ctx, &claim)).To(Succeed())
+		})
+
+		It("should report a live claim as not ready instead of ignoring it", func() {
+			missingInstance()
+
+			_, err := reconcileAllocatedClaim(claimName)
+
+			Expect(err).To(MatchError(ContainSubstring(`failed to create Infoblox client for instance "test-instance"`)))
+			expectNoAddress()
+			Expect(Object(&claim)()).To(HaveField("Status.Conditions", ContainElement(And(
+				HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+				HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
+				HaveField("Reason", BeEquivalentTo(v1alpha1.ConfigurationInvalidReason)),
+			))))
+		})
+
+		When("the claim is deleted", func() {
+			BeforeEach(func() {
+				expectAllocationSucceeds("10.0.0.2")
+				infobloxMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+				_, err := reconcileAllocatedClaim(claimName)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(apiClient.Delete(ctx, &claim)).To(Succeed())
+				missingInstance()
+			})
+
+			It("should keep the claim and report the instance", func() {
+				_, err := reconcileClaim(claimName)
+
+				expectReleaseFailed(err)
+			})
+
+			It("should report the instance, not a missing pool, for an address without annotations", func() {
+				stripAllocationAnnotations()
+
+				_, err := reconcileClaim(claimName)
+
+				expectReleaseFailed(err)
+			})
+		})
+	})
+
+	// The claim is matched to its IPAddress by name, as ipamutil.ClaimReconciler does, not by status.addressRef.
 	When("the claim status does not name the allocated address", func() {
 		It("should still release the address and delete the claim", func() {
 			expectAllocationSucceeds("10.0.0.2")
@@ -1177,8 +1256,8 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			_, err = reconcileClaim(claimName)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(requestedInstances).To(Equal([]string{instanceName, "recorded-instance"}),
-				"expected a client for the pool's instance from FetchPool and one for the recorded instance to release against")
+			Expect(requestedInstances).To(Equal([]string{"recorded-instance"}),
+				"expected only a client for the recorded instance to release against")
 		})
 	})
 
