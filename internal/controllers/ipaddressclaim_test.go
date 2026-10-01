@@ -728,6 +728,27 @@ var _ = Describe("IPAddressClaimReconciler", func() {
 			Expect(apierrors.IsNotFound(err)).To(BeTrue(), "expected the claim to be gone, got %v", err)
 			expectNoAddress()
 		})
+
+		// Without the pool, its DNS zone is unknown, so the claim's name may not be the host record's name.
+		It("should refuse to release when the claim has no cached hostname", func() {
+			infobloxMock.EXPECT().ReleaseAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			Expect(apiClient.Get(ctx, client.ObjectKeyFromObject(&claim), &claim)).To(Succeed())
+			delete(claim.Annotations, hostnameAnnotation)
+			Expect(apiClient.Update(ctx, &claim)).To(Succeed())
+
+			_, err := reconcileClaim(claimName)
+
+			Expect(err).To(MatchError(ContainSubstring(`InfobloxIPPool "test-pool" is gone; restore the pool or set the annotation`)))
+			Expect(getAddress(claimName).Spec.Address).To(Equal("10.0.0.2"))
+			Expect(Object(&claim)()).To(And(
+				HaveField("ObjectMeta.Finalizers", ContainElement(ipamutil.ReleaseAddressFinalizer)),
+				HaveField("Status.Conditions", ContainElement(And(
+					HaveField("Type", BeEquivalentTo(clusterv1.ReadyCondition)),
+					HaveField("Status", BeEquivalentTo(metav1.ConditionFalse)),
+					HaveField("Reason", BeEquivalentTo(v1alpha1.ReleaseFailedReason)),
+				))),
+			))
+		})
 	})
 
 	// The Claim to IPAddress match is done by resource names as is done upstream, not by any status refs or similar.

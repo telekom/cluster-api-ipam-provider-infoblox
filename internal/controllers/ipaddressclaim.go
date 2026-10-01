@@ -190,11 +190,13 @@ func (r *InfobloxProviderAdapter) ClaimHandlerFor(cl client.Client, claim *ipamv
 
 // FetchPool fetches the claim's pool and the Infoblox client for it. Unless the claim is being deleted,
 // a paused claim or a pool that is not ready stops the reconciliation here.
+// h.pool stays nil if the pool cannot be fetched.
 func (h *InfobloxClaimHandler) FetchPool(ctx context.Context) (_ client.Object, _ *ctrl.Result, err error) {
-	h.pool = &v1alpha1.InfobloxIPPool{}
-	if err = h.k8sClient.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, h.pool); err != nil {
+	pool := &v1alpha1.InfobloxIPPool{}
+	if err = h.k8sClient.Get(ctx, types.NamespacedName{Namespace: h.claim.Namespace, Name: h.claim.Spec.PoolRef.Name}, pool); err != nil {
 		return nil, nil, err
 	}
+	h.pool = pool
 
 	// FetchPool's caller implementation currently reads the GroupVersionKind off the pool
 	// object rather than resolving it from the scheme. Different client implementations give no guarantee
@@ -550,6 +552,13 @@ func (h *InfobloxClaimHandler) getHostname(ctx context.Context) (string, error) 
 	hostName := h.claim.Annotations[hostnameAnnotation]
 	if hostName != "" {
 		return hostName, nil
+	}
+
+	// Without the pool's DNS zone, the claim's name is only a guess, and a wrong one releases nothing.
+	if h.pool == nil {
+		return "", fmt.Errorf("the claim has no %q annotation and InfobloxIPPool %q is gone; "+
+			"restore the pool or set the annotation to the name of the Infoblox host record",
+			hostnameAnnotation, h.claim.Spec.PoolRef.Name)
 	}
 
 	// If the pool has no DNS zone, the claim's name is used as hostname and we are done.
