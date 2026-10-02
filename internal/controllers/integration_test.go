@@ -92,6 +92,8 @@ func (stubInfobloxClient) CheckNetworkExists(_ string, _ netip.Prefix) (bool, er
 	return true, nil
 }
 
+func (stubInfobloxClient) CheckConnection() error { return nil }
+
 func (stubInfobloxClient) GetHostConfig() *infoblox.HostConfig { return &infoblox.HostConfig{} }
 
 // The container is Ordered because the pool and claim lifecycle below is one continuous scenario:

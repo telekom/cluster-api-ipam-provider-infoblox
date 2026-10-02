@@ -42,6 +42,20 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 	return m.recorder
 }
 
+// CheckConnection mocks base method.
+func (m *MockClient) CheckConnection() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckConnection")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CheckConnection indicates an expected call of CheckConnection.
+func (mr *MockClientMockRecorder) CheckConnection() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckConnection", reflect.TypeOf((*MockClient)(nil).CheckConnection))
+}
+
 // CheckDNSViewExists mocks base method.
 func (m *MockClient) CheckDNSViewExists(view string) (bool, error) {
 	m.ctrl.T.Helper()

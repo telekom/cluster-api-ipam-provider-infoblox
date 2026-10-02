@@ -44,6 +44,8 @@ type Client interface {
 	CheckDNSViewExists(view string) (bool, error)
 	// CheckNetworkExists checks if Infoblox network exists
 	CheckNetworkExists(view string, subnet netip.Prefix) (bool, error)
+	// CheckConnection checks that Infoblox answers a WAPI request with the configured host, version and credentials.
+	CheckConnection() error
 	GetHostConfig() *HostConfig
 }
 
@@ -189,6 +191,21 @@ func (c *client) CheckNetworkExists(view string, subnet netip.Prefix) (bool, err
 
 func (c *client) GetHostConfig() *HostConfig {
 	return &c.hc
+}
+
+// schemaRequest is the WAPI schema, its empty object type makes ibclient request /wapi/v<version>/.
+type schemaRequest struct {
+	ibclient.IBBase
+}
+
+func (*schemaRequest) ObjectType() string {
+	return ""
+}
+
+func (c *client) CheckConnection() error {
+	query := ibclient.NewQueryParams(false, map[string]string{"_schema": "1"})
+	err := c.connector.GetObject(&schemaRequest{}, "", query, &map[string]any{})
+	return c.wrapAsRequestError(err, "GetSchema", nil)
 }
 
 // handleExistsResult returns true if the object exists,

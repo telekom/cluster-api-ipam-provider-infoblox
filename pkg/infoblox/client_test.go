@@ -278,6 +278,37 @@ func TestCheckNetworkExists(t *testing.T) {
 	}
 }
 
+func TestCheckConnection(t *testing.T) {
+	g := NewWithT(t)
+	c, connector, _ := newMockedClient(t)
+	var gotURL string
+	connector.EXPECT().GetObject(gomock.Any(), "", gomock.Any(), gomock.Any()).
+		DoAndReturn(func(obj ibclient.IBObject, ref string, query *ibclient.QueryParams, _ any) error {
+			rb := &ibclient.WapiRequestBuilder{}
+			rb.Init(ibclient.HostConfig{Host: testHost, Port: "8443", Version: "2.12"}, ibclient.AuthConfig{})
+			gotURL = rb.BuildUrl(ibclient.GET, obj.ObjectType(), ref, obj.ReturnFields(), query)
+			return nil
+		})
+
+	g.Expect(c.CheckConnection()).To(Succeed())
+	g.Expect(gotURL).To(Equal("https://ib.example.com:8443/wapi/v2.12/?_schema=1"))
+}
+
+func TestCheckConnectionWrapsErrors(t *testing.T) {
+	g := NewWithT(t)
+	c, connector, _ := newMockedClient(t)
+	raw := rawWapiError(400, "Bad Request", "Version 9.9 not supported")
+	connector.EXPECT().GetObject(gomock.Any(), "", gomock.Any(), gomock.Any()).Return(raw)
+
+	err := c.CheckConnection()
+
+	var reqErr RequestError
+	g.Expect(errors.As(err, &reqErr)).To(BeTrue())
+	g.Expect(reqErr.Operation).To(Equal("GetSchema"))
+	g.Expect(errors.Is(err, raw)).To(BeTrue())
+	g.Expect(err).To(MatchError(`infoblox "ib.example.com:8443" GetSchema []: HTTP error 400 (Bad Request): Version 9.9 not supported`))
+}
+
 func TestAuthConfigFromSecretData(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -121,6 +121,11 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		return ctrl.Result{}, nil
 	}
 
+	// Assert that infoblox is reachable and the credentials are valid.
+	if err := ibcl.CheckConnection(); err != nil {
+		return ctrl.Result{}, markFailedInfobloxRequest(instance, err, "", "the connection to Infoblox")
+	}
+
 	// Check default network view if specified
 	if instance.Spec.DefaultNetworkView != "" {
 		if ok, err := ibcl.CheckNetworkViewExists(instance.Spec.DefaultNetworkView); err != nil || !ok {

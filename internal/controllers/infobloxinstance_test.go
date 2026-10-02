@@ -48,6 +48,7 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 		instanceName string
 		instanceMock *ibmock.MockClient
 		clientErr    error
+		connErr      error
 		reconciler   *InfobloxInstanceReconciler
 		instance     *v1alpha1.InfobloxInstance
 	)
@@ -100,10 +101,12 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 		namespace = createNamespace()
 		instanceName = namespace + "-instance"
 		clientErr = nil
+		connErr = nil
 
 		// A gomock controller scoped to the spec makes gomock verify the expected interactions when
 		// the spec ends instead of at the end of the whole suite.
 		instanceMock = ibmock.NewMockClient(gomock.NewController(GinkgoT()))
+		instanceMock.EXPECT().CheckConnection().DoAndReturn(func() error { return connErr }).AnyTimes()
 		reconciler = &InfobloxInstanceReconciler{
 			Client:            apiClient,
 			Scheme:            apiClient.Scheme(),
@@ -184,6 +187,40 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 
 			expectCondition(metav1.ConditionFalse, v1alpha1.ConfigurationInvalidReason,
 				"could not create infoblox client: custom CA file contains no valid PEM certificate")
+		})
+	})
+
+	When("the connection to Infoblox fails", func() {
+		BeforeEach(func() {
+			instance.Spec.DefaultNetworkView = "instance-view"
+			instance.Spec.DefaultDNSView = "instance-dns-view"
+			createCredentialsSecret(map[string]string{"username": "user", "password": "pass"})
+			instanceMock.EXPECT().CheckNetworkViewExists(gomock.Any()).Times(0)
+			instanceMock.EXPECT().CheckDNSViewExists(gomock.Any()).Times(0)
+		})
+
+		It("should report a connection failure if Infoblox cannot be reached", func() {
+			connErr = infoblox.RequestError{
+				Endpoint:  "infoblox.example:443",
+				Operation: "GetSchema",
+				Err:       &url.Error{Op: "Get", URL: "https://infoblox.example:443/wapi", Err: &net.DNSError{Err: "no such host", Name: "infoblox.example"}},
+			}
+			createObj(instance)
+
+			expectFailedCondition("no such host", v1alpha1.InfobloxConnectionFailedReason,
+				`could not check the connection to Infoblox: infoblox "infoblox.example:443" GetSchema []: transport error`)
+		})
+
+		It("should report an authentication failure if Infoblox rejects the credentials", func() {
+			connErr = infoblox.RequestError{
+				Endpoint:  "infoblox.example:443",
+				Operation: "GetSchema",
+				Err:       infoblox.HTTPError{StatusCode: 401},
+			}
+			createObj(instance)
+
+			expectFailedCondition("HTTP error 401", v1alpha1.AuthenticationFailedReason,
+				`could not check the connection to Infoblox: infoblox "infoblox.example:443" GetSchema []: HTTP error 401 (Unauthorized)`)
 		})
 	})
 
