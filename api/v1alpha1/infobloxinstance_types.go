@@ -93,8 +93,11 @@ type InfobloxInstanceStatus struct {
 // +kubebuilder:printcolumn:name="Host",type="string",JSONPath=".spec.host",description="Infoblox host's address"
 // +kubebuilder:printcolumn:name="Port",type="string",JSONPath=".spec.port",description="Networking port of the Infoblox host"
 // +kubebuilder:printcolumn:name="WAPI ver.",type="string",JSONPath=".spec.wapiVersion",description="Version of web API to be used"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type=="Ready")].status`,description="Status of the Ready condition"
+// +kubebuilder:printcolumn:name="Reason",type="string",JSONPath=`.status.conditions[?(@.type=="Ready")].reason`,description="Reason of the Ready condition"
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 // +kubebuilder:printcolumn:name="Deleted",type=date,JSONPath=`.metadata.deletionTimestamp`,priority=1
+// +kubebuilder:printcolumn:name="Message",type="string",JSONPath=`.status.conditions[?(@.type=="Ready")].message`,description="Message of the Ready condition",priority=1
 type InfobloxInstance struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
