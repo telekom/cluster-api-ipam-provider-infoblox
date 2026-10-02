@@ -109,6 +109,8 @@ The DNS view is determined in the following priority order:
    - If `networkView` is `"default"` or empty → DNS view is `"default"`
    - Otherwise → DNS view is `"default.<networkView>"` (e.g., `networkView: "production"` → DNS view `"default.production"`)
 
+The DNS view is only used, and only checked for existence, if the pool has a `dnsZone`. Without one, host records are created with DNS disabled.
+
 ## Running Tests
 
 | Command | Runs | Requirements |

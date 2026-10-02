@@ -169,9 +169,9 @@ func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1
 			fmt.Sprintf("network view %q", pool.Spec.NetworkView))
 	}
 
-	// Check DNS view if specified
-	dnsView := determineDNSView(pool.Spec.DNSView, ibclient.GetHostConfig().DefaultDNSView, pool.Spec.NetworkView)
-	if dnsView != "" {
+	// Only host records of a pool with a DNS zone have DNS enabled and use the DNS view.
+	if pool.Spec.DNSZone != "" {
+		dnsView := determineDNSView(pool.Spec.DNSView, ibclient.GetHostConfig().DefaultDNSView, pool.Spec.NetworkView)
 		if ok, err := ibclient.CheckDNSViewExists(dnsView); err != nil || !ok {
 			return markFailedInfobloxRequest(pool, err, v1alpha1.DNSViewNotFoundReason,
 				fmt.Sprintf("DNS view %q", dnsView))
