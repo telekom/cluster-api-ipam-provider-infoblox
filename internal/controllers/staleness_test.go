@@ -105,6 +105,22 @@ func staleEmptyClaimList(n int) client.Client {
 	})
 }
 
+// unobservedAddresses makes every IPAddress read come back not found, modelling an informer that
+// has not observed an address which already exists in the API server. Every other read falls through.
+func unobservedAddresses() client.Client {
+	base, err := client.NewWithWatch(cfg, client.Options{Scheme: scheme.Scheme})
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	return interceptor.NewClient(base, interceptor.Funcs{
+		Get: func(ctx context.Context, c client.WithWatch, k client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			if _, ok := obj.(*ipamv1.IPAddress); ok {
+				return apierrors.NewNotFound(ipamv1.GroupVersion.WithResource("ipaddresses").GroupResource(), k.Name)
+			}
+			return c.Get(ctx, k, obj, opts...)
+		},
+	})
+}
+
 var _ = Describe("reconciling from a stale read", func() {
 	const (
 		poolName   = "stale-pool"
@@ -164,6 +180,23 @@ var _ = Describe("reconciling from a stale read", func() {
 			OperatorNamespace: namespace,
 			GetInfobloxClientFunc: func(_, _ string, _ types.UID, _ string, _ infoblox.Config) (infoblox.Client, error) {
 				return infobloxMock, nil
+			},
+		}
+	}
+
+	// newClaimReconciler builds a claim reconciler reading through the given client. Uncached reads
+	// always go to the API server.
+	newClaimReconciler := func(c client.Client) *ipamutil.ClaimReconciler {
+		return &ipamutil.ClaimReconciler{
+			Client: c,
+			Scheme: apiClient.Scheme(),
+			Adapter: &InfobloxProviderAdapter{
+				K8sReader:         apiClient,
+				OperatorNamespace: namespace,
+				GetInfobloxClientForInstanceFunc: func(_ context.Context, _ client.Reader, _, _ string, _ infoblox.GetClientFunc) (infoblox.Client, error) {
+					return infobloxMock, nil
+				},
+				NewHostnameResolverFunc: NewHostnameResolver,
 			},
 		}
 	}
@@ -244,20 +277,6 @@ var _ = Describe("reconciling from a stale read", func() {
 				GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(netip.MustParseAddr("10.0.0.2"), nil).AnyTimes()
 
-			claimReconciler := func(c client.Client) *ipamutil.ClaimReconciler {
-				return &ipamutil.ClaimReconciler{
-					Client: c,
-					Scheme: apiClient.Scheme(),
-					Adapter: &InfobloxProviderAdapter{
-						OperatorNamespace: namespace,
-						GetInfobloxClientForInstanceFunc: func(_ context.Context, _ client.Reader, _, _ string, _ infoblox.GetClientFunc) (infoblox.Client, error) {
-							return infobloxMock, nil
-						},
-						NewHostnameResolverFunc: NewHostnameResolver,
-					},
-				}
-			}
-
 			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
 			Expect(apiClient.Create(ctx, &claim)).To(Succeed())
 			claimKey := client.ObjectKeyFromObject(&claim)
@@ -268,9 +287,9 @@ var _ = Describe("reconciling from a stale read", func() {
 			Expect(apiClient.Get(ctx, claimKey, beforeAllocation)).To(Succeed())
 
 			By("allocating an address for it")
-			_, err := claimReconciler(apiClient).Reconcile(ctx, request)
+			_, err := newClaimReconciler(apiClient).Reconcile(ctx, request)
 			Expect(err).NotTo(HaveOccurred())
-			_, err = claimReconciler(apiClient).Reconcile(ctx, request)
+			_, err = newClaimReconciler(apiClient).Reconcile(ctx, request)
 			Expect(err).NotTo(HaveOccurred())
 
 			addresses := &ipamv1.IPAddressList{}
@@ -278,12 +297,47 @@ var _ = Describe("reconciling from a stale read", func() {
 			Expect(addresses.Items).To(HaveLen(1))
 
 			By("reconciling once more from the copy that predates the allocation")
-			_, err = claimReconciler(staleReads(beforeAllocation, -1)).Reconcile(ctx, request)
+			_, err = newClaimReconciler(staleReads(beforeAllocation, -1)).Reconcile(ctx, request)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(apiClient.List(ctx, addresses, client.InNamespace(namespace))).To(Succeed())
 			Expect(addresses.Items).To(HaveLen(1), "a stale read must not produce a second address")
 			Expect(addresses.Items[0].Spec.Address).To(Equal("10.0.0.2"))
+		})
+	})
+
+	// A cache that has not seen an existing IPAddress yet hands the reconciler an empty one. Allocating
+	// for it would reserve a second address in Infoblox that no IPAddress can ever record.
+	When("the informer has not yet observed the IPAddress of a claim", func() {
+		It("should fail without allocating until the informer caught up", func() {
+			createReadyPool()
+			infobloxMock.EXPECT().
+				GetOrAllocateAddress(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(netip.MustParseAddr("10.0.0.2"), nil).Times(1)
+
+			claim := newClaim(claimName, namespace, "InfobloxIPPool", poolName)
+			Expect(apiClient.Create(ctx, &claim)).To(Succeed())
+			request := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(&claim)}
+
+			By("allocating an address for it")
+			_, err := newClaimReconciler(apiClient).Reconcile(ctx, request)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = newClaimReconciler(apiClient).Reconcile(ctx, request)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("reconciling through an informer that does not show the address")
+			_, err = newClaimReconciler(unobservedAddresses()).Reconcile(ctx, request)
+
+			Expect(err).To(MatchError(ContainSubstring(`IPAddress "stale-claim" exists but is not in the cache yet`)))
+			addresses := &ipamv1.IPAddressList{}
+			Expect(apiClient.List(ctx, addresses, client.InNamespace(namespace))).To(Succeed())
+			Expect(addresses.Items).To(HaveLen(1))
+			Expect(addresses.Items[0].Spec.Address).To(Equal("10.0.0.2"))
+
+			By("verifying the address instead once the informer caught up")
+			infobloxMock.EXPECT().IsAddressAssigned("test-view", claimName, netip.MustParseAddr("10.0.0.2")).Return(true, nil)
+			_, err = newClaimReconciler(apiClient).Reconcile(ctx, request)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 

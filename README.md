@@ -109,21 +109,37 @@ The DNS view is determined in the following priority order:
    - If `networkView` is `"default"` or empty → DNS view is `"default"`
    - Otherwise → DNS view is `"default.<networkView>"` (e.g., `networkView: "production"` → DNS view `"default.production"`)
 
+The DNS view is only used, and only checked for existence, if the pool has a `dnsZone`. Without one, host records are created with DNS disabled.
+
 ## Running Tests
 
-### E2E tests
+| Command | Runs | Requirements |
+|---|---|---|
+| `make test` | Unit tests and envtest based controller and webhook tests | None, `controller-gen` and the envtest binaries are downloaded by the Makefile |
+| `make test-infoblox` | Integration tests in `test/integration/infoblox` against a live Infoblox instance | A configured Infoblox instance, see below |
+| `make test-all` | Both of the above | Both of the above |
 
-In order to run end-to-end tests, an Infoblox instance needs to be provided. Configuration is done using environment variables. See [.testenv.example](./.testenv.example) for an example.
+Extra `go test` flags can be passed with `TEST_ARGS`. The default is `-race -shuffle=on`, so a failing order can be replayed with `make test TEST_ARGS="-shuffle=<seed>"`.
 
-To execute e2e test simply setup required enironment variables and run `make test-infoblox`.
+### Tests against a live Infoblox instance
 
-### Unit tests
+The integration tests in [test/integration/infoblox](./test/integration/infoblox) create and delete network views, networks and host records on a real Infoblox instance.
+They only use the public API of `pkg/infoblox` and are guarded by the `//go:build infoblox` build tag, so they are compiled only when the tag is set, which `make test-infoblox` and `make test-all` do.
+The instance is configured with environment variables, see [.testenv.example](./.testenv.example).
 
-Unit tests can be run using `make test` command.
+### Testing guidelines
 
-To execute unit tests [controller-gen](https://book.kubebuilder.io/reference/controller-gen) is required. You can install it using `make controller-gen` command.
-
-> NOTE: you can run both unit tests and e2e tests usin `make test-all`.
+- **Every test is independent.** A test passes on its own, in the full suite and in any order. It never relies on objects, state or allocations another test left behind.
+- **Unit tests** use the standard `testing` package with Gomega (`NewWithT`), preferably table driven. They build their own mocks and clients per test and share no mutable package-level state.
+- **Controller tests** use Ginkgo with envtest and call `Reconcile` directly. The suite only provides the API server and clients, each spec builds the reconciler and mocks it needs.
+  - Each spec works in its own namespace (`createNamespace()`), cluster-scoped objects get names unique to the spec.
+  - Each spec removes what it created with `DeferCleanup`.
+- **Prefer the direct client** (`client.New`) over a cache-backed client. It is read-your-writes consistent, so plain `Expect` assertions work without polling.
+  Use a cache-backed client only where the code under test needs it, e.g. to list objects through a field index.
+- **`Eventually`/`Consistently` are for asynchronous behaviour only**, such as waiting for an informer cache or a running manager. They must not hide ordering problems or be used as a retry loop.
+- **Shared state between specs is an explicit design decision.** A scenario whose steps build on each other uses an `Ordered` container and a comment explaining why. A normal test never depends on another test implicitly.
+- **Mocks are generated** with the `mockgen` version pinned in `go.mod`, from the `//go:generate` directives, by `make generate`. Do not edit them by hand, CI fails if they are out of date.
+  `pkg/infoblox/ibmock` mocks the `infoblox.Client` for its consumers, `pkg/infoblox/ibclientmock` mocks the Infoblox API the client itself uses.
 
 ## Licensing
 

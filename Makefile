@@ -56,8 +56,9 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+generate: controller-gen ## Generate DeepCopy implementations and mocks.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	go generate ./...
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -66,6 +67,7 @@ fmt: ## Run go fmt against code.
 .PHONY: vet
 vet: ## Run go vet against code.
 	go vet ./...
+	go vet -tags infoblox ./test/integration/...
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint, the same linters CI runs.
@@ -81,16 +83,16 @@ lint-fix: golangci-lint ## Run golangci-lint and apply the fixes it can make its
 TEST_ARGS ?= -race -shuffle=on
 
 .PHONY: test-infoblox
-test-infoblox: manifests generate fmt vet envtest ## Run infoblox instance tests - instance is required to be configured.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test $(shell go list ./... | grep /infoblox) $(TEST_ARGS) -coverprofile cover.out
+test-infoblox: fmt vet ## Run the tests against a live Infoblox instance - the instance must be configured, see .testenv.example.
+	go test -tags infoblox ./test/integration/infoblox/... $(TEST_ARGS) -coverpkg ./pkg/infoblox/... -coverprofile cover.out
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run default tests (all but infoblox instance specific).
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test $(shell go list ./... | grep -v /infoblox) $(TEST_ARGS) -coverprofile cover.out
+test: manifests generate fmt vet envtest ## Run all tests that need no live Infoblox instance.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... $(TEST_ARGS) -coverprofile cover.out
 
 .PHONY: test-all
-test-all: manifests generate fmt vet envtest ## Run all tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... $(TEST_ARGS) -coverprofile cover.out
+test-all: manifests generate fmt vet envtest ## Run all tests, including the ones against a live Infoblox instance.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -tags infoblox ./... $(TEST_ARGS) -coverprofile cover.out
 
 ##@ Build
 

@@ -1,4 +1,6 @@
-package infoblox
+//go:build infoblox
+
+package infoblox_test
 
 import (
 	"net/netip"
@@ -9,13 +11,18 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 )
 
 const defaultView = "capi-ipam-dev"
 
 var (
-	testClient *client
-	testView   string
+	// testClient is the client under test, only its public API is used.
+	testClient infoblox.Client
+	// ibConnector and ibObjMgr talk to the instance directly to arrange and clean up fixtures.
+	ibConnector *ibclient.Connector
+	ibObjMgr    ibclient.IBObjectManager
+	testView    string
 
 	testNetworkIPv4    netip.Prefix
 	v4testIBNetwork    *ibclient.NetworkContainer
@@ -48,27 +55,27 @@ var _ = BeforeSuite(func() {
 	testNetworkIPv4 = netip.MustParsePrefix(getInfobloxTestEnvVar("v4network", "192.168.200.0/24"))
 	testNetworkIPv6 := netip.MustParsePrefix(getInfobloxTestEnvVar("v6network", "fdf0:9824:ab5c:6f73:0000:0000:0000:0000/120"))
 
-	config, err := InfobloxConfigFromEnv()
+	config, err := configFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	iClient, err := NewClient(config)
+	testClient, err = infoblox.NewClient(config)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(iClient).NotTo(BeNil())
+	Expect(testClient).NotTo(BeNil())
 
-	var ok bool
-	testClient, ok = iClient.(*client)
-	Expect(ok).To(BeTrue())
+	ibConnector, err = newIBConnector(config)
+	Expect(err).NotTo(HaveOccurred())
+	ibObjMgr = ibclient.NewObjectManager(ibConnector, "cluster-api-ipam-provider-infoblox", "")
 
 	exists, err := testClient.CheckNetworkViewExists(testView)
 	Expect(err).NotTo(HaveOccurred())
 
 	if !exists {
-		networkView, err = testClient.objMgr.CreateNetworkView(testView, "", ibclient.EA{})
+		networkView, err = ibObjMgr.CreateNetworkView(testView, "", ibclient.EA{})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(networkView).NotTo(BeNil())
 		netviewWasCreated = true
 	} else {
-		networkView, err = testClient.objMgr.GetNetworkView(testView)
+		networkView, err = ibObjMgr.GetNetworkView(testView)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -95,7 +102,7 @@ var _ = BeforeSuite(func() {
 })
 
 func allocateNetwork(cidr string, prefix uint, isIPv6 bool) (*ibclient.Network, netip.Prefix) {
-	ibNetwork, err := testClient.objMgr.AllocateNetwork(testView, cidr, isIPv6, prefix, "", ibclient.EA{})
+	ibNetwork, err := ibObjMgr.AllocateNetwork(testView, cidr, isIPv6, prefix, "", ibclient.EA{})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(ibNetwork).NotTo(BeNil())
 	p, err := netip.ParsePrefix(ibNetwork.Cidr)
@@ -104,10 +111,10 @@ func allocateNetwork(cidr string, prefix uint, isIPv6 bool) (*ibclient.Network, 
 }
 
 func allocateNetworkContainer(cidr string, isIPv6 bool) (*ibclient.NetworkContainer, error) {
-	networkContainer, err := testClient.objMgr.GetNetworkContainer(testView, cidr, isIPv6, ibclient.EA{})
+	networkContainer, err := ibObjMgr.GetNetworkContainer(testView, cidr, isIPv6, ibclient.EA{})
 
 	if networkContainer == nil {
-		networkContainer, err = testClient.objMgr.CreateNetworkContainer(testView, cidr, isIPv6, "", ibclient.EA{})
+		networkContainer, err = ibObjMgr.CreateNetworkContainer(testView, cidr, isIPv6, "", ibclient.EA{})
 	}
 
 	return networkContainer, err
@@ -115,20 +122,20 @@ func allocateNetworkContainer(cidr string, isIPv6 bool) (*ibclient.NetworkContai
 
 var _ = AfterSuite(func() {
 	// Infoblox turns networks into network containers when creating subnets in them, so we need to delete the network container
-	nc, err := testClient.objMgr.GetNetworkContainer(testView, v4testIBNetwork.Cidr, false, ibclient.EA{})
+	nc, err := ibObjMgr.GetNetworkContainer(testView, v4testIBNetwork.Cidr, false, ibclient.EA{})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(nc).NotTo(BeNil())
-	_, err = testClient.objMgr.DeleteNetworkContainer(nc.Ref)
+	_, err = ibObjMgr.DeleteNetworkContainer(nc.Ref)
 	Expect(err).NotTo(HaveOccurred())
 
-	nc, err = testClient.objMgr.GetNetworkContainer(testView, v6testIBNetwork.Cidr, true, ibclient.EA{})
+	nc, err = ibObjMgr.GetNetworkContainer(testView, v6testIBNetwork.Cidr, true, ibclient.EA{})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(nc).NotTo(BeNil())
-	_, err = testClient.objMgr.DeleteNetworkContainer(nc.Ref)
+	_, err = ibObjMgr.DeleteNetworkContainer(nc.Ref)
 	Expect(err).NotTo(HaveOccurred())
 
 	if netviewWasCreated {
-		_, err = testClient.objMgr.DeleteNetworkView(networkView.Ref)
+		_, err = ibObjMgr.DeleteNetworkView(networkView.Ref)
 		Expect(err).NotTo(HaveOccurred())
 	}
 })

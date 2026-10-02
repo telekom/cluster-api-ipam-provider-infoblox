@@ -14,13 +14,14 @@ import (
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
-	v1beta1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
+	v1beta2 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 )
 
 // MockResolver is a mock of Resolver interface.
 type MockResolver struct {
 	ctrl     *gomock.Controller
 	recorder *MockResolverMockRecorder
+	isgomock struct{}
 }
 
 // MockResolverMockRecorder is the mock recorder for MockResolver.
@@ -41,7 +42,7 @@ func (m *MockResolver) EXPECT() *MockResolverMockRecorder {
 }
 
 // GetHostname mocks base method.
-func (m *MockResolver) GetHostname(arg0 context.Context, arg1 *v1beta1.IPAddressClaim) (string, error) {
+func (m *MockResolver) GetHostname(arg0 context.Context, arg1 *v1beta2.IPAddressClaim) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetHostname", arg0, arg1)
 	ret0, _ := ret[0].(string)

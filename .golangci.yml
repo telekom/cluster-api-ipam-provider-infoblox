@@ -2,6 +2,7 @@ version: "2"
 run:
   build-tags:
     - e2e
+    - infoblox
   allow-parallel-runners: true
 linters:
   default: none

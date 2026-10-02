@@ -27,6 +27,14 @@ spec:
       jsonPath: .spec.wapiVersion
       name: WAPI ver.
       type: string
+    - description: Status of the Ready condition
+      jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - description: Reason of the Ready condition
+      jsonPath: .status.conditions[?(@.type=="Ready")].reason
+      name: Reason
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -34,6 +42,11 @@ spec:
       name: Deleted
       priority: 1
       type: date
+    - description: Message of the Ready condition
+      jsonPath: .status.conditions[?(@.type=="Ready")].message
+      name: Message
+      priority: 1
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:

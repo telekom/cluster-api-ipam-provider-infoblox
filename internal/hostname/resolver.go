@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:generate mockgen -destination=mock/resolver.go -package=mock . Resolver
+//go:generate go run go.uber.org/mock/mockgen -destination=mock/resolver.go -package=mock . Resolver
 
 // Resolver is an interface used to get hostname of the machine.
 type Resolver interface {

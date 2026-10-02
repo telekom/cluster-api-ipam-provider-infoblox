@@ -18,6 +18,8 @@ package controllers
 
 import (
 	"errors"
+	"net"
+	"net/url"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -46,6 +48,7 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 		instanceName string
 		instanceMock *ibmock.MockClient
 		clientErr    error
+		connErr      error
 		reconciler   *InfobloxInstanceReconciler
 		instance     *v1alpha1.InfobloxInstance
 	)
@@ -98,10 +101,12 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 		namespace = createNamespace()
 		instanceName = namespace + "-instance"
 		clientErr = nil
+		connErr = nil
 
 		// A gomock controller scoped to the spec makes gomock verify the expected interactions when
 		// the spec ends instead of at the end of the whole suite.
 		instanceMock = ibmock.NewMockClient(gomock.NewController(GinkgoT()))
+		instanceMock.EXPECT().CheckConnection().DoAndReturn(func() error { return connErr }).AnyTimes()
 		reconciler = &InfobloxInstanceReconciler{
 			Client:            apiClient,
 			Scheme:            apiClient.Scheme(),
@@ -176,12 +181,46 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 
 	When("the infoblox client cannot be created", func() {
 		It("should set the instance to not ready", func() {
-			clientErr = errors.New("authentication rejected")
-			createCredentialsSecret(map[string]string{"username": "user", "password": "wrong"})
+			clientErr = errors.New("custom CA file contains no valid PEM certificate")
+			createCredentialsSecret(map[string]string{"username": "user", "password": "pass"})
 			createObj(instance)
 
-			expectCondition(metav1.ConditionFalse, v1alpha1.AuthenticationFailedReason,
-				"could not create infoblox client: authentication rejected")
+			expectCondition(metav1.ConditionFalse, v1alpha1.ConfigurationInvalidReason,
+				"could not create infoblox client: custom CA file contains no valid PEM certificate")
+		})
+	})
+
+	When("the connection to Infoblox fails", func() {
+		BeforeEach(func() {
+			instance.Spec.DefaultNetworkView = "instance-view"
+			instance.Spec.DefaultDNSView = "instance-dns-view"
+			createCredentialsSecret(map[string]string{"username": "user", "password": "pass"})
+			instanceMock.EXPECT().CheckNetworkViewExists(gomock.Any()).Times(0)
+			instanceMock.EXPECT().CheckDNSViewExists(gomock.Any()).Times(0)
+		})
+
+		It("should report a connection failure if Infoblox cannot be reached", func() {
+			connErr = infoblox.RequestError{
+				Endpoint:  "infoblox.example:443",
+				Operation: "GetSchema",
+				Err:       &url.Error{Op: "Get", URL: "https://infoblox.example:443/wapi", Err: &net.DNSError{Err: "no such host", Name: "infoblox.example"}},
+			}
+			createObj(instance)
+
+			expectFailedCondition("no such host", v1alpha1.InfobloxConnectionFailedReason,
+				`could not check the connection to Infoblox: infoblox "infoblox.example:443" GetSchema []: transport error`)
+		})
+
+		It("should report an authentication failure if Infoblox rejects the credentials", func() {
+			connErr = infoblox.RequestError{
+				Endpoint:  "infoblox.example:443",
+				Operation: "GetSchema",
+				Err:       infoblox.HTTPError{StatusCode: 401},
+			}
+			createObj(instance)
+
+			expectFailedCondition("HTTP error 401", v1alpha1.AuthenticationFailedReason,
+				`could not check the connection to Infoblox: infoblox "infoblox.example:443" GetSchema []: HTTP error 401 (Unauthorized)`)
 		})
 	})
 
@@ -201,11 +240,25 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 
 		It("should set the instance to not ready and return an error if the view cannot be looked up", func() {
 			instanceMock.EXPECT().CheckNetworkViewExists("instance-view").
-				Return(false, errors.New("infoblox said no")).Times(1)
+				Return(false, wapiRejection).Times(1)
 			createObj(instance)
 
-			expectFailedCondition("infoblox said no", v1alpha1.InfobloxCheckFailedReason,
+			expectFailedCondition("infoblox said no", v1alpha1.InfobloxRequestFailedReason,
 				`could not check default network view "instance-view"`)
+		})
+
+		It("should report a connection failure if Infoblox cannot be reached", func() {
+			instanceMock.EXPECT().CheckNetworkViewExists("instance-view").
+				Return(false, infoblox.RequestError{
+					Endpoint:  "infoblox.example:443",
+					Operation: "GetNetworkView",
+					Params:    map[string]string{"view": "instance-view"},
+					Err:       &url.Error{Op: "Get", URL: "https://infoblox.example:443/wapi", Err: &net.DNSError{Err: "no such host", Name: "infoblox.example"}},
+				}).Times(1)
+			createObj(instance)
+
+			expectFailedCondition("no such host", v1alpha1.InfobloxConnectionFailedReason,
+				`could not check default network view "instance-view": infoblox "infoblox.example:443" GetNetworkView [view="instance-view"]: transport error`)
 		})
 
 		It("should set the instance to ready if the view exists", func() {
@@ -233,10 +286,10 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 
 		It("should set the instance to not ready and return an error if the view cannot be looked up", func() {
 			instanceMock.EXPECT().CheckDNSViewExists("instance-dns-view").
-				Return(false, errors.New("infoblox said no")).Times(1)
+				Return(false, wapiRejection).Times(1)
 			createObj(instance)
 
-			expectFailedCondition("infoblox said no", v1alpha1.InfobloxCheckFailedReason,
+			expectFailedCondition("infoblox said no", v1alpha1.InfobloxRequestFailedReason,
 				`could not check default DNS view "instance-dns-view"`)
 		})
 
