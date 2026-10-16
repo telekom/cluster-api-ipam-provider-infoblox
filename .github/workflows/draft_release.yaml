@@ -6,7 +6,19 @@ on:
       - 'v*'
 
 jobs:
+  check_metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Check releaseSeries in metadata.yaml
+        run: make check-metadata RELEASE_TAG="${GITHUB_REF_NAME}"
+
   draft_release:
+    needs: check_metadata
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -27,6 +39,7 @@ jobs:
           files: out/ipam-infoblox/${{ github.ref_name }}/*.*
 
   extract-meta:
+    needs: check_metadata
     runs-on: ubuntu-latest
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
