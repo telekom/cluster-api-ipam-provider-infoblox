@@ -143,8 +143,13 @@ clean-release-git: ## Restores the git files usually modified during a release
 release-manifests: kustomize $(RELEASE_DIR)
 	$(KUSTOMIZE) build config/default > $(RELEASE_DIR)/ipam-components.yaml
 
+.PHONY: check-metadata
+check-metadata: ## Verify metadata.yaml has a releaseSeries for RELEASE_TAG.
+	@if [ -z "${RELEASE_TAG}" ]; then echo "RELEASE_TAG is not set"; exit 1; fi
+	go run ./hack/metadata-version-validator --file metadata.yaml --version "$(RELEASE_TAG)"
+
 .PHONY: release-metadata
-release-metadata:
+release-metadata: check-metadata
 	cp metadata.yaml $(RELEASE_DIR)/metadata.yaml
 
 licenses-report: go-licenses
