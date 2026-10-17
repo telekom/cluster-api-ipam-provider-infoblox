@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // InfobloxInstanceReconciler reconciles a InfobloxInstance object.
@@ -83,6 +84,7 @@ func (r *InfobloxInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 }
 
 func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1alpha1.InfobloxInstance) (ctrl.Result, error) { //nolint:unparam
+	logger := log.FromContext(ctx)
 	authSecret := &corev1.Secret{}
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: instance.Spec.CredentialsSecretRef.Name, Namespace: r.OperatorNamespace}, authSecret); err != nil {
 		if !apierrors.IsNotFound(err) {
@@ -112,11 +114,12 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 
 	ibcl, err := r.GetInfobloxClientFunc(instance.Name, instance.ResourceVersion, authSecret.UID, authSecret.ResourceVersion, config)
 	if err != nil {
+		logger.Error(errInfobloxClientCreationFailed, "could not create infoblox client", "cause", redactInfobloxClientError(err, config))
 		conditions.Set(instance, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  v1alpha1.AuthenticationFailedReason,
-			Message: fmt.Sprintf("could not create infoblox client: %v", err),
+			Message: "could not create infoblox client",
 		})
 		return ctrl.Result{}, nil
 	}

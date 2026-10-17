@@ -47,6 +47,7 @@ const (
 	// deleted is checked again. Nothing wakes the reconciler when the last one disappears, so this
 	// is also the floor for how long a pool lingers in Terminating afterwards.
 	PoolDeletionRetry = 10 * time.Second
+	defaultDNSView    = "default"
 )
 
 // InfobloxIPPoolReconciler reconciles a InfobloxIPPool object.
@@ -149,13 +150,15 @@ func (r *InfobloxIPPoolReconciler) reconcileDelete(ctx context.Context, pool *v1
 }
 
 func (r *InfobloxIPPoolReconciler) reconcile(ctx context.Context, pool *v1alpha1.InfobloxIPPool) error {
+	logger := log.FromContext(ctx)
 	ibclient, err := GetInfobloxClientForInstance(ctx, r.Client, pool.Spec.InstanceRef.Name, r.OperatorNamespace, r.GetInfobloxClientFunc)
 	if err != nil {
+		logger.Error(errInfobloxClientCreationFailed, "client creation failed", "instance", pool.Spec.InstanceRef.Name, "cause", err)
 		conditions.Set(pool, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
 			Reason:  v1alpha1.AuthenticationFailedReason,
-			Message: fmt.Sprintf("client creation failed for instance %q: %s", pool.Spec.InstanceRef.Name, err),
+			Message: fmt.Sprintf("client creation failed for instance %q; see controller logs", pool.Spec.InstanceRef.Name),
 		})
 		return err
 	}
@@ -211,8 +214,8 @@ func determineDNSView(poolDNSView, instanceDefaultDNSView, networkView string) s
 		return instanceDefaultDNSView
 	}
 	// fallback to old behavior: derive DNS view from networkView
-	if networkView == "" || networkView == "default" {
-		return "default"
+	if networkView == "" || networkView == defaultDNSView {
+		return defaultDNSView
 	}
-	return "default." + networkView
+	return defaultDNSView + "." + networkView
 }

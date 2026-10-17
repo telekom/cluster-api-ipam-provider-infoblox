@@ -48,11 +48,22 @@ type client struct {
 var _ Client = &client{}
 
 // AuthConfig contains authentication parameters to use for authenticating against the API.
+// Fields are tagged with json:"-" to prevent accidental serialization of credentials into logs or API responses.
 type AuthConfig struct {
-	Username   string
-	Password   string
-	ClientCert []byte
-	ClientKey  []byte
+	Username   string `json:"-"`
+	Password   string `json:"-"`
+	ClientCert []byte `json:"-"`
+	ClientKey  []byte `json:"-"`
+}
+
+// String redacts credentials if AuthConfig is accidentally formatted.
+func (c AuthConfig) String() string {
+	return fmt.Sprintf("{Username:%s Password:<redacted> ClientCert:<redacted> ClientKey:<redacted>}", c.Username)
+}
+
+// GoString redacts credentials if AuthConfig is formatted with %#v.
+func (c AuthConfig) GoString() string {
+	return fmt.Sprintf(`infoblox.AuthConfig{Username:%q, Password:"<redacted>", ClientCert:[]byte("<redacted>"), ClientKey:[]byte("<redacted>")}`, c.Username)
 }
 
 // HostConfig contains host configuration patameters.
@@ -70,6 +81,16 @@ type HostConfig struct {
 type Config struct {
 	HostConfig
 	AuthConfig
+}
+
+// String redacts embedded credentials if Config is accidentally formatted.
+func (c Config) String() string {
+	return fmt.Sprintf("{HostConfig:%+v AuthConfig:%v}", c.HostConfig, c.AuthConfig)
+}
+
+// GoString redacts embedded credentials if Config is formatted with %#v.
+func (c Config) GoString() string {
+	return fmt.Sprintf("infoblox.Config{HostConfig:%#v, AuthConfig:%#v}", c.HostConfig, c.AuthConfig)
 }
 
 // NewClient creates a new infoblox client.

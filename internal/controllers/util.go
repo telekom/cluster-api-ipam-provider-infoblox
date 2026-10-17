@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
@@ -13,6 +14,68 @@ import (
 	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type redactedInfobloxClientError struct {
+	message string
+	err     error
+}
+
+func (e redactedInfobloxClientError) Error() string {
+	return e.message
+}
+
+func (e redactedInfobloxClientError) Unwrap() error {
+	return e.err
+}
+
+func redactCredential(message, credential string) string {
+	for start := 0; start < len(message); {
+		relativeStart := strings.Index(message[start:], credential)
+		if relativeStart < 0 {
+			break
+		}
+		matchStart := start + relativeStart
+		matchEnd := matchStart + len(credential)
+		leftIsIdentifier := matchStart > 0 && isIdentifierByte(message[matchStart-1])
+		rightIsIdentifier := matchEnd < len(message) && isIdentifierByte(message[matchEnd])
+		if !leftIsIdentifier && !rightIsIdentifier {
+			message = message[:matchStart] + "<redacted>" + message[matchEnd:]
+			start = matchStart + len("<redacted>")
+			continue
+		}
+		start = matchEnd
+	}
+	return message
+}
+
+func isIdentifierByte(b byte) bool {
+	return b == '_' || b >= '0' && b <= '9' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
+}
+
+// redactInfobloxClientError preserves useful client-construction diagnostics while
+// ensuring that credentials cannot escape through an upstream error string.
+func redactInfobloxClientError(err error, config infoblox.Config) error {
+	if err == nil {
+		return nil
+	}
+
+	message := err.Error()
+	for _, credential := range []string{config.Password, string(config.ClientCert), string(config.ClientKey)} {
+		if credential == "" {
+			continue
+		}
+		for _, representation := range []string{
+			fmt.Sprintf("%q", credential),
+			fmt.Sprintf("%v", []byte(credential)),
+			fmt.Sprintf("%#v", []byte(credential)),
+		} {
+			message = strings.ReplaceAll(message, representation, "<redacted>")
+		}
+		message = redactCredential(message, credential)
+	}
+
+	return redactedInfobloxClientError{message: message, err: err}
+}
 
 // markFailedInfobloxRequest sets the `Ready` condition to the provided Setter for a failed infoblox request.
 //
@@ -59,7 +122,11 @@ func GetInfobloxClientForInstance(ctx context.Context, client client.Reader, nam
 		return nil, fmt.Errorf("credentials secret is invalid: %w", err)
 	}
 
-	return getClientFunc(instance.Name, instance.ResourceVersion, secret.UID, secret.ResourceVersion, config)
+	ibClient, err := getClientFunc(instance.Name, instance.ResourceVersion, secret.UID, secret.ResourceVersion, config)
+	if err != nil {
+		return nil, fmt.Errorf("create infoblox client: %w", redactInfobloxClientError(err, config))
+	}
+	return ibClient, nil
 }
 
 func infobloxConfigForInstance(instance *v1alpha1.InfobloxInstance, secret *corev1.Secret) (infoblox.Config, error) {
