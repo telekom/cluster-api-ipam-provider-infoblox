@@ -55,3 +55,20 @@ func TestIPPoolRefValue(t *testing.T) {
 		})
 	}
 }
+
+func TestIPAddressByCombinedPoolRef(t *testing.T) {
+	addr := &ipamv1.IPAddress{}
+	addr.Spec.PoolRef = ipamv1.IPPoolReference{
+		Kind: "InfobloxIPPool",
+		Name: "test-pool",
+	}
+
+	result := IPAddressByCombinedPoolRef(addr)
+	if len(result) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(result))
+	}
+	want := ipamv1.GroupVersion.Group + "/InfobloxIPPool/test-pool"
+	if result[0] != want {
+		t.Errorf("IPAddressByCombinedPoolRef() = %q, want %q", result[0], want)
+	}
+}

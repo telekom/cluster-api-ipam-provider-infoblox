@@ -30,8 +30,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - name: Run Tests
-        run: make test
+      - name: Check Coverage Threshold
+        run: make coverage-check
 
   validate-generated:
     name: validate generated files
