@@ -77,6 +77,7 @@ type InfobloxIPPoolStatus struct {
 // InfobloxIPPool is the Schema for the InfobloxIPPools API.
 //
 // +kubebuilder:object:root=true
+// +kubebuilder:resource
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Network view",type="string",JSONPath=".spec.networkView",description="Default network view"
 // +kubebuilder:printcolumn:name="Subnets",type="string",JSONPath=".spec.subnets",description="Subnets to allocate IPs from"

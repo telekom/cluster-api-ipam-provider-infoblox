@@ -56,8 +56,14 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations, and apply configurations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(MAKE) generate-applyconfigurations
+
+.PHONY: generate-applyconfigurations
+generate-applyconfigurations: controller-gen ## Generate the typed apply configurations for the v1alpha1 API.
+	find api/applyconfiguration -name '*.go' ! -name '*_test.go' -delete
+	$(CONTROLLER_GEN) applyconfiguration:headerFile="hack/boilerplate.go.txt" paths="./api/v1alpha1"
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

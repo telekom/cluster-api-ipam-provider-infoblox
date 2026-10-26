@@ -1,4 +1,6 @@
 // Package v1alpha1 contains API Schema definitions for the ipam.cluster.x-k8s.io v1alpha1 API group
+// +kubebuilder:ac:generate=true
+// +kubebuilder:ac:output:package=../applyconfiguration
 // +kubebuilder:object:generate=true
 // +groupName=ipam.cluster.x-k8s.io
 package v1alpha1
@@ -12,6 +14,9 @@ import (
 var (
 	// GroupVersion is group version used to register these objects.
 	GroupVersion = schema.GroupVersion{Group: "ipam.cluster.x-k8s.io", Version: "v1alpha1"}
+
+	// SchemeGroupVersion is the group version used by the generated apply configurations.
+	SchemeGroupVersion = GroupVersion
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme.
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)

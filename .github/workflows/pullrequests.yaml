@@ -46,4 +46,5 @@ jobs:
       - name: run manifest generators
         run: make manifests
       - name: ensure no files changed
-        run: git diff --exit-code || (echo "Generated files are out of sync. Please run 'make generate manifests' and commit the updated files."; exit 1)
+        # git status also reports new and deleted generated files, which git diff does not.
+        run: test -z "$(git status --porcelain)" || (git status --short; git diff; echo "Generated files are out of sync. Please run 'make generate manifests' and commit the updated files."; exit 1)
