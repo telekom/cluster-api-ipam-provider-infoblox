@@ -22,36 +22,43 @@ import (
 	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 )
 
-func TestIPPoolRefValue(t *testing.T) {
-	tests := []struct {
-		name string
-		ref  ipamv1.IPPoolReference
-		want string
-	}{
-		{
-			name: "explicit API group",
-			ref: ipamv1.IPPoolReference{
-				APIGroup: "infrastructure.cluster.x-k8s.io",
-				Kind:     "ExternalIPPool",
-				Name:     "pool-1",
-			},
-			want: "infrastructure.cluster.x-k8s.io/ExternalIPPool/pool-1",
-		},
-		{
-			name: "default API group",
-			ref: ipamv1.IPPoolReference{
-				Kind: "InClusterIPPool",
-				Name: "pool-1",
-			},
-			want: ipamv1.GroupVersion.Group + "/InClusterIPPool/pool-1",
-		},
+func TestIPPoolRefValueIncludesAPIGroup(t *testing.T) {
+	ref := ipamv1.IPPoolReference{
+		APIGroup: "ipam.cluster.x-k8s.io",
+		Kind:     "InfobloxIPPool",
+		Name:     "pool",
+	}
+	otherGroupRef := ref
+	otherGroupRef.APIGroup = "other.example.com"
+
+	if got, other := IPPoolRefValue(ref), IPPoolRefValue(otherGroupRef); got == other {
+		t.Fatalf("IPPoolRefValue ignored APIGroup: both refs produced %q", got)
+	}
+	if got, want := IPPoolRefValue(ref), "ipam.cluster.x-k8s.io/InfobloxIPPool/pool"; got != want {
+		t.Fatalf("IPPoolRefValue() = %q, want %q", got, want)
+	}
+}
+
+func TestIPPoolRefValuesIncludesLegacyAndCanonicalInfobloxKeys(t *testing.T) {
+	ref := ipamv1.IPPoolReference{
+		APIGroup: "",
+		Kind:     "InfobloxIPPool",
+		Name:     "pool",
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if got := IPPoolRefValue(test.ref); got != test.want {
-				t.Fatalf("IPPoolRefValue() = %q, want %q", got, test.want)
-			}
-		})
+	got := IPPoolRefValues(ref)
+	want := map[string]bool{
+		"/InfobloxIPPool/pool":                      false,
+		"ipam.cluster.x-k8s.io/InfobloxIPPool/pool": false,
+	}
+	for _, value := range got {
+		if _, ok := want[value]; ok {
+			want[value] = true
+		}
+	}
+	for value, found := range want {
+		if !found {
+			t.Fatalf("IPPoolRefValues() = %v, missing %q", got, value)
+		}
 	}
 }

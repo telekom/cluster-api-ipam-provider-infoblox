@@ -35,11 +35,11 @@ var poolRefCases = []struct {
 		result: false,
 	},
 	{
-		name: "false when no group is set",
+		name: "true when no group is set for a legacy reference",
 		ref: ipamv1.IPPoolReference{
 			Kind: "InfobloxIPPool",
 		},
-		result: false,
+		result: true,
 	},
 	{
 		name: "false when group does not match",

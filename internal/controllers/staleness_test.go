@@ -20,10 +20,12 @@ import (
 	"context"
 	"net/netip"
 	"sync/atomic"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/api/v1alpha1"
+	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox/ibmock"
 	"go.uber.org/mock/gomock"
@@ -36,6 +38,7 @@ import (
 	"sigs.k8s.io/cluster-api-ipam-provider-in-cluster/pkg/ipamutil"
 	ipamv1 "sigs.k8s.io/cluster-api/api/ipam/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
@@ -90,7 +93,26 @@ func staleReads(stale client.Object, n int) client.Client {
 // informer that has not observed a claim which already exists in the API server. Every other read
 // falls through.
 func staleEmptyClaimList(n int) client.Client {
-	base, err := client.NewWithWatch(cfg, client.Options{Scheme: scheme.Scheme})
+	cacheCtx, cacheCancel := context.WithCancel(ctx)
+	DeferCleanup(cacheCancel)
+
+	syncPeriod := 100 * time.Millisecond
+	indexedCache, err := cache.New(cfg, cache.Options{Scheme: scheme.Scheme, SyncPeriod: &syncPeriod})
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	ExpectWithOffset(1, index.SetupIndexes(cacheCtx, indexedCache)).To(Succeed())
+	go func() {
+		defer GinkgoRecover()
+		Expect(indexedCache.Start(cacheCtx)).To(Succeed())
+	}()
+	ExpectWithOffset(1, indexedCache.WaitForCacheSync(cacheCtx)).To(BeTrue())
+
+	base, err := client.NewWithWatch(cfg, client.Options{
+		Scheme: scheme.Scheme,
+		Cache: &client.CacheOptions{
+			Reader:     indexedCache,
+			DisableFor: []client.Object{&v1alpha1.InfobloxIPPool{}},
+		},
+	})
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	var served atomic.Int64
