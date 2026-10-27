@@ -181,7 +181,7 @@ var _ = Describe("InfobloxInstanceReconciler", func() {
 			createObj(instance)
 
 			expectCondition(metav1.ConditionFalse, v1alpha1.AuthenticationFailedReason,
-				"could not create infoblox client: authentication rejected")
+				"could not create infoblox client")
 		})
 	})
 
