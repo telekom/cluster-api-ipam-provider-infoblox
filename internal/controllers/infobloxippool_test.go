@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"net/netip"
 	"testing"
 	"time"
@@ -54,6 +53,7 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 		poolName    = "test-pool"
 		secretName  = "test-pool-credentials" //nolint:gosec // G101 matches the identifier, not the value
 		dnsViewName = "test-dns-view"
+		dnsZone     = "example.test"
 	)
 
 	var (
@@ -101,22 +101,20 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 	createPool := func() {
 		Expect(apiClient.Create(ctx, pool)).To(Succeed())
 		DeferCleanup(func() {
-			Eventually(func(g Gomega) bool {
-				remaining := &v1alpha1.InfobloxIPPool{}
-				err := apiClient.Get(ctx, poolKey, remaining)
-				if apierrors.IsNotFound(err) {
-					return true
-				}
-				g.Expect(err).NotTo(HaveOccurred())
+			remaining := &v1alpha1.InfobloxIPPool{}
+			err := apiClient.Get(ctx, poolKey, remaining)
+			if apierrors.IsNotFound(err) {
+				return
+			}
+			Expect(err).NotTo(HaveOccurred())
 
-				// Drop the finalizer before deleting. Deleting first would bump the
-				// resourceVersion, making the subsequent update fail with a conflict.
-				if controllerutil.RemoveFinalizer(remaining, ProtectPoolFinalizer) {
-					g.Expect(client.IgnoreNotFound(apiClient.Update(ctx, remaining))).To(Succeed())
-				}
-				g.Expect(client.IgnoreNotFound(apiClient.Delete(ctx, remaining))).To(Succeed())
-				return false
-			}).Should(BeTrue())
+			// Drop the finalizer before deleting. Deleting first would bump the
+			// resourceVersion, making the subsequent update fail with a conflict.
+			if controllerutil.RemoveFinalizer(remaining, ProtectPoolFinalizer) {
+				Expect(apiClient.Update(ctx, remaining)).To(Succeed())
+			}
+			Expect(client.IgnoreNotFound(apiClient.Delete(ctx, remaining))).To(Succeed())
+			expectPoolGone()
 		})
 	}
 
@@ -200,9 +198,7 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 
 		It("should set the pool to ready", func() {
 
-			poolMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).Times(1)
 			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(true, nil).Times(1)
-			poolMock.EXPECT().CheckDNSViewExists("default.test-view").Return(true, nil).Times(1)
 			poolMock.EXPECT().CheckNetworkExists("test-view", netip.MustParsePrefix("10.0.0.0/24")).Return(true, nil).Times(1)
 
 			res, err := reconcileValidatedPool()
@@ -214,9 +210,7 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 
 		It("should keep the pool ready across repeated reconciliations", func() {
 			// Three validating reconciliations, each revalidating the pool from scratch.
-			poolMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).Times(3)
 			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(true, nil).Times(3)
-			poolMock.EXPECT().CheckDNSViewExists("default.test-view").Return(true, nil).Times(3)
 			poolMock.EXPECT().CheckNetworkExists("test-view", netip.MustParsePrefix("10.0.0.0/24")).Return(true, nil).Times(3)
 
 			_, err := reconcileValidatedPool()
@@ -235,6 +229,7 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 	When("the pool does not specify a network view", func() {
 		It("should default to the network view of the instance", func() {
 			pool.Spec.NetworkView = ""
+			pool.Spec.DNSZone = dnsZone
 			// Twice: once to default the network view, once to derive the DNS view from it.
 			poolMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{DefaultNetworkView: "instance-view"}).Times(2)
 			poolMock.EXPECT().CheckNetworkViewExists("instance-view").Return(true, nil).Times(1)
@@ -250,9 +245,42 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 		})
 	})
 
+	When("the pool has no DNS zone", func() {
+		It("should not check a DNS view, as its host records have DNS disabled", func() {
+			pool.Spec.DNSView = dnsViewName
+			poolMock.EXPECT().GetHostConfig().Times(0)
+			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(true, nil).Times(1)
+			poolMock.EXPECT().CheckDNSViewExists(gomock.Any()).Times(0)
+			poolMock.EXPECT().CheckNetworkExists("test-view", netip.MustParsePrefix("10.0.0.0/24")).Return(true, nil).Times(1)
+			createPool()
+
+			_, err := reconcileValidatedPool()
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(getPool()).To(haveReadyCondition(metav1.ConditionTrue, v1alpha1.ReadyReason))
+		})
+	})
+
+	When("the pool has a DNS zone but no DNS view", func() {
+		It("should validate the DNS view derived from the network view", func() {
+			pool.Spec.DNSZone = dnsZone
+			poolMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).Times(1)
+			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(true, nil).Times(1)
+			poolMock.EXPECT().CheckDNSViewExists("default.test-view").Return(true, nil).Times(1)
+			poolMock.EXPECT().CheckNetworkExists("test-view", netip.MustParsePrefix("10.0.0.0/24")).Return(true, nil).Times(1)
+			createPool()
+
+			_, err := reconcileValidatedPool()
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(getPool()).To(haveReadyCondition(metav1.ConditionTrue, v1alpha1.ReadyReason))
+		})
+	})
+
 	When("the pool specifies a DNS view", func() {
 		It("should validate that DNS view instead of the derived one", func() {
 			pool.Spec.DNSView = dnsViewName
+			pool.Spec.DNSZone = dnsZone
 			poolMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).Times(1)
 			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(true, nil).Times(1)
 			poolMock.EXPECT().CheckDNSViewExists(dnsViewName).Return(true, nil).Times(1)
@@ -274,7 +302,7 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 			_, err := reconcileValidatedPool()
 
 			Expect(err).To(HaveOccurred())
-			Expect(getPool()).To(haveReadyCondition(metav1.ConditionFalse, v1alpha1.AuthenticationFailedReason))
+			Expect(getPool()).To(haveReadyCondition(metav1.ConditionFalse, v1alpha1.ConfigurationInvalidReason))
 		})
 	})
 
@@ -295,7 +323,7 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 	When("the network view cannot be looked up", func() {
 		It("should set the pool to not ready and return an error", func() {
 			poolMock.EXPECT().GetHostConfig().Times(0)
-			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(false, errors.New("infoblox said no")).Times(1)
+			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(false, wapiRejection).Times(1)
 			createPool()
 
 			_, err := reconcileValidatedPool()
@@ -303,7 +331,7 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 			// A failed lookup says nothing about whether the view exists, so it must not be
 			// reported as NetworkViewNotFound, and it has to be retried.
 			Expect(err).To(MatchError(ContainSubstring("infoblox said no")))
-			Expect(getPool()).To(haveReadyCondition(metav1.ConditionFalse, v1alpha1.InfobloxCheckFailedReason))
+			Expect(getPool()).To(haveReadyCondition(metav1.ConditionFalse, v1alpha1.InfobloxRequestFailedReason))
 			Expect(getPool().Status.Conditions[0].Message).To(ContainSubstring(`could not check network view "test-view"`))
 		})
 	})
@@ -311,38 +339,38 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 	When("the DNS view cannot be looked up", func() {
 		It("should set the pool to not ready and return an error", func() {
 			pool.Spec.DNSView = dnsViewName
+			pool.Spec.DNSZone = dnsZone
 			poolMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).Times(1)
 			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(true, nil).Times(1)
-			poolMock.EXPECT().CheckDNSViewExists(dnsViewName).Return(false, errors.New("infoblox said no")).Times(1)
+			poolMock.EXPECT().CheckDNSViewExists(dnsViewName).Return(false, wapiRejection).Times(1)
 			poolMock.EXPECT().CheckNetworkExists(gomock.Any(), gomock.Any()).Times(0)
 			createPool()
 
 			_, err := reconcileValidatedPool()
 
 			Expect(err).To(MatchError(ContainSubstring("infoblox said no")))
-			Expect(getPool()).To(haveReadyCondition(metav1.ConditionFalse, v1alpha1.InfobloxCheckFailedReason))
+			Expect(getPool()).To(haveReadyCondition(metav1.ConditionFalse, v1alpha1.InfobloxRequestFailedReason))
 		})
 	})
 
 	When("a network of the pool cannot be looked up", func() {
 		It("should set the pool to not ready and return an error", func() {
-			poolMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).Times(1)
 			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(true, nil).Times(1)
-			poolMock.EXPECT().CheckDNSViewExists("default.test-view").Return(true, nil).Times(1)
 			poolMock.EXPECT().CheckNetworkExists("test-view", netip.MustParsePrefix("10.0.0.0/24")).
-				Return(false, errors.New("infoblox said no")).Times(1)
+				Return(false, wapiRejection).Times(1)
 			createPool()
 
 			_, err := reconcileValidatedPool()
 
 			Expect(err).To(MatchError(ContainSubstring("infoblox said no")))
-			Expect(getPool()).To(haveReadyCondition(metav1.ConditionFalse, v1alpha1.InfobloxCheckFailedReason))
+			Expect(getPool()).To(haveReadyCondition(metav1.ConditionFalse, v1alpha1.InfobloxRequestFailedReason))
 		})
 	})
 
 	When("the DNS view does not exist", func() {
 		It("should set the pool to not ready", func() {
 			pool.Spec.DNSView = dnsViewName
+			pool.Spec.DNSZone = dnsZone
 			// The reconciliation stops at the DNS view, before any subnet is checked.
 			poolMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).Times(1)
 			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(true, nil).Times(1)
@@ -359,9 +387,7 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 
 	When("a network of the pool does not exist", func() {
 		It("should set the pool to not ready", func() {
-			poolMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).Times(1)
 			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(true, nil).Times(1)
-			poolMock.EXPECT().CheckDNSViewExists("default.test-view").Return(true, nil).Times(1)
 			poolMock.EXPECT().CheckNetworkExists("test-view", netip.MustParsePrefix("10.0.0.0/24")).Return(false, nil).Times(1)
 			createPool()
 
@@ -413,9 +439,7 @@ var _ = Describe("InfobloxIPPoolReconciler", func() {
 
 			// Only the single validating reconciliation below reaches Infoblox. The deletion
 			// reconciliations the specs drive must not.
-			poolMock.EXPECT().GetHostConfig().Return(&infoblox.HostConfig{}).Times(1)
 			poolMock.EXPECT().CheckNetworkViewExists("test-view").Return(true, nil).Times(1)
-			poolMock.EXPECT().CheckDNSViewExists("default.test-view").Return(true, nil).Times(1)
 			poolMock.EXPECT().CheckNetworkExists("test-view", netip.MustParsePrefix("10.0.0.0/24")).Return(true, nil).Times(1)
 
 			createPool()

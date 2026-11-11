@@ -26,6 +26,14 @@ const (
 	AddressAllocatedReason = "AddressAllocated"
 	// AllocationFailedReason indicates that the allocation of an IP address from the InfobloxIPPool has failed.
 	AllocationFailedReason = "AllocationFailed"
+	// NoAddressAvailableReason indicates that no subnet of the InfobloxIPPool has an available IP address.
+	NoAddressAvailableReason = "NoAddressAvailable"
+	// AddressDriftedReason indicates that the address of a claim's IPAddress is no longer assigned to the claim's host in Infoblox.
+	AddressDriftedReason = "AddressDrifted"
+	// AddressInvalidReason indicates that the address of a claim's IPAddress is invalid and cannot be used.
+	AddressInvalidReason = "AddressInvalid"
+	// VerificationFailedReason indicates that it could not be checked whether Infoblox still holds the address of a claim's IPAddress.
+	VerificationFailedReason = "VerificationFailed"
 	// ReleaseFailedReason indicates that the IP address held by a claim could not be released back to Infoblox.
 	ReleaseFailedReason = "ReleaseFailed"
 
@@ -34,9 +42,13 @@ const (
 
 	// AuthenticationFailedReason indicates that the credentials provided to Infoblox were invalid.
 	AuthenticationFailedReason = "AuthenticationFailed"
-	// InfobloxCheckFailedReason indicates that a check against the Infoblox instance could not be
-	// performed, so whether the checked object exists is unknown.
-	InfobloxCheckFailedReason = "InfobloxCheckFailed"
+	// ConfigurationInvalidReason indicates that no Infoblox client can be created from the configuration, e.g. because of an invalid TLS setting.
+	ConfigurationInvalidReason = "ConfigurationInvalid"
+	// InfobloxRequestFailedReason indicates that Infoblox rejected a request with a WAPI error.
+	InfobloxRequestFailedReason = "InfobloxRequestFailed"
+	// InfobloxConnectionFailedReason indicates that an Infoblox request failed without a WAPI response, e.g. because of a
+	// transport error, an HTTP error of a proxy or an unreadable response.
+	InfobloxConnectionFailedReason = "InfobloxConnectionFailed"
 
 	// NetworkViewNotFoundReason indicates that the specified network view could not be found on the Infoblox instance.
 	NetworkViewNotFoundReason = "NetworkViewNotFound"

@@ -115,10 +115,15 @@ func (r *InfobloxInstanceReconciler) reconcile(ctx context.Context, instance *v1
 		conditions.Set(instance, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,
-			Reason:  v1alpha1.AuthenticationFailedReason,
+			Reason:  v1alpha1.ConfigurationInvalidReason,
 			Message: fmt.Sprintf("could not create infoblox client: %v", err),
 		})
 		return ctrl.Result{}, nil
+	}
+
+	// Assert that infoblox is reachable and the credentials are valid.
+	if err := ibcl.CheckConnection(); err != nil {
+		return ctrl.Result{}, markFailedInfobloxRequest(instance, err, "", "the connection to Infoblox")
 	}
 
 	// Check default network view if specified

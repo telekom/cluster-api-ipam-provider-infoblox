@@ -15,17 +15,30 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - description: InfobloxInstance to allocate IPs from
+      jsonPath: .spec.instance.name
+      name: Instance
+      type: string
     - description: Default network view
       jsonPath: .spec.networkView
       name: Network view
       type: string
-    - description: Subnets to allocate IPs from
-      jsonPath: .spec.subnets
-      name: Subnets
-      type: string
     - description: The DNS zone within which hostnames will be allocated
       jsonPath: .spec.dnsZone
       name: DNSZone
+      type: string
+    - description: Subnets to allocate IPs from
+      jsonPath: .spec.subnets
+      name: Subnets
+      priority: 1
+      type: string
+    - description: Status of the Ready condition
+      jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - description: Reason of the Ready condition
+      jsonPath: .status.conditions[?(@.type=="Ready")].reason
+      name: Reason
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
@@ -34,6 +47,11 @@ spec:
       name: Deleted
       priority: 1
       type: date
+    - description: Message of the Ready condition
+      jsonPath: .status.conditions[?(@.type=="Ready")].message
+      name: Message
+      priority: 1
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
