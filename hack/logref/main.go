@@ -28,6 +28,8 @@ limitations under the License.
 //
 // The scan fails when
 //   - a log call has no literal message, or a non-literal V level,
+//   - a key of a log call or of WithValues is not a string literal, or the
+//     key/value list is expanded from a slice or has an odd length,
 //   - a field key has no entry in fieldClasses, or an entry for this module's
 //     code is no longer used,
 //   - a file other than main.go imports the standard library "log" package,
@@ -46,7 +48,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -109,7 +110,6 @@ var fieldClasses = map[string]fieldClass{
 
 var (
 	scanPaths = []string{mainFile, "api", "internal", "pkg"}
-	vLevelRe  = regexp.MustCompile(`\.V\((\d+)\)`)
 	// levelOrder is the order of the levels in the catalogue; V(2) and higher follow.
 	levelOrder = []string{"error", "info", "debug"}
 )
@@ -243,14 +243,18 @@ func (s *scanResult) visit(path string, d fs.DirEntry, err error) error {
 }
 
 // addCall records call if it is a log call or a WithValues call. It returns an
-// error for a log call whose message or V level is not a literal.
+// error for a log call whose message, V level or keys are not literals.
 func (s *scanResult) addCall(dir string, call *ast.CallExpr) error {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
 		return nil
 	}
 	if sel.Sel.Name == "WithValues" {
-		for _, k := range keys(call.Args) {
+		ks, err := keys(call, call.Args)
+		if err != nil {
+			return fmt.Errorf("%s.WithValues: %w", types.ExprString(sel.X), err)
+		}
+		for _, k := range ks {
 			s.withKeys[k], s.usedKeys[k] = true, true
 		}
 		return nil
@@ -268,7 +272,7 @@ func (s *scanResult) addCall(dir string, call *ast.CallExpr) error {
 		level, msgArg, kv = "error", call.Args[1], call.Args[2:]
 	case method == "Info" && len(call.Args) >= 1:
 		var err error
-		if level, err = infoLevel(recv); err != nil {
+		if level, err = infoLevel(sel.X); err != nil {
 			return fmt.Errorf("log call %s.%s: %w", recv, method, err)
 		}
 		msgArg, kv = call.Args[0], call.Args[1:]
@@ -279,6 +283,10 @@ func (s *scanResult) addCall(dir string, call *ast.CallExpr) error {
 	if msg == "" {
 		return fmt.Errorf("log call %s.%s has a non-literal message %s; use a literal message and key/value fields", recv, method, types.ExprString(msgArg))
 	}
+	ks, err := keys(call, kv)
+	if err != nil {
+		return fmt.Errorf("log call %s.%s: %w", recv, method, err)
+	}
 	if s.pkgs[dir] == nil {
 		s.pkgs[dir] = map[string]*entry{}
 	}
@@ -288,40 +296,77 @@ func (s *scanResult) addCall(dir string, call *ast.CallExpr) error {
 		e = &entry{level: level, message: msg, fields: map[string]bool{}}
 		s.pkgs[dir][key] = e
 	}
-	for _, k := range keys(kv) {
+	for _, k := range ks {
 		e.fields[k], s.callKeys[k], s.usedKeys[k] = true, true, true
 	}
 	return nil
 }
 
-// infoLevel returns the catalogue level of a logr Info call on recv.
-func infoLevel(recv string) (string, error) {
-	m := vLevelRe.FindAllStringSubmatch(recv, -1)
-	switch {
-	case m == nil && strings.Contains(recv, ".V("):
-		return "", errors.New("non-literal V level")
-	case m == nil:
-		return "info", nil
-	}
-	switch v := m[len(m)-1][1]; v {
-	case "0":
-		return "info", nil
-	case "1":
-		return "debug", nil
-	default:
-		return "V(" + v + ")", nil
+// infoLevel returns the catalogue level of a logr Info call on recv. It adds
+// up the V calls of the receiver chain, as logr does.
+func infoLevel(recv ast.Expr) (string, error) {
+	v := 0
+	for x := recv; ; {
+		switch e := x.(type) {
+		case *ast.CallExpr:
+			sel, ok := e.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return levelName(v), nil
+			}
+			if sel.Sel.Name == "V" {
+				n, err := intLiteral(e.Args)
+				if err != nil {
+					return "", err
+				}
+				v += n
+			}
+			x = sel.X
+		case *ast.SelectorExpr:
+			x = e.X
+		default:
+			return levelName(v), nil
+		}
 	}
 }
 
-// keys returns the literal keys of a key/value list.
-func keys(kv []ast.Expr) []string {
-	var out []string
-	for i := 0; i < len(kv); i += 2 {
-		if k := literal(kv[i]); k != "" {
-			out = append(out, k)
+func intLiteral(args []ast.Expr) (int, error) {
+	if len(args) == 1 {
+		if lit, ok := args[0].(*ast.BasicLit); ok && lit.Kind == token.INT {
+			return strconv.Atoi(lit.Value)
 		}
 	}
-	return out
+	return 0, errors.New("non-literal V level")
+}
+
+func levelName(v int) string {
+	switch v {
+	case 0:
+		return "info"
+	case 1:
+		return "debug"
+	default:
+		return fmt.Sprintf("V(%d)", v)
+	}
+}
+
+// keys returns the keys of the key/value list kv of call. Every key must be a
+// string literal, so that no field escapes the classification.
+func keys(call *ast.CallExpr, kv []ast.Expr) ([]string, error) {
+	if call.Ellipsis.IsValid() {
+		return nil, errors.New("expanded key/value list; pass literal keys")
+	}
+	if len(kv)%2 != 0 {
+		return nil, errors.New("odd number of key/value arguments")
+	}
+	out := make([]string, 0, len(kv)/2)
+	for i := 0; i < len(kv); i += 2 {
+		k := literal(kv[i])
+		if k == "" {
+			return nil, fmt.Errorf("non-literal key %s; use a string literal", types.ExprString(kv[i]))
+		}
+		out = append(out, k)
+	}
+	return out, nil
 }
 
 func literal(x ast.Expr) string {

@@ -49,6 +49,7 @@ func F() {
 	logger.Info("allocated", "address", a)
 	logger.V(1).Info("verified")
 	logger.V(2).Info("trace")
+	logger.V(1).V(1).Info("chained")
 	log.FromContext(ctx).Error(err, "failed", "hostname", h)
 	http.Error(w, "not a log", 500)
 	err.Error()
@@ -79,6 +80,7 @@ func F() {
 		"internal/x info allocated":  "address",
 		"internal/x debug verified":  "",
 		"internal/x V(2) trace":      "",
+		"internal/x V(2) chained":    "",
 		"internal/x error failed":    "hostname",
 	}
 	if len(got) != len(want) {
@@ -112,6 +114,12 @@ func TestScanRejects(t *testing.T) {
 		"logr error without message": {"pkg/x/x.go", "package x\nfunc f() { logger.Error(err) }\n", "too few arguments"},
 		"unclassified field":         {"pkg/x/x.go", "package x\nfunc f() { logger.Info(\"x\", \"secret\", s) }\n", `field "secret" has no personal-data classification`},
 		"unclassified context field": {"pkg/x/x.go", "package x\nfunc f() { l := logger.WithValues(\"secret\", s) }\n", `field "secret" has no personal-data classification`},
+		"chained dynamic V level":    {"pkg/x/x.go", "package x\nfunc f() { logger.V(1).V(n).Info(\"x\") }\n", "non-literal V level"},
+		"non-literal key":            {"pkg/x/x.go", "package x\nfunc f() { logger.Info(\"x\", key, v) }\n", "non-literal key key"},
+		"non-literal context key":    {"pkg/x/x.go", "package x\nfunc f() { l := logger.WithValues(key, v) }\n", "non-literal key key"},
+		"expanded key/value list":    {"pkg/x/x.go", "package x\nfunc f() { logger.Info(\"x\", kv...) }\n", "expanded key/value list"},
+		"expanded context list":      {"pkg/x/x.go", "package x\nfunc f() { l := logger.WithValues(kv...) }\n", "expanded key/value list"},
+		"odd key/value list":         {"pkg/x/x.go", "package x\nfunc f() { logger.Error(err, \"x\", \"address\") }\n", "odd number"},
 		"stale classification":       {"pkg/x/x.go", "package x\nfunc f() {}\n", `field "subnet" is classified`},
 	} {
 		t.Run(name, func(t *testing.T) {
