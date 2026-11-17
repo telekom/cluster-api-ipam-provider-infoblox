@@ -133,7 +133,7 @@ func (r *InfobloxIPPoolReconciler) reconcileDelete(ctx context.Context, pool *v1
 	}
 	if len(inUseClaims) > 0 {
 		message := fmt.Sprintf("waiting for %d IPAddressClaim(s) referencing this pool to be deleted", len(inUseClaims))
-		logger.Info(message)
+		logger.Info("waiting for IPAddressClaims referencing this pool to be deleted", "claims", len(inUseClaims))
 		conditions.Set(pool, metav1.Condition{
 			Type:    clusterv1.ReadyCondition,
 			Status:  metav1.ConditionFalse,

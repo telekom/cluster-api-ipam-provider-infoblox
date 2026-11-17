@@ -132,6 +132,8 @@ Up to v0.3.0-rc.2 the `--zap-*` flags were accepted and ignored: the controller 
 
 The output of the Infoblox client library is discarded, as before.
 
+[docs/logging-reference.md](docs/logging-reference.md) lists every message, its fields, and which fields can hold personal data.
+
 ## Running Tests
 
 | Command | Runs | Requirements |
