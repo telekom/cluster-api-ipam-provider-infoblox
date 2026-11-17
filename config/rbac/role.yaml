@@ -50,6 +50,7 @@ rules:
   resources:
   - infobloxinstances/finalizers
   - infobloxippools/finalizers
+  - ipaddressclaims/finalizers
   - ipaddresses/finalizers
   verbs:
   - update
