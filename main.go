@@ -19,6 +19,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -29,6 +30,7 @@ import (
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/index"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/internal/webhooks"
 	"github.com/telekom/cluster-api-ipam-provider-infoblox/pkg/infoblox"
+	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -58,6 +60,48 @@ func init() {
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 
 	//+kubebuilder:scaffold:scheme
+}
+
+// logLevels maps the values of --log-level to zap levels.
+var logLevels = map[string]zapcore.Level{
+	"debug": zapcore.DebugLevel,
+	"info":  zapcore.InfoLevel,
+	"warn":  zapcore.WarnLevel,
+	"error": zapcore.ErrorLevel,
+}
+
+// logFormats maps the values of --log-format to values of --zap-encoder.
+var logFormats = map[string]string{
+	"text": "console",
+	"json": "json",
+}
+
+// bindLogFlags registers --log-level, --log-format and the --zap-* flags of controller-runtime on fs.
+// The defaults, info and text without stack traces, are closest to the klog output of the releases
+// that ignored the --zap-* flags. When a --log-* flag and its --zap-* counterpart are both given,
+// the one later on the command line wins.
+func bindLogFlags(fs *flag.FlagSet, o *zap.Options) {
+	o.BindFlags(fs)
+	o.Level = zapcore.InfoLevel
+	o.StacktraceLevel = zapcore.PanicLevel
+	if err := fs.Set("zap-encoder", logFormats["text"]); err != nil {
+		panic(err)
+	}
+	fs.Func("log-level", "Log level, one of debug, info, warn or error. (default info)", func(v string) error {
+		level, ok := logLevels[v]
+		if !ok {
+			return fmt.Errorf("invalid log level %q, must be one of debug, info, warn or error", v)
+		}
+		o.Level = level
+		return nil
+	})
+	fs.Func("log-format", "Log format, one of text or json. (default text)", func(v string) error {
+		encoder, ok := logFormats[v]
+		if !ok {
+			return fmt.Errorf("invalid log format %q, must be one of text or json", v)
+		}
+		return fs.Set("zap-encoder", encoder)
+	})
 }
 
 func main() {
@@ -92,15 +136,19 @@ func main() {
 	flag.StringVar(&webhookOpts.CertName, "webhook-cert-name", "", "Webhook cert name.")
 	flag.StringVar(&webhookOpts.KeyName, "webhook-key-name", "", "Webhook key name.")
 
-	zapOpts := zap.Options{
-		Development: true,
-	}
-	zapOpts.BindFlags(flag.CommandLine)
+	zapOpts := zap.Options{}
+	bindLogFlags(flag.CommandLine, &zapOpts)
 
 	goFlagSet := flag.CommandLine
 	pflag.CommandLine.AddGoFlagSet(goFlagSet)
 
 	pflag.Parse()
+	// Set the logger first: lines logged before ctrl.SetLogger are lost when the process exits.
+	logger := zap.New(zap.UseFlagOptions(&zapOpts))
+	ctrl.SetLogger(logger)
+	// client-go and other libraries log through klog; send their lines through the same logger.
+	klog.SetLogger(logger)
+
 	if maxConcurrentReconciles < 1 {
 		setupLog.Error(os.ErrInvalid, "max-concurrent-reconciles must be greater than zero", "value", maxConcurrentReconciles)
 		os.Exit(1)
@@ -115,9 +163,6 @@ func main() {
 
 	// suppress logs from Infoblox client library
 	log.SetOutput(io.Discard)
-
-	// klog.Background will automatically use the right logger.
-	ctrl.SetLogger(klog.Background())
 
 	ctx := ctrl.SetupSignalHandler()
 
