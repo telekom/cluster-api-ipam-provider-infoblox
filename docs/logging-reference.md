@@ -28,7 +28,7 @@ Any other value is rejected at start-up. When a `--log-*` flag and its `--zap-*`
 
 `--zap-log-level=<n>` with `n` of 2 and higher also enables the lines of libraries at logr verbosity `n`, for example the admission requests of controller-runtime at 5. These lines are not part of the catalogue below.
 
-Stack traces are off below panic; `--zap-stacktrace-level` changes that. Lines that repeat the same message more than 100 times per second are sampled (controller-runtime production default) unless `--zap-log-level` is 2 or higher.
+Stack traces are off below panic; `--zap-stacktrace-level` changes that. Lines that repeat the same message more than 100 times per second are sampled (controller-runtime production default) unless `--zap-log-level` is 2 or higher or `--zap-devel` is given.
 
 ## Line format
 
@@ -175,3 +175,4 @@ The fields of the lines of this module, and the fields that libraries add to the
 - A change that adds, removes or changes a log call, or adds a field, runs `go run ./hack/logref` and commits the result. `TestLoggingReferenceUpToDate` runs in `make test` (the `test` check) and fails otherwise.
 - The scan fails for a log call without a literal message or V level, for a field without an entry in `fieldClasses`, for an entry of this module's code that no log call uses any more, and for a file other than `main.go` that imports the standard library `log` package.
 - The prose sections above are not generated. A change of a flag, a default or a library that logs updates them in the same pull request.
+- The scan matches calls whose receiver expression contains `log` (`logger`, `setupLog`, `klog`, `log.FromContext(ctx)`) and the `Info` and `Error` methods. It does not see a logger held in a variable with another name (`l := logger`), klog's `InfoS` and `ErrorS`, or a direct write with `fmt`; a change that introduces one adds its messages to the catalogue by hand and extends the scan.
