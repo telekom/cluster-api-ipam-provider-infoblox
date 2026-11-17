@@ -111,6 +111,27 @@ The DNS view is determined in the following priority order:
 
 The DNS view is only used, and only checked for existence, if the pool has a `dnsZone`. Without one, host records are created with DNS disabled.
 
+## Logging
+
+The controller writes its log to stderr. Two flags set the log:
+
+| Flag | Values | Default |
+|---|---|---|
+| `--log-level` | `debug`, `info`, `warn`, `error` | `info` |
+| `--log-format` | `text`, `json` | `text` |
+
+Any other value is rejected and the controller does not start. `debug` adds the lines logged at logr verbosity 1 and higher. The controller logs no warnings, so `warn` shows the same lines as `error`.
+
+The `--zap-*` flags of controller-runtime (`--zap-log-level`, `--zap-encoder`, `--zap-stacktrace-level`, `--zap-time-encoding`, `--zap-devel`) work as well. `--log-level` sets the same value as `--zap-log-level`, and `--log-format` the same value as `--zap-encoder`; when both of a pair are given, the one later on the command line wins. Lines of client-go and other libraries that log through klog use the same logger.
+
+Up to v0.3.0-rc.2 the `--zap-*` flags were accepted and ignored: the controller always logged klog text at verbosity 0. The defaults above are the closest zap equivalent, with three differences:
+
+- The line layout is the zap console layout (`<time>\t<LEVEL>\t<logger>\t<message>\t{<fields as JSON>}`) instead of the klog header (`I1117 10:00:00.000000 1 main.go:210] "message" key="value"`).
+- Above 100 lines per second with the same message and level, only every 100th line of that message is written (the controller-runtime production sampling). It is off at `--zap-log-level=2` and higher.
+- `--zap-devel` no longer selects debug level and console format, as `--log-level` and `--log-format` set them. It still makes a misuse of the logger panic.
+
+The output of the Infoblox client library is discarded, as before.
+
 ## Running Tests
 
 | Command | Runs | Requirements |
