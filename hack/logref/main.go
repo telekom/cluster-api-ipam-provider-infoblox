@@ -146,7 +146,7 @@ func run(root string, check bool) error {
 		return err
 	}
 	path := filepath.Join(root, docPath)
-	doc, err := os.ReadFile(path)
+	doc, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return fmt.Errorf("read %s: %w", docPath, err)
 	}

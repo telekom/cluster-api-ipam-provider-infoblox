@@ -140,7 +140,7 @@ func TestRunCheckDetectsDrift(t *testing.T) {
 	if err := run(root, true); err != nil {
 		t.Fatalf("check after regeneration: %v", err)
 	}
-	doc, err := os.ReadFile(filepath.Join(root, docPath))
+	doc, err := os.ReadFile(filepath.Clean(filepath.Join(root, docPath)))
 	if err != nil {
 		t.Fatal(err)
 	}
